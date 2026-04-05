@@ -1,0 +1,203 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+
+/* ─── Count-up hook ─── */
+function useCountUp(target: number, duration = 900) {
+  const [count, setCount] = useState(0);
+  const rafRef = useRef<number>(0);
+  const startRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    startRef.current = null;
+    const step = (ts: number) => {
+      if (startRef.current === null) startRef.current = ts;
+      const progress = Math.min((ts - startRef.current) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setCount(Math.round(eased * target));
+      if (progress < 1) rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [target, duration]);
+
+  return count;
+}
+
+/* ─── Stat card ─── */
+const CARD_CFG = {
+  green: { top: "border-t-emerald-500", num: "text-emerald-700", dot: "bg-emerald-500" },
+  amber: { top: "border-t-amber-500",   num: "text-amber-700",   dot: "bg-amber-500"  },
+  red:   { top: "border-t-red-500",     num: "text-red-600",     dot: "bg-red-500"    },
+  blue:  { top: "border-t-blue-500",    num: "text-blue-700",    dot: "bg-blue-500"   },
+} as const;
+
+function StatCard({
+  label, rawValue, displayValue, sub, color, index,
+}: {
+  label: string;
+  rawValue: number;
+  displayValue: string;
+  sub: string;
+  color: keyof typeof CARD_CFG;
+  index: number;
+}) {
+  const count = useCountUp(rawValue, 800 + index * 100);
+  const done = count >= rawValue;
+  const cfg = CARD_CFG[color];
+
+  return (
+    <div
+      className="card-bezel dash-stat-card h-full"
+      style={{ "--card-delay": `${index * 70}ms` } as React.CSSProperties}
+    >
+      <div className={`card-bezel-inner h-full border-t-4 ${cfg.top} p-5`}>
+        <div className="flex items-start justify-between mb-4">
+          <p className="text-[10px] uppercase tracking-[0.13em] font-semibold text-gray-400 leading-snug">
+            {label}
+          </p>
+          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${cfg.dot} mt-0.5`} />
+        </div>
+        <p className={`text-[1.6rem] sm:text-[2.5rem] leading-none font-bold tabular-nums mb-2 overflow-hidden text-ellipsis whitespace-nowrap ${cfg.num}`}>
+          {done ? displayValue : count.toLocaleString()}
+        </p>
+        <p className="text-[11px] text-gray-400">{sub}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Issue breakdown strip ─── */
+const STRIP_SEGS = [
+  { key: "noIssues" as const,         label: "No Issues",                              bar: "bg-emerald-500", dot: "bg-emerald-500", text: "text-emerald-700" },
+  { key: "zeroAmendarea" as const,    label: "Zero Validated AMENDAREA",               bar: "bg-amber-400",   dot: "bg-amber-400",   text: "text-amber-700"  },
+  { key: "zeroCondoned" as const,     label: "Zero Condoned Amount (NET_OF_REVAL)",    bar: "bg-orange-400",  dot: "bg-orange-400",  text: "text-orange-700" },
+  { key: "negativeCondoned" as const, label: "Negative Condoned Amount (NET_OF_REVAL)", bar: "bg-red-500",     dot: "bg-red-500",     text: "text-red-700"    },
+  { key: "crossProvince" as const,    label: "Cross Province Duplicates",               bar: "bg-purple-500",  dot: "bg-purple-500",  text: "text-purple-700" },
+  { key: "unprocessed" as const,      label: "Unprocessed",                             bar: "bg-slate-400",   dot: "bg-slate-400",   text: "text-slate-600"  },
+];
+
+type StripData = {
+  noIssues: number;
+  zeroAmendarea: number;
+  zeroCondoned: number;
+  negativeCondoned: number;
+  crossProvince: number;
+  unprocessed: number;
+  total: number;
+};
+
+function pct(n: number, total: number) {
+  return total === 0 ? 0 : (n / total) * 100;
+}
+
+export function IssueStrip({ data }: { data: StripData }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 80);
+    return () => clearTimeout(t);
+  }, []);
+
+  const segs = STRIP_SEGS
+    .map((s) => ({ ...s, count: data[s.key] }))
+    .filter((s) => s.count > 0);
+
+  return (
+    <div className="card-bezel mb-6">
+      <div className="card-bezel-inner-open">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-[10px] uppercase tracking-[0.13em] font-semibold text-gray-400">
+            Issue Breakdown
+          </span>
+          <span className="text-[11px] font-mono text-gray-400">
+            {data.total.toLocaleString()} records
+          </span>
+        </div>
+
+      {/* Segmented bar */}
+      <div className="flex h-2.5 rounded-full overflow-hidden bg-gray-100 mb-4">
+        {segs.map((s, i) => (
+          <div
+            key={s.key}
+            className={`${s.bar} transition-all duration-700 ease-out ${i > 0 ? "ml-px" : ""}`}
+            style={{ width: mounted ? `${pct(s.count, data.total)}%` : "0%" }}
+          />
+        ))}
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-x-6 gap-y-2">
+        {segs.map((s) => (
+          <div key={s.key} className="flex items-center gap-2">
+            <span className={`w-2.5 h-2.5 rounded-sm flex-shrink-0 ${s.dot}`} />
+            <span className={`text-[12px] font-bold tabular-nums ${s.text}`}>
+              {s.count.toLocaleString()}
+            </span>
+            <span className="text-[11px] text-gray-500">{s.label}</span>
+            <span className="text-[10px] text-gray-300">
+              {pct(s.count, data.total).toFixed(0)}%
+            </span>
+          </div>
+        ))}
+      </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Stat cards grid ─── */
+export function DashboardStatCards({
+  total, totalArea, validatedCount, arbCount,
+  noIssuesCount, useValidated,
+}: {
+  total: number;
+  totalArea: number;
+  validatedCount: number;
+  arbCount: number;
+  noIssuesCount: number;
+  useValidated: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-4 mb-6 lg:grid-cols-4">
+      <StatCard
+        label="Total Records"
+        rawValue={total}
+        displayValue={total.toLocaleString()}
+        sub="Landholdings"
+        color="green"
+        index={0}
+      />
+      <StatCard
+        label={useValidated ? "Total Area · Validated" : "Total Area · Original"}
+        rawValue={Math.floor(totalArea)}
+        displayValue={totalArea.toLocaleString("en-PH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}
+        sub={
+          useValidated
+            ? `${validatedCount.toLocaleString()} records validated`
+            : "Based on original AMENDAREA"
+        }
+        color={useValidated ? "amber" : "blue"}
+        index={1}
+      />
+      <StatCard
+        label="With Issues"
+        rawValue={total - noIssuesCount}
+        displayValue={(total - noIssuesCount).toLocaleString()}
+        sub="Require LBP Reconciliation"
+        color="red"
+        index={2}
+      />
+      <StatCard
+        label="ARBs Uploaded"
+        rawValue={arbCount}
+        displayValue={arbCount.toLocaleString()}
+        sub="Across all landholdings"
+        color="blue"
+        index={3}
+      />
+    </div>
+  );
+}

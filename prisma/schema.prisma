@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Landholding {
+  id                  Int      @id @default(autoincrement())
+  seqno_darro         String   @unique
+  lbp_seqno           String?
+  clno                String?
+  claim_no            String?
+  class_field         String?
+  claimclass          String?
+  landowner           String?
+  lo                  String?
+  province            String?
+  province_edited     String?
+  location            String?
+  dateap              String?
+  datebk              String?
+  aoc                 Float?
+  fssc                Float?
+  amendarea           Float?
+  arr_area            Float?
+  area                Float?
+  osarea              Float?
+  net_of_reval        Float?
+  net_of_reval_no_neg Float?
+  year                String?
+  fo2_area            Float?
+  fo2                 String?
+  epcloa_is_area      Float?
+  epcloa_is           String?
+  split_area          Float?
+  split               String?
+  optool_area         Float?
+  optool              String?
+  fo3_area            Float?
+  fo3                 String?
+  dar_match_status    String?
+  source              String?
+  duplicate_clno      String?
+  cross_province      String?
+  data_flags          String?
+
+  // Location fields
+  municipality        String?
+  barangay            String?
+
+  // Management fields
+  status              String?  @default("For Further Validation")
+  condoned_amount     Float?
+  amendarea_validated Float?
+  remarks             String?
+
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  arbs                Arb[]
+  audit_logs          AuditLog[]
+}
+
+model Arb {
+  id             Int         @id @default(autoincrement())
+  seqno_darro    String
+  landholding    Landholding @relation(fields: [seqno_darro], references: [seqno_darro])
+
+  arb_name       String?
+  arb_no         String?
+  ep_cloa_no     String?
+  carpable       String?  // CARPABLE | NON-CARPABLE
+  area_allocated String?
+  remarks        String?
+
+  uploaded_by    String?
+  created_at     DateTime    @default(now())
+}
+
+model User {
+  id                   Int      @id @default(autoincrement())
+  username             String   @unique
+  password_hash        String
+  full_name            String
+  role                 String   // super_admin | admin | editor | viewer
+  office_level         String   // regional | provincial | municipal
+  province             String?
+  municipality         String?
+  must_change_password Boolean  @default(true)
+  is_active            Boolean  @default(true)
+  created_by           Int?
+  created_at           DateTime @default(now())
+}
+
+model AuditLog {
+  id            Int         @id @default(autoincrement())
+  seqno_darro   String
+  landholding   Landholding @relation(fields: [seqno_darro], references: [seqno_darro])
+
+  action        String
+  field_changed String?
+  old_value     String?
+  new_value     String?
+  changed_by    String?     @default("System")
+  created_at    DateTime    @default(now())
+}

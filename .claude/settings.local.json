@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npx prisma:*)",
+      "Bash(node -e \":*)",
+      "Bash(curl:*)",
+      "Bash(npm run:*)",
+      "Bash(npx ctx7@latest library next-auth \"credentials provider App Router NextAuth v5 Auth.js\")",
+      "Bash(npx ctx7@latest docs /websites/authjs_dev \"credentials provider Next.js App Router setup configuration\")",
+      "Bash(npx ctx7@latest docs /websites/authjs_dev \"credentials provider Next.js App Router setup\")",
+      "mcp__context7__query-docs",
+      "Bash(npx tsx:*)",
+      "Bash(node -e ':*)",
+      "Bash(node:*)",
+      "Bash(python tmp_mobile_test.py)",
+      "Bash(pip install:*)",
+      "Bash(python -m playwright install chromium)",
+      "Bash(python tmp_mobile_debug.py)",
+      "Bash(python -m playwright install webkit)",
+      "Bash(python tmp_logo_test.py)",
+      "Bash(python tmp_toggle_test.py)",
+      "Bash(python tmp_final_test.py)",
+      "Bash(cp \"C:/Users/Jestoni Esteves/Documents/ARB Batch Upload Template.csv\" \"C:/Users/Jestoni Esteves/claude/unclassified-app/public/ARB Batch Upload Template.csv\")",
+      "Bash(cp \"C:/Users/Jestoni Esteves/Documents/ARB Batch Upload Template.xlsx\" \"C:/Users/Jestoni Esteves/claude/unclassified-app/public/ARB Batch Upload Template.xlsx\")"
+    ]
+  }
+}
