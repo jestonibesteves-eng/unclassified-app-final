@@ -481,7 +481,21 @@ export default function UsersPage() {
                 They will be required to change it on next login.
               </p>
               <div>
-                <label className="block text-[10px] uppercase tracking-widest font-semibold text-gray-400 mb-1.5">New Password</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-[10px] uppercase tracking-widest font-semibold text-gray-400">New Password</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const chars = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%";
+                      const pw = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+                      setResetPassword(pw);
+                      setShowPassword(true);
+                    }}
+                    className="text-[11px] text-amber-600 font-semibold hover:underline"
+                  >
+                    Generate random
+                  </button>
+                </div>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
