@@ -400,7 +400,7 @@ export default function BatchPage() {
                                 </span>
                               </td>
                               <td className="px-3 py-2">
-                                {r.data_flags && <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-red-100 text-red-700">{(r.data_flags as string).includes(";") ? "Both Neg." : (r.data_flags as string).replace("Negative ", "Neg. ")}</span>}
+                                {r.data_flags ? <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-red-100 text-red-700">{(r.data_flags as string).includes(";") ? "Both Neg." : (r.data_flags as string).replace("Negative ", "Neg. ")}</span> : null}
                               </td>
                             </>}
                             {type === "amount" && (() => {

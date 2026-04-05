@@ -76,7 +76,7 @@ function IconClose() {
 }
 
 /* ─── Nav structure (role-filtered at render time) ─── */
-type NavItem = { href: string; label: string; Icon: () => JSX.Element };
+type NavItem = { href: string; label: string; Icon: () => React.ReactElement };
 type NavGroup = { label: string | null; items: NavItem[]; minRole?: "editor" | "admin" };
 
 const ALL_NAV_GROUPS: NavGroup[] = [

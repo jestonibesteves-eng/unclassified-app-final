@@ -115,7 +115,7 @@ function emptyRow(): ArbRow {
 }
 
 /* ─── Upload File Panel ─── */
-type PreviewArb = { seqno_darro: string | null; arb_name: string | null; arb_no: string | null; ep_cloa_no: string | null; area_allocated: string | null; remarks: string | null };
+type PreviewArb = { seqno_darro: string | null; arb_name: string | null; arb_no: string | null; ep_cloa_no: string | null; carpable: string | null; area_allocated: string | null; remarks: string | null };
 type BySEQNO = Record<string, { landowner: string | null; province: string | null; count: number; existingCount: number; arbs: PreviewArb[]; amendarea: number | null; amendarea_validated: number | null }>;
 type PreviewData = { total: number; valid: number; errors: { row: number; reason: string }[]; notFoundSeqnos: string[]; outOfJurisdictionSeqnos: string[]; bySEQNO: BySEQNO } | null;
 

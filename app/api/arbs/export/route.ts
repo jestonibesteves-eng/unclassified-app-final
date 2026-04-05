@@ -29,12 +29,12 @@ export async function GET(req: NextRequest) {
       GROUP BY l.seqno_darro
     `;
     matchSeqnos = rows
-      .filter((r) => {
+      .filter((r: { seqno_darro: string; total: number; validated: number | null }) => {
         if (r.validated == null) return false;
         const isMatch = parseFloat(Number(r.total).toFixed(4)) === parseFloat(Number(r.validated).toFixed(4));
         return match === "matched" ? isMatch : !isMatch;
       })
-      .map((r) => r.seqno_darro);
+      .map((r: { seqno_darro: string; total: number; validated: number | null }) => r.seqno_darro);
   }
 
   const arbs = await prisma.arb.findMany({
