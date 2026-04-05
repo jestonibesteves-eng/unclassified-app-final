@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
     orderBy: [{ seqno_darro: "asc" }, { id: "asc" }],
   });
 
-  const rows = arbs.map((a) => ({
+  const rows = arbs.map((a: typeof arbs[number]) => ({
     "SEQNO_DARRO": a.seqno_darro,
     "CLNO": a.landholding.clno ?? "",
     "LANDOWNER": a.landholding.landowner ?? "",
