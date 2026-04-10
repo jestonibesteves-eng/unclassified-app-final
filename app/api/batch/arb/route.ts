@@ -196,7 +196,7 @@ export async function PUT(req: NextRequest) {
   const notFoundPairs: { seqno_darro: string; arb_id: string }[] = [];
   const outOfJurisdiction: string[] = [];
   const areaLockedRows: { seqno_darro: string; arb_id: string; status: string }[] = [];
-  const rows = [];
+  const rows: Record<string, unknown>[] = [];
 
   for (const r of valid) {
     const lh = lhMap[r.seqno_darro];

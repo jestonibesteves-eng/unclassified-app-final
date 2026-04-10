@@ -104,7 +104,7 @@ function parseCondonedLines(raw: string): {
   invalid: ParseError[];
 } {
   const { valid: allValid, invalid } = parseNumericLines(raw);
-  const valid = [];
+  const valid: { seqno: string; value: number }[] = [];
   for (const r of allValid) {
     if (r.value <= 0) {
       invalid.push({ line: r.seqno, reason: "CONDONED_AMOUNT must be greater than zero" });
