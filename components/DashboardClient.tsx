@@ -24,6 +24,18 @@ function useCountUp(target: number, duration = 900) {
   return count;
 }
 
+/* ─── Compact number formatter ─── */
+function formatCompact(n: number): string {
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) {
+    return (Math.trunc(n / 100_000) / 10).toFixed(1).replace(/\.0$/, "") + "M";
+  }
+  if (abs >= 1_000) {
+    return (Math.trunc(n / 100) / 10).toFixed(1).replace(/\.0$/, "") + "k";
+  }
+  return n.toLocaleString();
+}
+
 /* ─── Stat card ─── */
 const CARD_CFG = {
   green: { top: "border-t-emerald-500", num: "text-emerald-700", dot: "bg-emerald-500" },
@@ -46,6 +58,21 @@ function StatCard({
   const done = count >= rawValue;
   const cfg = CARD_CFG[color];
 
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLSpanElement>(null);
+  const [isOverflow, setIsOverflow] = useState(false);
+
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    const measure = measureRef.current;
+    if (!wrap || !measure) return;
+    const check = () => setIsOverflow(measure.scrollWidth > wrap.clientWidth);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(wrap);
+    return () => ro.disconnect();
+  }, [displayValue]);
+
   return (
     <div
       className="card-bezel dash-stat-card h-full"
@@ -58,9 +85,21 @@ function StatCard({
           </p>
           <span className={`w-2 h-2 rounded-full flex-shrink-0 ${cfg.dot} mt-0.5`} />
         </div>
-        <p className={`text-[1.6rem] sm:text-[2.5rem] leading-none font-bold tabular-nums mb-2 overflow-hidden text-ellipsis whitespace-nowrap ${cfg.num}`}>
-          {done ? displayValue : count.toLocaleString()}
-        </p>
+        <div ref={wrapRef} className="relative mb-2 overflow-hidden">
+          {/* Hidden measurer — always renders the full value to detect overflow */}
+          <span
+            ref={measureRef}
+            aria-hidden
+            className="absolute opacity-0 pointer-events-none whitespace-nowrap font-bold tabular-nums text-[1.6rem] sm:text-[2.5rem] leading-none"
+          >
+            {displayValue}
+          </span>
+          <p className={`text-[1.6rem] sm:text-[2.5rem] leading-none font-bold tabular-nums whitespace-nowrap overflow-hidden text-ellipsis ${cfg.num}`}>
+            {done
+              ? (isOverflow ? formatCompact(rawValue) : displayValue)
+              : (isOverflow ? formatCompact(count) : count.toLocaleString())}
+          </p>
+        </div>
         <p className="text-[11px] text-gray-400">{sub}</p>
       </div>
     </div>

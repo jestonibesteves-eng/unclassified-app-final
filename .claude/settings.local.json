@@ -22,7 +22,15 @@
       "Bash(python tmp_toggle_test.py)",
       "Bash(python tmp_final_test.py)",
       "Bash(cp \"C:/Users/Jestoni Esteves/Documents/ARB Batch Upload Template.csv\" \"C:/Users/Jestoni Esteves/claude/unclassified-app/public/ARB Batch Upload Template.csv\")",
-      "Bash(cp \"C:/Users/Jestoni Esteves/Documents/ARB Batch Upload Template.xlsx\" \"C:/Users/Jestoni Esteves/claude/unclassified-app/public/ARB Batch Upload Template.xlsx\")"
+      "Bash(cp \"C:/Users/Jestoni Esteves/Documents/ARB Batch Upload Template.xlsx\" \"C:/Users/Jestoni Esteves/claude/unclassified-app/public/ARB Batch Upload Template.xlsx\")",
+      "Bash(sqlite3 prisma/dev.db \"PRAGMA table_info\\(Landholding\\);\")",
+      "Bash(python3 -c \" import sys, json lines = [] for line in sys.stdin: line = line.strip\\(\\) if line: try: obj = json.loads\\(line\\) lines.append\\(obj\\) except: pass for obj in lines[-30:]: if 'message' in obj: msg = obj['message'] role = msg.get\\('role', ''\\) content = msg.get\\('content', ''\\) if isinstance\\(content, list\\): for c in content: if isinstance\\(c, dict\\) and c.get\\('type'\\) == 'text': text = c['text'] if text.strip\\(\\): print\\(f'=== [{role}] ==='\\) print\\(text[:800]\\) elif isinstance\\(content, str\\) and content.strip\\(\\): print\\(f'=== [{role}] ==='\\) print\\(content[:800]\\) \")",
+      "Bash(npx ctx7@latest library prisma \"better-sqlite3 driver adapter next.js write operations timeout\")",
+      "Bash(npx ctx7@latest docs /prisma/prisma/7.6.0 \"better-sqlite3 driver adapter initialize PrismaClient write update\")",
+      "Bash(npx ctx7@latest docs /websites/prisma_io \"better-sqlite3 driver adapter PrismaClient initialize typescript\")",
+      "Bash(cat next.config.ts)",
+      "Bash(cat next.config.js)",
+      "Bash(cat next.config.mjs)"
     ]
   }
 }

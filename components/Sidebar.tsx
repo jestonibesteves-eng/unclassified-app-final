@@ -91,7 +91,7 @@ const ALL_NAV_GROUPS: NavGroup[] = [
     label: "Operations",
     minRole: "editor",
     items: [
-      { href: "/batch", label: "Batch Update", Icon: IconBatch },
+      { href: "/batch", label: "Batch Update (LH)", Icon: IconBatch },
       { href: "/arbs",  label: "ARB Viewer",   Icon: IconARB   },
     ],
   },

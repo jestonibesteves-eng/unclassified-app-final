@@ -51,10 +51,15 @@ model Landholding {
   barangay            String?
 
   // Management fields
-  status              String?  @default("For Further Validation")
-  condoned_amount     Float?
-  amendarea_validated Float?
-  remarks             String?
+  status              String?  @default("For Initial Validation")
+  condoned_amount               Float?
+  amendarea_validated           Float?
+  amendarea_validated_confirmed Boolean @default(false)
+  condoned_amount_confirmed     Boolean @default(false)
+  asp_status                String?  // Undetermined | With ASP | Without ASP
+  cloa_status               String?  // See CLOA_STATUS_VALUES
+  remarks                   String?
+  non_eligibility_reason    String?  // Reason when status = "Not Eligible for Encoding"
 
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
@@ -68,12 +73,17 @@ model Arb {
   seqno_darro    String
   landholding    Landholding @relation(fields: [seqno_darro], references: [seqno_darro])
 
-  arb_name       String?
-  arb_no         String?
-  ep_cloa_no     String?
-  carpable       String?  // CARPABLE | NON-CARPABLE
-  area_allocated String?
-  remarks        String?
+  arb_name                  String?
+  arb_id                    String?
+  ep_cloa_no                String?
+  carpable                  String?  // CARPABLE | NON-CARPABLE
+  area_allocated            String?
+  allocated_condoned_amount String?
+  eligibility               String?  // Eligible | Not Eligible
+  eligibility_reason        String?  // required when eligibility = "Not Eligible"
+  date_encoded              String?  // mm/dd/yyyy
+  date_distributed          String?  // mm/dd/yyyy
+  remarks                   String?
 
   uploaded_by    String?
   created_at     DateTime    @default(now())

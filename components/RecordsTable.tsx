@@ -6,14 +6,41 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import { useUser } from "@/components/UserContext";
 
+function toDateInput(val: string): string {
+  if (!val) return "";
+  const [m, d, y] = val.split("/");
+  if (!m || !d || !y) return "";
+  return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+}
+function fromDateInput(val: string): string {
+  if (!val) return "";
+  const [y, m, d] = val.split("-");
+  if (!y || !m || !d) return "";
+  return `${m}/${d}/${y}`;
+}
+
+function displayCondoned(val: string | null | undefined): string {
+  if (!val) return "—";
+  const num = parseFloat(val.replace(/,/g, ""));
+  if (!isNaN(num) && String(val).trim().replace(/,/g, "") === String(num)) {
+    return num.toLocaleString("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  return val;
+}
+
 /* ─── Detail types ─── */
 type Arb = {
   id: number;
   arb_name: string | null;
-  arb_no: string | null;
+  arb_id: string | null;
   ep_cloa_no: string | null;
   carpable: string | null;
   area_allocated: string | null;
+  allocated_condoned_amount: string | null;
+  eligibility: string | null;
+  eligibility_reason: string | null;
+  date_encoded: string | null;
+  date_distributed: string | null;
   remarks: string | null;
 };
 
@@ -58,13 +85,28 @@ type LandholdingDetail = {
   data_flags: string | null;
   status: string | null;
   condoned_amount: number | null;
+  amendarea_validated_confirmed: boolean;
+  condoned_amount_confirmed: boolean;
+  asp_status: string | null;
+  cloa_status: string | null;
   municipality: string | null;
   barangay: string | null;
   remarks: string | null;
+  non_eligibility_reason: string | null;
   arbs: Arb[];
 };
 
-const DETAIL_STATUSES = ["For Further Validation", "Fully Distributed", "Partially Distributed", "Encoded", "For Encoding", "Not Eligible for Encoding"];
+const DETAIL_STATUSES = ["For Initial Validation", "For Further Validation", "For Encoding", "Partially Encoded", "Fully Encoded", "Partially Distributed", "Fully Distributed", "Not Eligible for Encoding"];
+
+const CLOA_STATUS_VALUES = [
+  "Still CCLOA (SPLIT Target)",
+  "Still CCLOA (Not SPLIT Target)",
+  "Full — Individual Title (SPLIT)",
+  "Partial — Individual Title (SPLIT)",
+  "Full — Individual Title (Regular Redoc)",
+  "Partial — Individual Title (Regular Redoc)",
+] as const;
+type CloaStatus = typeof CLOA_STATUS_VALUES[number];
 
 const NON_ELIGIBILITY_REASONS = [
   "UNDER CLASSIFIED ARR", "WITH CERTIFICATE OF FULL PAYMENT", "NO ISSUED TITLE",
@@ -89,13 +131,14 @@ function excelDateToString(value: string | null): string | null {
 }
 
 const STATUS_STYLES: Record<string, { dot: string; badge: string }> = {
-  "Fully Distributed":         { dot: "bg-emerald-500", badge: "bg-emerald-100 text-emerald-800 border-emerald-200" },
-  "Partially Distributed":     { dot: "bg-teal-400",    badge: "bg-teal-100 text-teal-800 border-teal-200" },
-  "Encoded":                   { dot: "bg-blue-400",    badge: "bg-blue-100 text-blue-800 border-blue-200" },
-  "For Encoding":              { dot: "bg-violet-400",  badge: "bg-violet-100 text-violet-800 border-violet-200" },
+  "For Initial Validation":    { dot: "bg-slate-400",   badge: "bg-slate-100 text-slate-700 border-slate-200" },
   "For Further Validation":    { dot: "bg-amber-400",   badge: "bg-amber-100 text-amber-800 border-amber-200" },
+  "For Encoding":              { dot: "bg-violet-400",  badge: "bg-violet-100 text-violet-800 border-violet-200" },
+  "Partially Encoded":         { dot: "bg-sky-400",     badge: "bg-sky-100 text-sky-800 border-sky-200" },
+  "Fully Encoded":             { dot: "bg-blue-500",    badge: "bg-blue-100 text-blue-800 border-blue-200" },
+  "Partially Distributed":     { dot: "bg-teal-400",    badge: "bg-teal-100 text-teal-800 border-teal-200" },
+  "Fully Distributed":         { dot: "bg-emerald-500", badge: "bg-emerald-100 text-emerald-800 border-emerald-200" },
   "Not Eligible for Encoding": { dot: "bg-red-400",     badge: "bg-red-100 text-red-800 border-red-200" },
-  "Untagged":                  { dot: "bg-gray-400",    badge: "bg-gray-100 text-gray-600 border-gray-200" },
 };
 
 function Field({ label, value, mono, negative }: {
@@ -161,7 +204,7 @@ function MetricPill({ label, value, warn, indicator }: {
   );
 }
 
-function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () => void; onSaved: () => void }) {
+export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, hasNext }: { seqno: string; onClose: () => void; onSaved: () => void; onPrev?: () => void; onNext?: () => void; hasPrev?: boolean; hasNext?: boolean }) {
   const [data, setData] = useState<LandholdingDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -172,12 +215,17 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
   const [nonEligibilityOther, setNonEligibilityOther] = useState("");
   const [condonedAmount, setCondonedAmount] = useState("");
   const [amendareavValidated, setAmendareavValidated] = useState("");
+  const [areaConfirmed, setAreaConfirmed] = useState(false);
+  const [condonedConfirmed, setCondonedConfirmed] = useState(false);
+  const [pendingUndo, setPendingUndo] = useState<"area" | "condoned" | null>(null);
+  const [cloaStatus, setCloaStatus] = useState<CloaStatus | null>(null);
+  const [aspStatus, setAspStatus] = useState<"With ASP" | "Without ASP" | null>(null);
   const [municipality, setMunicipality] = useState("");
   const [barangay, setBarangay] = useState("");
   const [remarks, setRemarks] = useState("");
   const [tab, setTab] = useState<"details" | "arbs">("details");
   const [crossProvInfo, setCrossProvInfo] = useState<{ province: string | null; seqno: string } | null>(null);
-  const [editingArb, setEditingArb] = useState<{ id: number; arb_name: string; arb_no: string; ep_cloa_no: string; carpable: string; area_allocated: string; remarks: string } | null>(null);
+  const [editingArb, setEditingArb] = useState<{ id: number; arb_name: string; arb_id: string; ep_cloa_no: string; carpable: string; area_allocated: string; allocated_condoned_amount: string; eligibility: string; eligibility_reason: string; date_encoded: string; date_distributed: string; remarks: string } | null>(null);
   const [savingArb, setSavingArb] = useState(false);
   const [arbEditError, setArbEditError] = useState("");
   const [confirmDeleteArbId, setConfirmDeleteArbId] = useState<number | null>(null);
@@ -189,13 +237,17 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
       .then((d: LandholdingDetail) => {
         setData(d);
         setStatus(d.status ?? "For Initial Validation");
-        if (d.status === "Not Eligible for Encoding" && d.remarks) {
-          const isKnown = NON_ELIGIBILITY_REASONS.includes(d.remarks);
-          setNonEligibilityReason(isKnown ? d.remarks : "__other__");
-          setNonEligibilityOther(isKnown ? "" : d.remarks);
+        if (d.status === "Not Eligible for Encoding" && d.non_eligibility_reason) {
+          const isKnown = NON_ELIGIBILITY_REASONS.includes(d.non_eligibility_reason);
+          setNonEligibilityReason(isKnown ? d.non_eligibility_reason : "__other__");
+          setNonEligibilityOther(isKnown ? "" : d.non_eligibility_reason);
         }
         setCondonedAmount(d.condoned_amount != null ? String(d.condoned_amount) : (d.net_of_reval_no_neg != null ? String(d.net_of_reval_no_neg) : ""));
         setAmendareavValidated(d.amendarea_validated != null ? String(d.amendarea_validated) : (d.amendarea != null ? String(d.amendarea) : ""));
+        setAreaConfirmed(d.amendarea_validated_confirmed ?? false);
+        setCondonedConfirmed(d.condoned_amount_confirmed ?? false);
+        setCloaStatus((CLOA_STATUS_VALUES as readonly string[]).includes(d.cloa_status ?? "") ? d.cloa_status as CloaStatus : null);
+        setAspStatus((d.asp_status === "With ASP" || d.asp_status === "Without ASP") ? d.asp_status : null);
         setMunicipality(d.municipality ?? "");
         setBarangay(d.barangay ?? "");
         setRemarks(d.remarks ?? "");
@@ -216,12 +268,47 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft" && e.ctrlKey && hasPrev && onPrev) { e.preventDefault(); onPrev(); }
+      if (e.key === "ArrowRight" && e.ctrlKey && hasNext && onNext) { e.preventDefault(); onNext(); }
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  }, [onClose, onPrev, onNext, hasPrev, hasNext]);
 
   const effectiveNonEligibilityReason = nonEligibilityReason === "__other__" ? nonEligibilityOther.trim() : nonEligibilityReason;
+
+  // Confirmed badge shows only when the DB flag is set AND the input still matches the saved value
+  const savedAreaVal = data ? (data.amendarea_validated ?? data.amendarea ?? 0) : 0;
+  const savedCondonedVal = data ? (data.condoned_amount ?? data.net_of_reval_no_neg ?? 0) : 0;
+  const isAreaEffectivelyConfirmed = areaConfirmed && (() => {
+    const input = parseFloat(amendareavValidated);
+    return !isNaN(input) && parseFloat(input.toFixed(4)) === parseFloat(savedAreaVal.toFixed(4));
+  })();
+  const isCondonedEffectivelyConfirmed = condonedConfirmed && (() => {
+    const input = parseFloat(condonedAmount);
+    return !isNaN(input) && parseFloat(input.toFixed(2)) === parseFloat(savedCondonedVal.toFixed(2));
+  })();
+
+  const isDirty = !!data && (() => {
+    const savedStatus = data.status ?? "For Initial Validation";
+    const savedArea = data.amendarea_validated != null ? String(data.amendarea_validated) : (data.amendarea != null ? String(data.amendarea) : "");
+    const savedCondoned = data.condoned_amount != null ? String(data.condoned_amount) : (data.net_of_reval_no_neg != null ? String(data.net_of_reval_no_neg) : "");
+    const savedCloaStatus = (CLOA_STATUS_VALUES as readonly string[]).includes(data.cloa_status ?? "") ? data.cloa_status as CloaStatus : null;
+    const savedAspStatus = (data.asp_status === "With ASP" || data.asp_status === "Without ASP") ? data.asp_status : null;
+    const savedMunicipality = data.municipality ?? "";
+    const savedBarangay = data.barangay ?? "";
+    const savedRemarks = data.remarks ?? "";
+    return (
+      status !== savedStatus ||
+      amendareavValidated !== savedArea ||
+      condonedAmount !== savedCondoned ||
+      cloaStatus !== savedCloaStatus ||
+      aspStatus !== savedAspStatus ||
+      municipality !== savedMunicipality ||
+      barangay !== savedBarangay ||
+      remarks !== savedRemarks
+    );
+  })();
 
   async function handleSave() {
     if (status === "Not Eligible for Encoding" && !effectiveNonEligibilityReason) {
@@ -239,12 +326,14 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
     }
     body.condoned_amount = parsedAmount;
     body.amendarea_validated = parsedValidated;
+    body.asp_status = aspStatus ?? null;
+    body.cloa_status = cloaStatus ?? null;
     body.municipality = municipality.trim() || null;
     body.barangay = barangay.trim() || null;
-    // When Not Eligible for Encoding, overwrite remarks with the reason
-    body.remarks = status === "Not Eligible for Encoding" && effectiveNonEligibilityReason
-      ? effectiveNonEligibilityReason
-      : remarks.trim() || null;
+    body.remarks = remarks.trim() || null;
+    body.non_eligibility_reason = status === "Not Eligible for Encoding"
+      ? effectiveNonEligibilityReason || null
+      : null;
     const res = await fetch(`/api/records/${encodeURIComponent(seqno)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -253,9 +342,36 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
     const result = await res.json();
     if (!res.ok) { toast(result.error ?? "Save failed.", "error"); setSaving(false); return; }
     setData((prev) => prev ? { ...prev, ...result } : prev);
+    setAreaConfirmed(result.amendarea_validated_confirmed ?? false);
+    setCondonedConfirmed(result.condoned_amount_confirmed ?? false);
+    if (result.status) setStatus(result.status);
+    setCloaStatus((CLOA_STATUS_VALUES as readonly string[]).includes(result.cloa_status ?? "") ? result.cloa_status as CloaStatus : null);
+    setAspStatus((result.asp_status === "With ASP" || result.asp_status === "Without ASP") ? result.asp_status : null);
     toast("Changes saved successfully.", "success");
     setSaving(false);
     onSaved();
+  }
+
+  async function executeUndo(field: "area" | "condoned") {
+    const body = field === "area"
+      ? { amendarea_validated_confirmed: false }
+      : { condoned_amount_confirmed: false };
+    const res = await fetch(`/api/records/${encodeURIComponent(seqno)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const result = await res.json();
+    if (res.ok) {
+      if (field === "area") setAreaConfirmed(false);
+      else setCondonedConfirmed(false);
+      setData((prev) => prev ? { ...prev, ...result } : prev);
+      if (result.status) setStatus(result.status);
+      onSaved();
+    } else {
+      toast(result.error ?? "Failed to undo confirmation.", "error");
+    }
+    setPendingUndo(null);
   }
 
   async function handleArbSave() {
@@ -267,10 +383,15 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         arb_name: editingArb.arb_name,
-        arb_no: editingArb.arb_no || null,
+        arb_id: editingArb.arb_id || null,
         ep_cloa_no: editingArb.ep_cloa_no || null,
         carpable: editingArb.carpable,
         area_allocated: editingArb.area_allocated || null,
+        allocated_condoned_amount: editingArb.allocated_condoned_amount,
+        eligibility: editingArb.eligibility,
+        eligibility_reason: editingArb.eligibility_reason,
+        date_encoded: editingArb.date_encoded || null,
+        date_distributed: editingArb.date_distributed || null,
         remarks: editingArb.remarks || null,
       }),
     });
@@ -302,7 +423,8 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
     if (e.target === e.currentTarget) onClose();
   }
 
-  const statusStyle = STATUS_STYLES[data?.status ?? "Untagged"] ?? STATUS_STYLES["Untagged"];
+  const normalizedStatus = (data?.status === "Untagged" || !data?.status) ? "For Initial Validation" : data.status;
+  const statusStyle = STATUS_STYLES[normalizedStatus] ?? STATUS_STYLES["For Initial Validation"];
   const hasFlag = !!data?.data_flags;
   const parsedCondonedInput = condonedAmount.trim() !== "" ? parseFloat(condonedAmount) : null;
   const userEnteredPositiveCondoned = parsedCondonedInput != null && !isNaN(parsedCondonedInput) && parsedCondonedInput > 0;
@@ -320,6 +442,61 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
       <style>{`
         .modal-panel { animation: modal-panel-in 0.48s cubic-bezier(0.16, 1, 0.3, 1) both; }
       `}</style>
+
+      {/* Undo confirmation dialog */}
+      {pendingUndo && (() => {
+        const ADVANCE_STATUSES = ["For Encoding", "Partially Encoded", "Fully Encoded", "Partially Distributed", "Fully Distributed"];
+        const currentStatus = data?.status ?? "";
+        const hasAdvanced = ADVANCE_STATUSES.includes(currentStatus);
+        const fieldLabel = pendingUndo === "area" ? "Validated AMENDAREA" : "Validated Condoned Amount";
+        return (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-sm overflow-hidden">
+              {/* Header */}
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 bg-amber-50">
+                <span className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-amber-600" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
+                  </svg>
+                </span>
+                <div>
+                  <p className="font-bold text-gray-800 text-[14px]">Undo Confirmation</p>
+                  <p className="text-[11px] text-amber-700 font-medium">{fieldLabel}</p>
+                </div>
+              </div>
+              {/* Body */}
+              <div className="px-5 py-4 text-[13px] text-gray-700 space-y-2">
+                {hasAdvanced ? (
+                  <>
+                    <p>This landholding has already reached <span className="font-semibold text-gray-900">{currentStatus}</span> status.</p>
+                    <p>Undoing the confirmation of <span className="font-semibold">{fieldLabel}</span> will revert the status back to <span className="font-semibold text-amber-700">For Further Validation</span> and remove any ARB editing restrictions.</p>
+                    <p className="text-gray-500">Are you sure you want to proceed?</p>
+                  </>
+                ) : (
+                  <p>Are you sure you want to undo the confirmation of <span className="font-semibold">{fieldLabel}</span>?</p>
+                )}
+              </div>
+              {/* Actions */}
+              <div className="px-5 py-3 border-t border-gray-100 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPendingUndo(null)}
+                  className="px-4 py-1.5 rounded-lg border border-gray-300 text-[13px] font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => executeUndo(pendingUndo)}
+                  className="px-4 py-1.5 rounded-lg bg-red-600 text-white text-[13px] font-semibold hover:bg-red-700 transition-colors"
+                >
+                  Yes, Undo
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="modal-panel bg-white w-full max-w-4xl max-h-[90vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden">
 
@@ -350,12 +527,30 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
                     ⚠ Flagged
                   </span>
                 )}
-                {data && (
-                  <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[12px] font-semibold ${statusStyle.badge}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
-                    {data.status ?? "For Initial Validation"}
-                  </span>
-                )}
+                {data && (() => {
+                  const showAreaWarning = isAreaEffectivelyConfirmed && isCondonedEffectivelyConfirmed && (() => {
+                    const validatedArea = data.amendarea_validated ?? data.amendarea ?? 0;
+                    const totalArbArea = (data.arbs ?? []).reduce((sum, a) => {
+                      if (!a.area_allocated) return sum;
+                      const s = String(a.area_allocated);
+                      if (s.endsWith("*")) return sum;
+                      const n = parseFloat(s);
+                      return sum + (isNaN(n) ? 0 : n);
+                    }, 0);
+                    return parseFloat(totalArbArea.toFixed(4)) !== parseFloat(validatedArea.toFixed(4))
+                      ? { totalArbArea, validatedArea }
+                      : null;
+                  })();
+                  return (
+                    <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[12px] font-semibold ${statusStyle.badge}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
+                      {data.status ?? "For Initial Validation"}
+                      {showAreaWarning && (() => {
+                        return <ModalMismatchButton totalArbArea={showAreaWarning.totalArbArea} validatedArea={showAreaWarning.validatedArea} />;
+                      })()}
+                    </span>
+                  );
+                })()}
                 <button
                   onClick={onClose}
                   className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors text-lg leading-none"
@@ -387,7 +582,23 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
                       />
                     );
                   })()}
-                  <MetricPill label="ARBs" value={String(data.arbs.length)} />
+                  {(() => {
+                    const carpable = data.arbs.filter((a) => a.carpable !== "NON-CARPABLE");
+                    const distinct = new Set(carpable.map((a) => a.arb_name).filter(Boolean)).size;
+                    const nonCarpable = data.arbs.length - carpable.length;
+                    return (
+                      <div className="flex flex-col items-center justify-center rounded-lg px-4 py-3 bg-gray-50 border border-gray-200">
+                        <div className="flex items-baseline gap-1.5 leading-none mb-1">
+                          <p className="text-lg font-bold font-mono text-gray-900">{carpable.length}</p>
+                          <span className="text-[10px] text-gray-400 font-medium">/ {distinct} distinct</span>
+                        </div>
+                        <p className="text-[10px] uppercase tracking-widest font-semibold text-gray-400">ARBs</p>
+                        {nonCarpable > 0 && (
+                          <p className="text-[9px] text-gray-300 mt-1">{nonCarpable} non-CARPable</p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })()}
@@ -414,27 +625,49 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
               </div>
             )}
 
-            {/* Tabs */}
-            <div className="flex gap-0 -mb-px">
-              {(["details", "arbs"] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  className={`px-5 py-2.5 text-[13px] font-semibold border-b-2 transition-all ${
-                    tab === t
-                      ? "border-white text-white bg-white/10"
-                      : "border-transparent text-green-300 hover:text-white hover:border-white/40"
-                  }`}
-                >
-                  {t === "details" ? "Details" : `ARBs${data ? ` (${data.arbs.length})` : ""}`}
-                </button>
-              ))}
+            {/* Tabs + nav */}
+            <div className="flex items-end justify-between -mb-px">
+              <div className="flex gap-0">
+                {(["details", "arbs"] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTab(t)}
+                    className={`px-5 py-2.5 text-[13px] font-semibold border-b-2 transition-all ${
+                      tab === t
+                        ? "border-white text-white bg-white/10"
+                        : "border-transparent text-green-300 hover:text-white hover:border-white/40"
+                    }`}
+                  >
+                    {t === "details" ? "Details" : `ARBs${data ? ` (${data.arbs.filter((a) => a.carpable !== "NON-CARPABLE").length})` : ""}`}
+                  </button>
+                ))}
+              </div>
+              {(onPrev || onNext) && (
+                <div className="flex items-center gap-1 mb-1.5">
+                  <button
+                    onClick={onPrev}
+                    disabled={!hasPrev}
+                    title="Previous record (←)"
+                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-base leading-none"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    onClick={onNext}
+                    disabled={!hasNext}
+                    title="Next record (→)"
+                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-base leading-none"
+                  >
+                    ›
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         {/* ── Body ── */}
-        <div className="flex-1 overflow-y-auto bg-gray-50/50">
+        <div className="flex-1 overflow-y-auto bg-gray-50/50 min-h-[520px]">
           {loading && (
             <div className="flex items-center justify-center py-16">
               <div className="w-6 h-6 rounded-full border-2 border-green-800 border-t-transparent animate-spin" />
@@ -569,7 +802,11 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
                         onChange={(e) => { setStatus(e.target.value); if (e.target.value !== "Not Eligible for Encoding") { setNonEligibilityReason(""); setNonEligibilityOther(""); } }}
                         className={`w-full border rounded-lg px-3 py-2 text-[13px] font-medium focus:outline-none focus:ring-2 bg-white ${status === "Not Eligible for Encoding" ? "border-red-400 focus:ring-red-400 text-red-700" : "border-gray-300 focus:ring-green-600"}`}
                       >
-                        {DETAIL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                        {DETAIL_STATUSES.map((s) => (
+                          <option key={s} value={s} disabled={s !== "Not Eligible for Encoding"}>
+                            {s !== "Not Eligible for Encoding" ? `${s} (auto-computed)` : s}
+                          </option>
+                        ))}
                       </select>
                       {status === "Not Eligible for Encoding" && (
                         <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -599,39 +836,82 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
                     </div>
                     <div>
                       <label className="block text-[10px] uppercase tracking-widest font-semibold text-amber-600 mb-1.5">Validated AMENDAREA (ha)</label>
-                      <input
-                        type="number"
-                        step="0.0001"
-                        value={amendareavValidated}
-                        onChange={(e) => { setAmendareavValidated(e.target.value); }}
-                        placeholder={data?.amendarea?.toFixed(4) ?? "0.0000"}
-                        className="w-full border border-amber-300 rounded-lg px-3 py-2 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 bg-amber-50/50"
-                      />
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="0.0001"
+                          value={amendareavValidated}
+                          onChange={(e) => { setAmendareavValidated(e.target.value); }}
+                          placeholder={data?.amendarea?.toFixed(4) ?? "0.0000"}
+                          className="w-full border border-amber-300 rounded-lg px-3 py-2 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 bg-amber-50/50"
+                        />
+                      </div>
                       {data?.amendarea != null && (() => {
                         const ind = areaChangeIndicator(
                           amendareavValidated.trim() !== "" ? parseFloat(amendareavValidated) : null,
                           data.amendarea
                         );
                         return (
-                          <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
-                            Original: {data.amendarea.toFixed(4)}
-                            {amendareavValidated.trim() !== "" && (
-                              <span className={`font-bold ${ind.color}`} title={ind.title}>{ind.icon}</span>
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <p className="text-[10px] text-gray-400 flex items-center gap-1">
+                              Original: {data.amendarea.toFixed(4)}
+                              {amendareavValidated.trim() !== "" && (
+                                <span className={`font-bold ${ind.color}`} title={ind.title}>{ind.icon}</span>
+                              )}
+                            </p>
+                            {!isAreaEffectivelyConfirmed && (() => {
+                              const savedArea = data?.amendarea_validated ?? data?.amendarea ?? 0;
+                              const inputVal = parseFloat(amendareavValidated);
+                              const isDirty = !isNaN(inputVal) && parseFloat(inputVal.toFixed(4)) !== parseFloat(savedArea.toFixed(4));
+                              const canConfirmArea = savedArea > 0 && !isDirty;
+                              const title = isDirty ? "Save changes before confirming" : savedArea <= 0 ? "Value must be greater than zero to confirm" : undefined;
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    const res = await fetch(`/api/records/${encodeURIComponent(seqno)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ amendarea_validated_confirmed: true }) });
+                                    const result = await res.json();
+                                    if (res.ok) { setAreaConfirmed(true); setData((prev) => prev ? { ...prev, ...result } : prev); onSaved(); }
+                                    else toast(result.error ?? "Failed to save confirmation.", "error");
+                                  }}
+                                  disabled={!canConfirmArea}
+                                  title={title}
+                                  className="text-[10px] font-semibold border rounded px-1.5 py-0.5 leading-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-amber-600 hover:text-amber-800 border-amber-300 hover:border-amber-500 bg-amber-50 hover:bg-amber-100 disabled:hover:text-amber-600 disabled:hover:border-amber-300 disabled:hover:bg-amber-50"
+                                >
+                                  Confirm
+                                </button>
+                              );
+                            })()}
+                            {isAreaEffectivelyConfirmed && (
+                              <span className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-semibold text-emerald-600 flex items-center gap-0.5">
+                                  <span>✓</span> Confirmed
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setPendingUndo("area")}
+                                  className="text-[10px] font-semibold text-red-500 hover:text-red-700 underline underline-offset-2 transition-colors"
+                                >
+                                  Undo
+                                </button>
+                              </span>
                             )}
-                          </p>
+                          </div>
                         );
                       })()}
                     </div>
                     <div>
                       <label className="block text-[10px] uppercase tracking-widest font-semibold text-amber-600 mb-1.5">Validated Condoned Amount</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={condonedAmount}
-                        onChange={(e) => { setCondonedAmount(e.target.value); }}
-                        placeholder={data?.net_of_reval_no_neg?.toFixed(2) ?? "0.00"}
-                        className="w-full border border-amber-300 rounded-lg px-3 py-2 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 bg-amber-50/50"
-                      />
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={condonedAmount}
+                          onChange={(e) => { setCondonedAmount(e.target.value); }}
+                          placeholder={data?.net_of_reval_no_neg?.toFixed(2) ?? "0.00"}
+                          className="w-full border border-amber-300 rounded-lg px-3 py-2 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-amber-500 bg-amber-50/50"
+                        />
+                      </div>
                       {(() => {
                         const original = data?.net_of_reval ?? 0;
                         const noNeg = data?.net_of_reval_no_neg ?? 0;
@@ -640,16 +920,112 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
                           noNeg
                         );
                         return (
-                          <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
-                            Original: {original.toLocaleString("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            {condonedAmount.trim() !== "" && (
-                              <span className={`font-bold ${ind.color}`} title={ind.title}>{ind.icon}</span>
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <p className="text-[10px] text-gray-400 flex items-center gap-1">
+                              Original: {original.toLocaleString("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              {condonedAmount.trim() !== "" && (
+                                <span className={`font-bold ${ind.color}`} title={ind.title}>{ind.icon}</span>
+                              )}
+                            </p>
+                            {!isCondonedEffectivelyConfirmed && (() => {
+                              const savedCondoned = data?.condoned_amount ?? data?.net_of_reval_no_neg ?? 0;
+                              const inputVal = parseFloat(condonedAmount);
+                              const isDirty = !isNaN(inputVal) && parseFloat(inputVal.toFixed(2)) !== parseFloat(savedCondoned.toFixed(2));
+                              const canConfirmCondoned = savedCondoned > 0 && !isDirty;
+                              const title = isDirty ? "Save changes before confirming" : savedCondoned <= 0 ? "Value must be greater than zero to confirm" : undefined;
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    const res = await fetch(`/api/records/${encodeURIComponent(seqno)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ condoned_amount_confirmed: true }) });
+                                    const result = await res.json();
+                                    if (res.ok) { setCondonedConfirmed(true); setData((prev) => prev ? { ...prev, ...result } : prev); onSaved(); }
+                                    else toast(result.error ?? "Failed to save confirmation.", "error");
+                                  }}
+                                  disabled={!canConfirmCondoned}
+                                  title={title}
+                                  className="text-[10px] font-semibold border rounded px-1.5 py-0.5 leading-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-amber-600 hover:text-amber-800 border-amber-300 hover:border-amber-500 bg-amber-50 hover:bg-amber-100 disabled:hover:text-amber-600 disabled:hover:border-amber-300 disabled:hover:bg-amber-50"
+                                >
+                                  Confirm
+                                </button>
+                              );
+                            })()}
+                            {isCondonedEffectivelyConfirmed && (
+                              <span className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-semibold text-emerald-600 flex items-center gap-0.5">
+                                  <span>✓</span> Confirmed
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setPendingUndo("condoned")}
+                                  className="text-[10px] font-semibold text-red-500 hover:text-red-700 underline underline-offset-2 transition-colors"
+                                >
+                                  Undo
+                                </button>
+                              </span>
                             )}
-                          </p>
+                          </div>
                         );
                       })()}
                     </div>
                   </div>
+                  {/* Notice: both confirmed but area doesn't match */}
+                  {isAreaEffectivelyConfirmed && isCondonedEffectivelyConfirmed && (() => {
+                    const validatedArea = data?.amendarea_validated ?? data?.amendarea ?? 0;
+                    const totalArbArea = (data?.arbs ?? []).reduce((sum, a) => {
+                      if (!a.area_allocated) return sum;
+                      const s = String(a.area_allocated);
+                      if (s.endsWith("*")) return sum; // Collective CLOA — excluded
+                      const n = parseFloat(s);
+                      return sum + (isNaN(n) ? 0 : n);
+                    }, 0);
+                    const isAreaMatch = parseFloat(totalArbArea.toFixed(4)) === parseFloat(validatedArea.toFixed(4));
+                    if (isAreaMatch) return null;
+                    return (
+                      <div className="mb-4 flex items-start gap-2.5 bg-amber-50 border border-amber-300 rounded-lg px-3.5 py-3 text-[12px] text-amber-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
+                        </svg>
+                        <div>
+                          <p className="font-semibold mb-0.5">ARB total area must equal Validated AMENDAREA to advance to <em>For Encoding</em>.</p>
+                          <p className="text-amber-700">
+                            Current ARB total: <span className="font-mono font-bold">{totalArbArea.toFixed(4)} ha</span>
+                            {" "}— Validated AMENDAREA: <span className="font-mono font-bold">{validatedArea.toFixed(4)} ha</span>
+                            {" "}(<span className={`font-bold ${totalArbArea > validatedArea ? "text-red-600" : "text-blue-600"}`}>{totalArbArea > validatedArea ? "+" : ""}{(totalArbArea - validatedArea).toFixed(4)}</span>)
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  {/* ── ASP + CLOA Status dropdowns ── */}
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-4">
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-widest font-semibold text-gray-400 mb-1.5">Approved Survey Plan (ASP)</label>
+                      <select
+                        value={aspStatus ?? ""}
+                        onChange={(e) => setAspStatus((e.target.value as "With ASP" | "Without ASP") || null)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-600 bg-white"
+                      >
+                        <option value="">Undetermined</option>
+                        <option value="With ASP">With ASP</option>
+                        <option value="Without ASP">Without ASP</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-widest font-semibold text-gray-400 mb-1.5">CLOA / Individualization Status</label>
+                      <select
+                        value={cloaStatus ?? ""}
+                        onChange={(e) => setCloaStatus((e.target.value as CloaStatus) || null)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-600 bg-white"
+                      >
+                        <option value="">Undetermined</option>
+                        {CLOA_STATUS_VALUES.map((v) => (
+                          <option key={v} value={v}>{v}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-4 items-start">
                     <div>
                       <label className="block text-[10px] uppercase tracking-widest font-semibold text-gray-400 mb-1.5">Municipality</label>
@@ -686,7 +1062,7 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
                   <div className="flex items-center gap-3">
                     <button
                       onClick={handleSave}
-                      disabled={saving}
+                      disabled={saving || !isDirty}
                       className="btn-primary"
                     >
                       {saving ? "Saving…" : <>Save Changes <span className="btn-icon-trail">✓</span></>}
@@ -707,7 +1083,8 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
                   <p className="text-gray-400 text-sm mt-1">ARBs can be uploaded via the ARB Upload &amp; Viewer page.</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+                <>
+                  <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
                   {arbEditError && <p className="px-4 py-2 text-sm text-red-600 bg-red-50 border-b border-red-200">{arbEditError}</p>}
                   <table className="w-full text-[13px]">
                     <thead className="bg-green-900 text-white">
@@ -716,14 +1093,21 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
                         <th className="px-3 py-3 text-left font-semibold text-[11px] uppercase tracking-wide">ARB Name</th>
                         <th className="px-3 py-3 text-left font-semibold text-[11px] uppercase tracking-wide">ARB ID</th>
                         <th className="px-3 py-3 text-left font-semibold text-[11px] uppercase tracking-wide">EP/CLOA No.</th>
-                        <th className="px-3 py-3 text-left font-semibold text-[11px] uppercase tracking-wide">CARPable</th>
                         <th className="px-3 py-3 text-right font-semibold text-[11px] uppercase tracking-wide">Area (has.)</th>
+                        <th className="px-3 py-3 text-left font-semibold text-[11px] uppercase tracking-wide">CARPable</th>
+                        <th className="px-3 py-3 text-left font-semibold text-[11px] uppercase tracking-wide">Eligibility</th>
+                        <th className="px-3 py-3 text-left font-semibold text-[11px] uppercase tracking-wide">Alloc. Condoned Amt</th>
+                        <th className="px-3 py-3 text-left font-semibold text-[11px] uppercase tracking-wide">Date Encoded</th>
+                        <th className="px-3 py-3 text-left font-semibold text-[11px] uppercase tracking-wide">Date Distributed</th>
                         <th className="px-3 py-3 text-left font-semibold text-[11px] uppercase tracking-wide">Remarks</th>
                         {isEditor && <th className="px-3 py-3 text-center font-semibold text-[11px] uppercase tracking-wide">Actions</th>}
                       </tr>
                     </thead>
                     <tbody>
-                      {data.arbs.map((arb, i) => {
+                      {(() => {
+                        const LOCKED_STATUSES = ["For Encoding", "Partially Encoded", "Fully Encoded", "Partially Distributed", "Fully Distributed", "Not Eligible for Encoding"];
+                        const isLocked = LOCKED_STATUSES.includes(data.status ?? "");
+                        return data.arbs.map((arb, i) => {
                         const isEditing = editingArb?.id === arb.id;
                         const rowBg = i % 2 === 0 ? "bg-white" : "bg-gray-50/70";
                         if (isEditing && editingArb) {
@@ -731,8 +1115,9 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
                             <tr key={arb.id} className="border-t border-green-200 bg-green-50">
                               <td className="px-3 py-2 text-gray-400 font-mono text-[12px]">{i + 1}</td>
                               <td className="px-2 py-1.5"><input value={editingArb.arb_name} onChange={(e) => setEditingArb((p) => p && ({ ...p, arb_name: e.target.value.toUpperCase() }))} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-green-600" /></td>
-                              <td className="px-2 py-1.5"><input value={editingArb.arb_no} onChange={(e) => setEditingArb((p) => p && ({ ...p, arb_no: e.target.value.toUpperCase() }))} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-green-600" /></td>
+                              <td className="px-2 py-1.5">{isLocked ? <span className="text-[12px] font-mono text-gray-700 px-1">{editingArb.arb_id || "—"}</span> : <input value={editingArb.arb_id} onChange={(e) => setEditingArb((p) => p && ({ ...p, arb_id: e.target.value.toUpperCase() }))} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-green-600" />}</td>
                               <td className="px-2 py-1.5"><input value={editingArb.ep_cloa_no} onChange={(e) => setEditingArb((p) => p && ({ ...p, ep_cloa_no: e.target.value.toUpperCase() }))} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-green-600" /></td>
+                              <td className="px-2 py-1.5">{isLocked ? <span className="text-[12px] font-mono text-right block text-gray-800 px-1">{editingArb.area_allocated || "—"}</span> : <input value={editingArb.area_allocated} onChange={(e) => setEditingArb((p) => p && ({ ...p, area_allocated: e.target.value }))} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] text-right focus:outline-none focus:ring-1 focus:ring-green-600" />}</td>
                               <td className="px-2 py-1.5">
                                 <select value={editingArb.carpable} onChange={(e) => setEditingArb((p) => p && ({ ...p, carpable: e.target.value }))} className={`w-full border rounded px-2 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-green-600 bg-white ${!editingArb.carpable ? "border-red-300" : "border-gray-300"}`}>
                                   <option value="">—</option>
@@ -740,7 +1125,19 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
                                   <option value="NON-CARPABLE">NON-CARPABLE</option>
                                 </select>
                               </td>
-                              <td className="px-2 py-1.5"><input value={editingArb.area_allocated} onChange={(e) => setEditingArb((p) => p && ({ ...p, area_allocated: e.target.value }))} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] text-right focus:outline-none focus:ring-1 focus:ring-green-600" /></td>
+                              <td className="px-2 py-1.5 min-w-[140px]">
+                                <select value={editingArb.eligibility} onChange={(e) => setEditingArb((p) => p && ({ ...p, eligibility: e.target.value, eligibility_reason: e.target.value !== "Not Eligible" ? "" : p.eligibility_reason, date_encoded: e.target.value === "Not Eligible" ? "" : p.date_encoded, date_distributed: e.target.value === "Not Eligible" ? "" : p.date_distributed }))} className={`w-full border rounded px-2 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-green-600 bg-white ${!editingArb.eligibility ? "border-red-300" : "border-gray-300"}`}>
+                                  <option value="">—</option>
+                                  <option value="Eligible">Eligible</option>
+                                  <option value="Not Eligible">Not Eligible</option>
+                                </select>
+                                {editingArb.eligibility === "Not Eligible" && (
+                                  <input value={editingArb.eligibility_reason} onChange={(e) => setEditingArb((p) => p && ({ ...p, eligibility_reason: e.target.value }))} placeholder="Reason (required)" className={`mt-1 w-full border rounded px-2 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-green-600 ${!editingArb.eligibility_reason.trim() ? "border-red-300" : "border-gray-300"}`} />
+                                )}
+                              </td>
+                              <td className="px-2 py-1.5"><input value={editingArb.allocated_condoned_amount} onChange={(e) => setEditingArb((p) => p && ({ ...p, allocated_condoned_amount: e.target.value }))} placeholder="e.g. ₱12,345.00 or N/A" className={`w-full border rounded px-2 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-green-600 ${!editingArb.allocated_condoned_amount.trim() ? "border-red-300" : "border-gray-300"}`} /></td>
+                              <td className="px-2 py-1.5"><input type="date" value={toDateInput(editingArb.date_encoded)} onChange={(e) => setEditingArb((p) => p && ({ ...p, date_encoded: fromDateInput(e.target.value), date_distributed: e.target.value ? p.date_distributed : "" }))} disabled={editingArb.eligibility === "Not Eligible"} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] font-mono focus:outline-none focus:ring-1 focus:ring-green-600 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" /></td>
+                              <td className="px-2 py-1.5"><input type="date" value={toDateInput(editingArb.date_distributed)} onChange={(e) => setEditingArb((p) => p && ({ ...p, date_distributed: fromDateInput(e.target.value) }))} disabled={editingArb.eligibility === "Not Eligible" || !editingArb.date_encoded} title={!editingArb.date_encoded ? "Date Encoded is required first" : undefined} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] font-mono focus:outline-none focus:ring-1 focus:ring-green-600 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" /></td>
                               <td className="px-2 py-1.5"><input value={editingArb.remarks} onChange={(e) => setEditingArb((p) => p && ({ ...p, remarks: e.target.value }))} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-green-600" /></td>
                               <td className="px-3 py-1.5 text-center whitespace-nowrap">
                                 <button onClick={handleArbSave} disabled={savingArb} className="text-[11px] px-2 py-1 bg-green-700 text-white rounded hover:bg-green-600 disabled:opacity-40 mr-1">{savingArb ? "…" : "Save"}</button>
@@ -753,16 +1150,27 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
                           <tr key={arb.id} className={`border-t border-gray-100 ${rowBg}`}>
                             <td className="px-3 py-2.5 text-gray-400 font-mono text-[12px]">{i + 1}</td>
                             <td className="px-3 py-2.5 text-gray-900 font-medium">{arb.arb_name ?? "—"}</td>
-                            <td className="px-3 py-2.5 font-mono text-gray-700">{arb.arb_no ?? "—"}</td>
+                            <td className="px-3 py-2.5 font-mono text-gray-700">{arb.arb_id ?? "—"}</td>
                             <td className="px-3 py-2.5 font-mono text-gray-700">{arb.ep_cloa_no ?? "—"}</td>
+                            <td className="px-3 py-2.5 text-right font-mono text-gray-800 font-medium">
+                              {arb.area_allocated != null ? (() => { const s = String(arb.area_allocated); const hasStar = s.endsWith("*"); const n = parseFloat(s.replace("*", "")); return isNaN(n) ? s : hasStar ? `${n.toFixed(4)}*` : n.toFixed(4); })() : "—"}
+                            </td>
                             <td className="px-3 py-2.5">
                               {arb.carpable
                                 ? <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${arb.carpable === "CARPABLE" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"}`}>{arb.carpable}</span>
                                 : <span className="text-gray-300">—</span>}
                             </td>
-                            <td className="px-3 py-2.5 text-right font-mono text-gray-800 font-medium">
-                              {arb.area_allocated != null ? (() => { const s = String(arb.area_allocated); const hasStar = s.endsWith("*"); const n = parseFloat(s.replace("*", "")); return isNaN(n) ? s : hasStar ? `${n.toFixed(4)}*` : n.toFixed(4); })() : "—"}
+                            <td className="px-3 py-2.5">
+                              {arb.eligibility ? (
+                                <div>
+                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${arb.eligibility === "Eligible" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"}`}>{arb.eligibility}</span>
+                                  {arb.eligibility_reason && <p className="text-[10px] text-gray-400 mt-0.5 max-w-[160px] truncate" title={arb.eligibility_reason}>{arb.eligibility_reason}</p>}
+                                </div>
+                              ) : <span className="text-gray-300">—</span>}
                             </td>
+                            <td className="px-3 py-2.5 font-mono text-gray-600 text-[12px]">{displayCondoned(arb.allocated_condoned_amount)}</td>
+                            <td className="px-3 py-2.5 font-mono text-gray-600 text-[12px]">{arb.date_encoded ?? <span className="text-gray-300">—</span>}</td>
+                            <td className="px-3 py-2.5 font-mono text-gray-600 text-[12px]">{arb.date_distributed ?? <span className="text-gray-300">—</span>}</td>
                             <td className="px-3 py-2.5 text-gray-400 italic">{arb.remarks ?? "—"}</td>
                             {isEditor && (
                               <td className="px-3 py-2.5 text-center whitespace-nowrap">
@@ -773,10 +1181,10 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
                                   </span>
                                 ) : (
                                   <span className="inline-flex items-center gap-2">
-                                    <button onClick={() => { setArbEditError(""); setEditingArb({ id: arb.id, arb_name: arb.arb_name ?? "", arb_no: arb.arb_no ?? "", ep_cloa_no: arb.ep_cloa_no ?? "", carpable: arb.carpable ?? "", area_allocated: arb.area_allocated ?? "", remarks: arb.remarks ?? "" }); }} className="text-gray-400 hover:text-green-700 transition-colors" title="Edit ARB">
+                                    <button onClick={() => { setArbEditError(""); setEditingArb({ id: arb.id, arb_name: arb.arb_name ?? "", arb_id: arb.arb_id ?? "", ep_cloa_no: arb.ep_cloa_no ?? "", carpable: arb.carpable ?? "", area_allocated: arb.area_allocated ?? "", allocated_condoned_amount: arb.allocated_condoned_amount ?? "", eligibility: arb.eligibility ?? "", eligibility_reason: arb.eligibility_reason ?? "", date_encoded: arb.date_encoded ?? "", date_distributed: arb.date_distributed ?? "", remarks: arb.remarks ?? "" }); }} className="text-gray-400 hover:text-green-700 transition-colors" title={isLocked ? "Edit dates / eligibility / remarks" : "Edit ARB"}>
                                       <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
                                     </button>
-                                    <button onClick={() => setConfirmDeleteArbId(arb.id)} className="text-gray-400 hover:text-red-600 transition-colors" title="Delete ARB">
+                                    <button onClick={() => !isLocked && setConfirmDeleteArbId(arb.id)} disabled={isLocked} className={`transition-colors ${isLocked ? "text-gray-200 cursor-not-allowed" : "text-gray-400 hover:text-red-600"}`} title={isLocked ? "Cannot delete — record is locked" : "Delete ARB"}>
                                       <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
                                     </button>
                                   </span>
@@ -785,7 +1193,8 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
                             )}
                           </tr>
                         );
-                      })}
+                      });
+                      })()}
                     </tbody>
                     <tfoot>
                       <tr className="border-t-2 border-gray-200 bg-gray-50">
@@ -803,7 +1212,8 @@ function DetailModal({ seqno, onClose, onSaved }: { seqno: string; onClose: () =
                       </tr>
                     </tfoot>
                   </table>
-                </div>
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -832,6 +1242,8 @@ type LandholdingRow = {
   status: string | null;
   condoned_amount: number | null;
   dar_match_status: string | null;
+  arb_area_mismatch: boolean;
+  arb_total_area: number | null;
 };
 
 const PROVINCES = [
@@ -847,7 +1259,7 @@ const FLAGS = [
   { label: "Negative Condoned Amount (NET_OF_REVAL)", value: "Negative NET OF REVAL" },
   { label: "Cross Province Duplicates", value: "cross_province" },
 ];
-const STATUSES = ["For Further Validation", "Fully Distributed", "Partially Distributed", "Encoded", "For Encoding", "Not Eligible for Encoding"];
+const STATUSES = ["For Initial Validation", "For Further Validation", "For Encoding", "Partially Encoded", "Fully Encoded", "Partially Distributed", "Fully Distributed", "Not Eligible for Encoding"];
 
 function flagBadge(flag: string | null) {
   if (!flag) return null;
@@ -864,19 +1276,142 @@ function flagBadge(flag: string | null) {
   );
 }
 
-function statusBadge(status: string | null) {
-  const s = status ?? "For Further Validation";
+function AreaMismatchPopover({ anchorRef, arbTotalArea, validatedArea }: {
+  anchorRef: React.RefObject<HTMLSpanElement | null>;
+  arbTotalArea: number;
+  validatedArea: number;
+}) {
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  useEffect(() => {
+    if (anchorRef.current) setRect(anchorRef.current.getBoundingClientRect());
+  }, [anchorRef]);
+  if (!rect || typeof document === "undefined") return null;
+  const delta = arbTotalArea - validatedArea;
+  const CARD_W = 228;
+  const CARD_H_EST = 160;
+  const GAP = 8;
+  // Flip below the anchor if there isn't enough room above
+  const showBelow = rect.top < CARD_H_EST + GAP + 8;
+  const top = showBelow ? rect.bottom + GAP : rect.top - GAP;
+  // Horizontal: center on anchor, then clamp so it stays within viewport
+  const anchorCx = rect.left + rect.width / 2;
+  const vw = window.innerWidth;
+  const rawLeft = anchorCx - CARD_W / 2;
+  const clampedLeft = Math.max(8, Math.min(rawLeft, vw - CARD_W - 8));
+  // Arrow points back to anchor centre
+  const arrowLeft = anchorCx - clampedLeft;
+  const arrowBorderColor = "#14181f";
+  return createPortal(
+    <div
+      style={{ position: "fixed", left: clampedLeft, top, transform: showBelow ? "none" : "translateY(-100%)", zIndex: 9999, pointerEvents: "none", width: CARD_W }}
+    >
+      {/* Arrow above card (when showing below anchor) */}
+      {showBelow && (
+        <div className="absolute bottom-full" style={{ left: arrowLeft, transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderBottom: `5px solid ${arrowBorderColor}` }} />
+      )}
+      <div className="rounded-xl overflow-hidden shadow-2xl" style={{ background: "linear-gradient(160deg,#1c2033 0%,#14181f 100%)", border: "1px solid rgba(249,115,22,0.25)" }}>
+        {/* Header */}
+        <div className="px-3 py-2 flex items-center gap-1.5 border-b border-orange-500/20" style={{ background: "rgba(249,115,22,0.09)" }}>
+          <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0" style={{ boxShadow: "0 0 7px #f97316" }} />
+          <span className="text-[9px] font-black uppercase tracking-[0.16em] text-orange-400">Area Mismatch Detected</span>
+        </div>
+        {/* Data rows */}
+        <div className="px-3 py-3 space-y-2">
+          <div className="flex justify-between items-baseline gap-2">
+            <span className="text-[9px] uppercase tracking-wide text-slate-500 shrink-0">ARB Total Area</span>
+            <span className="font-mono text-[11px] font-bold text-white tabular-nums">{arbTotalArea.toFixed(4)} ha</span>
+          </div>
+          <div className="flex justify-between items-baseline gap-2">
+            <span className="text-[9px] uppercase tracking-wide text-slate-500 shrink-0">Val. AMENDAREA</span>
+            <span className="font-mono text-[11px] font-semibold text-slate-300 tabular-nums">{validatedArea.toFixed(4)} ha</span>
+          </div>
+          <div className="border-t border-slate-700/70 pt-2 flex justify-between items-baseline gap-2">
+            <span className="text-[9px] uppercase tracking-wide text-slate-500 shrink-0">Δ Difference</span>
+            <span
+              className={`font-mono text-[13px] font-black tabular-nums ${delta > 0 ? "text-red-400" : "text-sky-400"}`}
+              style={{ textShadow: delta > 0 ? "0 0 10px rgba(248,113,113,0.6)" : "0 0 10px rgba(56,189,248,0.6)" }}
+            >
+              {delta > 0 ? "+" : ""}{delta.toFixed(4)}
+            </span>
+          </div>
+        </div>
+        {/* Footer */}
+        <div className="px-3 py-2 border-t border-slate-700/50" style={{ background: "rgba(0,0,0,0.3)" }}>
+          <p className="text-[9px] text-slate-500 leading-relaxed">
+            Both confirmations set — totals must match to advance to{" "}
+            <span className="text-slate-400 font-semibold">For Encoding</span>.
+          </p>
+        </div>
+      </div>
+      {/* Arrow below card (when showing above anchor) */}
+      {!showBelow && (
+        <div className="absolute top-full" style={{ left: arrowLeft, transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: `5px solid ${arrowBorderColor}` }} />
+      )}
+    </div>,
+    document.body
+  );
+}
+
+function ModalMismatchButton({ totalArbArea, validatedArea }: { totalArbArea: number; validatedArea: number }) {
+  const [hovered, setHovered] = useState(false);
+  const btnRef = useRef<HTMLSpanElement>(null);
+  return (
+    <>
+      <span
+        ref={btnRef}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        className="ml-0.5 w-4 h-4 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center leading-none cursor-help shrink-0"
+        style={{ boxShadow: "0 0 0 2px rgba(249,115,22,0.35)" }}
+      >!</span>
+      {hovered && (
+        <AreaMismatchPopover anchorRef={btnRef} arbTotalArea={totalArbArea} validatedArea={validatedArea} />
+      )}
+    </>
+  );
+}
+
+function StatusBadge({ status, arbAreaMismatch, arbTotalArea, validatedArea }: {
+  status: string | null;
+  arbAreaMismatch?: boolean;
+  arbTotalArea?: number | null;
+  validatedArea?: number | null;
+}) {
+  const raw = status ?? "For Initial Validation";
+  const s = raw === "Untagged" ? "For Initial Validation" : raw;
   const colors: Record<string, string> = {
-    "Fully Distributed":         "bg-emerald-100 text-emerald-700",
-    "Partially Distributed":     "bg-teal-100 text-teal-700",
-    "Encoded":                   "bg-blue-100 text-blue-700",
-    "For Encoding":              "bg-violet-100 text-violet-700",
+    "For Initial Validation":    "bg-slate-100 text-slate-600",
     "For Further Validation":    "bg-amber-100 text-amber-700",
+    "For Encoding":              "bg-violet-100 text-violet-700",
+    "Partially Encoded":         "bg-sky-100 text-sky-700",
+    "Fully Encoded":             "bg-blue-100 text-blue-700",
+    "Partially Distributed":     "bg-teal-100 text-teal-700",
+    "Fully Distributed":         "bg-emerald-100 text-emerald-700",
     "Not Eligible for Encoding": "bg-red-100 text-red-700",
   };
+  const [hovered, setHovered] = useState(false);
+  const btnRef = useRef<HTMLSpanElement>(null);
   return (
-    <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${colors[s] ?? "bg-gray-100 text-gray-500"}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${colors[s] ?? "bg-gray-100 text-gray-500"}`}>
       {s}
+      {arbAreaMismatch && (
+        <>
+          <span
+            ref={btnRef}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            className="w-3.5 h-3.5 rounded-full bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center leading-none cursor-help shrink-0"
+            style={{ boxShadow: "0 0 0 2px rgba(249,115,22,0.3)" }}
+          >!</span>
+          {hovered && (
+            <AreaMismatchPopover
+              anchorRef={btnRef}
+              arbTotalArea={arbTotalArea ?? 0}
+              validatedArea={validatedArea ?? 0}
+            />
+          )}
+        </>
+      )}
     </span>
   );
 }
@@ -1005,13 +1540,20 @@ export default function RecordsTable() {
 
   return (
     <div className="flex flex-col gap-4 text-sm">
-      {selectedSeqno && (
-        <DetailModal
-          seqno={selectedSeqno}
-          onClose={() => setSelectedSeqno(null)}
-          onSaved={fetchRecords}
-        />
-      )}
+      {selectedSeqno && (() => {
+        const idx = records.findIndex((r) => r.seqno_darro === selectedSeqno);
+        return (
+          <DetailModal
+            seqno={selectedSeqno}
+            onClose={() => setSelectedSeqno(null)}
+            onSaved={fetchRecords}
+            hasPrev={idx > 0}
+            hasNext={idx < records.length - 1}
+            onPrev={() => idx > 0 && setSelectedSeqno(records[idx - 1].seqno_darro)}
+            onNext={() => idx < records.length - 1 && setSelectedSeqno(records[idx + 1].seqno_darro)}
+          />
+        );
+      })()}
       {/* Filters */}
       <div className="card-bezel mb-4">
       <div className="card-bezel-inner-open">
@@ -1227,7 +1769,14 @@ export default function RecordsTable() {
                       )}
                     </div>
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap">{statusBadge(r.status)}</td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <StatusBadge
+                      status={r.status}
+                      arbAreaMismatch={r.arb_area_mismatch}
+                      arbTotalArea={r.arb_total_area}
+                      validatedArea={r.amendarea_validated ?? r.amendarea}
+                    />
+                  </td>
                 </tr>
               ))}
               {!loading && records.length === 0 && (

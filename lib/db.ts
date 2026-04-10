@@ -1,17 +1,29 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import Database from "better-sqlite3";
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+type GlobalDb = { prisma: PrismaClient; rawDb: Database.Database };
+const g = globalThis as unknown as GlobalDb;
+
+function getDbUrl() {
+  return process.env.DATABASE_URL ?? "file:./dev.db";
+}
 
 function createPrismaClient() {
-  const url = process.env.DATABASE_URL ?? "file:./dev.db";
-  const resolvedPath = url.replace(/^file:/, "");
-  console.log("[db] DATABASE_URL =", url);
-  console.log("[db] resolved path =", resolvedPath);
-  const adapter = new PrismaBetterSqlite3({ url });
+  const adapter = new PrismaBetterSqlite3({ url: getDbUrl() });
   return new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0]);
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+function createRawDb() {
+  const db = new Database(getDbUrl().replace(/^file:/, ""));
+  db.pragma("busy_timeout = 10000");
+  return db;
+}
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+export const prisma = g.prisma ?? createPrismaClient();
+export const rawDb = g.rawDb ?? createRawDb();
+
+if (process.env.NODE_ENV !== "production") {
+  g.prisma = prisma;
+  g.rawDb = rawDb;
+}

@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
 
 export async function GET(req: NextRequest) {
+  try {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const sessionUser = token ? await verifySessionToken(token) : null;
   if (!sessionUser) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
@@ -11,6 +12,7 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get("search") ?? "";
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const match = searchParams.get("match") ?? ""; // "matched" | "mismatched" | ""
+  const amountMatch = searchParams.get("amountMatch") ?? ""; // "matched" | "mismatched" | ""
   const limit = 30;
 
   const scopedProvince =
@@ -55,6 +57,36 @@ export async function GET(req: NextRequest) {
     where.seqno_darro = { in: matchSeqnos };
   }
 
+  // For amount match filtering: compare SUM(numeric allocated_condoned_amount) vs condoned_amount/net_of_reval_no_neg
+  let amountSeqnos: string[] | null = null;
+  if (amountMatch === "matched" || amountMatch === "mismatched") {
+    const rows = await prisma.$queryRaw<{ seqno_darro: string; total: number | null; validated: number | null }[]>`
+      SELECT l.seqno_darro,
+             SUM(CAST(REPLACE(a.allocated_condoned_amount, ',', '') AS REAL)) AS total,
+             COALESCE(l.condoned_amount, l.net_of_reval_no_neg) AS validated
+      FROM Landholding l
+      JOIN Arb a ON a.seqno_darro = l.seqno_darro
+      GROUP BY l.seqno_darro
+    `;
+    amountSeqnos = rows
+      .filter((r) => {
+        if (r.validated == null) return false;
+        const total = Number(r.total ?? 0);
+        const validated = Number(r.validated);
+        const isMatch = parseFloat(total.toFixed(2)) === parseFloat(validated.toFixed(2));
+        return amountMatch === "matched" ? isMatch : !isMatch;
+      })
+      .map((r) => r.seqno_darro);
+
+    const existing = where.seqno_darro;
+    if (existing && typeof existing === "object" && "in" in existing) {
+      const prev = (existing as { in: string[] }).in;
+      where.seqno_darro = { in: prev.filter((s) => amountSeqnos!.includes(s)) };
+    } else {
+      where.seqno_darro = { in: amountSeqnos };
+    }
+  }
+
   // Build raw SQL conditions for stats — mirrors the Prisma `where` filter
   const statsConditions: Prisma.Sql[] = [];
   if (scopedProvince) {
@@ -67,8 +99,15 @@ export async function GET(req: NextRequest) {
     statsConditions.push(Prisma.sql`(l.seqno_darro LIKE ${"%" + search + "%"} OR l.landowner LIKE ${"%" + search + "%"} OR l.clno LIKE ${"%" + search + "%"})`);
   }
   if (matchSeqnos !== null) {
-    // SQLite doesn't support large IN lists well, but this is already filtered above
     const seqnoList = matchSeqnos.map((s) => Prisma.sql`${s}`);
+    if (seqnoList.length === 0) {
+      statsConditions.push(Prisma.sql`1 = 0`);
+    } else {
+      statsConditions.push(Prisma.sql`l.seqno_darro IN (${Prisma.join(seqnoList, ",")})`);
+    }
+  }
+  if (amountSeqnos !== null) {
+    const seqnoList = amountSeqnos.map((s) => Prisma.sql`${s}`);
     if (seqnoList.length === 0) {
       statsConditions.push(Prisma.sql`1 = 0`);
     } else {
@@ -90,6 +129,9 @@ export async function GET(req: NextRequest) {
         clno: true,
         amendarea_validated: true,
         amendarea: true,
+        condoned_amount: true,
+        net_of_reval_no_neg: true,
+        status: true,
         _count: { select: { arbs: true } },
       },
       orderBy: { seqno_darro: "asc" },
@@ -109,10 +151,36 @@ export async function GET(req: NextRequest) {
 
   const stats = statsRows[0] ?? { serviceCount: 0, nonCarpableCount: 0, distinctCount: 0 };
 
+  // Per-landholding eligibility counts for the current page (raw SQL to avoid stale client type issues)
+  const pageSeqnos = landholdings.map((l) => l.seqno_darro);
+  const eligibleMap: Record<string, number> = {};
+  if (pageSeqnos.length > 0) {
+    const seqnoList = pageSeqnos.map((s) => Prisma.sql`${s}`);
+    const eligibilityCounts = await prisma.$queryRaw<{ seqno_darro: string; cnt: number }[]>`
+      SELECT seqno_darro, COUNT(*) as cnt
+      FROM Arb
+      WHERE seqno_darro IN (${Prisma.join(seqnoList, ",")})
+      AND eligibility = 'Eligible'
+      GROUP BY seqno_darro
+    `;
+    for (const r of eligibilityCounts) {
+      eligibleMap[r.seqno_darro] = Number(r.cnt);
+    }
+  }
+
+  const landholdignsWithEligibility = landholdings.map((l) => ({
+    ...l,
+    eligibleArbCount: eligibleMap[l.seqno_darro] ?? 0,
+  }));
+
   return NextResponse.json({
-    landholdings, total, page, limit,
+    landholdings: landholdignsWithEligibility, total, page, limit,
     serviceCount: Number(stats.serviceCount ?? 0),
     distinctCount: Number(stats.distinctCount ?? 0),
     nonCarpableCount: Number(stats.nonCarpableCount ?? 0),
   });
+  } catch (err) {
+    console.error("[arbs/list] ERROR:", err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }

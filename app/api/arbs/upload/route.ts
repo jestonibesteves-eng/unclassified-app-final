@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma, rawDb } from "@/lib/db";
 import * as XLSX from "xlsx";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
+import { computeAndUpdateStatus } from "@/lib/computeStatus";
 
 type RawRow = Record<string, unknown>;
 
@@ -40,10 +41,15 @@ function normalizeCarpable(val: unknown): string | null {
 function mapRow(raw: RawRow): {
   seqno_darro: string | null;
   arb_name: string | null;
-  arb_no: string | null;
+  arb_id: string | null;
   ep_cloa_no: string | null;
   carpable: string | null;
   area_allocated: string | null;
+  allocated_condoned_amount: string | null;
+  eligibility: string | null;
+  eligibility_reason: string | null;
+  date_encoded: string | null;
+  date_distributed: string | null;
   remarks: string | null;
 } {
   // Normalize keys so headers are flexible (SEQNO_DARRO, SeqNo, etc.)
@@ -53,13 +59,26 @@ function mapRow(raw: RawRow): {
   }
 
   const up = (v: string | null) => v?.toUpperCase() ?? null;
+  const rawElig = toStr(norm["ELIGIBILITY"] ?? norm["ELIGIBILITY_FOR_DISTRIBUTION"]);
+  const eligibility = rawElig
+    ? (rawElig.toUpperCase().includes("NOT") ? "Not Eligible" : "Eligible")
+    : null;
+  const eligibility_reason = eligibility === "Not Eligible"
+    ? toStr(norm["ELIGIBILITY_REASON"] ?? norm["REASON"])
+    : null;
+
   return {
     seqno_darro: up(toStr(norm["SEQNO_DARRO"] ?? norm["SEQNO"] ?? norm["SEQ_NO"])),
     arb_name: up(toStr(norm["ARB_NAME"] ?? norm["NAME"] ?? norm["FULL_NAME"])),
-    arb_no: up(toStr(norm["ARB_NO"] ?? norm["ARB_NUMBER"] ?? norm["ARB_ID"])),
+    arb_id: up(toStr(norm["ARB_ID"] ?? norm["ARB_NO"] ?? norm["ARB_NUMBER"])),
     ep_cloa_no: up(toStr(norm["EP_CLOA_NO"] ?? norm["EP/CLOA_NO"] ?? norm["EP_NO"] ?? norm["CLOA_NO"])),
     carpable: normalizeCarpable(norm["CARPABLE"] ?? norm["CARPABLE_NONCARPABLE"] ?? norm["CARPABLE_STATUS"] ?? norm["CARP"]),
     area_allocated: toAreaStr(norm["AREA_ALLOCATED"] ?? norm["AREA"]),
+    allocated_condoned_amount: toStr(norm["ALLOCATED_CONDONED_AMOUNT"] ?? norm["ALLOC_CONDONED_AMT"] ?? norm["CONDONED_AMOUNT"]),
+    eligibility,
+    eligibility_reason,
+    date_encoded: toStr(norm["DATE_ENCODED"]),
+    date_distributed: toStr(norm["DATE_DISTRIBUTED"]),
     remarks: toStr(norm["REMARKS"] ?? norm["NOTES"]),
   };
 }
@@ -88,6 +107,7 @@ export async function PUT(req: NextRequest) {
   const valid: ReturnType<typeof mapRow>[] = [];
   const errors: { row: number; reason: string }[] = [];
 
+  const seenArbIds = new Set<string>();
   for (let i = 0; i < rawRows.length; i++) {
     const mapped = mapRow(rawRows[i]);
     if (!mapped.seqno_darro) {
@@ -98,6 +118,15 @@ export async function PUT(req: NextRequest) {
       errors.push({ row: i + 2, reason: `Row ${i + 2}: Missing ARB_NAME` });
       continue;
     }
+    if (!mapped.arb_id) {
+      errors.push({ row: i + 2, reason: `Row ${i + 2}: Missing ARB_ID (required)` });
+      continue;
+    }
+    if (seenArbIds.has(mapped.arb_id)) {
+      errors.push({ row: i + 2, reason: `Row ${i + 2}: Duplicate ARB_ID "${mapped.arb_id}" in file` });
+      continue;
+    }
+    seenArbIds.add(mapped.arb_id);
     if (!mapped.carpable) {
       errors.push({ row: i + 2, reason: `Row ${i + 2}: Missing or invalid CARPABLE (must be CARPABLE or NON-CARPABLE)` });
       continue;
@@ -106,14 +135,45 @@ export async function PUT(req: NextRequest) {
       errors.push({ row: i + 2, reason: `Row ${i + 2}: Missing AREA_ALLOCATED` });
       continue;
     }
+    if (!mapped.allocated_condoned_amount) {
+      errors.push({ row: i + 2, reason: `Row ${i + 2}: Missing ALLOCATED_CONDONED_AMOUNT` });
+      continue;
+    }
+    if (!mapped.eligibility) {
+      errors.push({ row: i + 2, reason: `Row ${i + 2}: Missing or invalid ELIGIBILITY (must be "Eligible" or "Not Eligible")` });
+      continue;
+    }
+    if (mapped.eligibility === "Not Eligible" && !mapped.eligibility_reason) {
+      errors.push({ row: i + 2, reason: `Row ${i + 2}: ELIGIBILITY_REASON is required when Eligibility is "Not Eligible"` });
+      continue;
+    }
     valid.push(mapped);
   }
 
+  // Check for ARB_IDs that already exist in DB (for append mode duplicate detection)
+  const allArbIds = valid.map((r) => r.arb_id!).filter(Boolean);
+  const existingArbIds = allArbIds.length > 0
+    ? await prisma.arb.findMany({ where: { arb_id: { in: allArbIds } }, select: { arb_id: true, seqno_darro: true } })
+    : [];
+  const existingArbIdMap = new Map(existingArbIds.map((r) => [r.arb_id!, r.seqno_darro]));
+
+  // Filter out rows with ARB_IDs that conflict in DB (only relevant in append mode; replace clears first)
+  const arbIdConflicts: { row: number; arb_id: string; existing_seqno: string }[] = [];
+  const validAfterIdCheck: typeof valid = [];
+  for (let i = 0; i < valid.length; i++) {
+    const r = valid[i];
+    const existingSeqno = existingArbIdMap.get(r.arb_id!);
+    if (existingSeqno && !(mode === "replace" && existingSeqno === r.seqno_darro)) {
+      arbIdConflicts.push({ row: i + 2, arb_id: r.arb_id!, existing_seqno: existingSeqno });
+    } else {
+      validAfterIdCheck.push(r);
+    }
+  }
   // Check which SEQNOs exist in DB
-  const seqnos = [...new Set(valid.map((r) => r.seqno_darro!))];
+  const seqnos = [...new Set(validAfterIdCheck.map((r) => r.seqno_darro!))];
   const found = await prisma.landholding.findMany({
     where: { seqno_darro: { in: seqnos } },
-    select: { seqno_darro: true, landowner: true, province_edited: true, amendarea_validated: true, amendarea: true },
+    select: { seqno_darro: true, landowner: true, province_edited: true, amendarea_validated: true, amendarea: true, condoned_amount: true, net_of_reval_no_neg: true, status: true },
   });
   const foundSet = new Set(found.map((r) => r.seqno_darro));
   const foundMap = Object.fromEntries(found.map((r) => [r.seqno_darro, r]));
@@ -124,12 +184,19 @@ export async function PUT(req: NextRequest) {
   const scopedProvince =
     sessionUser.office_level !== "regional" ? sessionUser.province ?? null : null;
 
+  const LOCKED_STATUSES = ["For Encoding", "Partially Encoded", "Fully Encoded", "Partially Distributed", "Fully Distributed", "Not Eligible for Encoding"];
   const outOfJurisdictionSeqnos: string[] = [];
-  const validFinal = valid.filter((r) => {
+  const lockedSeqnos: string[] = [];
+  const validFinal = validAfterIdCheck.filter((r) => {
     if (!foundSet.has(r.seqno_darro!)) return false;
     if (scopedProvince && foundMap[r.seqno_darro!]?.province_edited !== scopedProvince) {
       if (!outOfJurisdictionSeqnos.includes(r.seqno_darro!))
         outOfJurisdictionSeqnos.push(r.seqno_darro!);
+      return false;
+    }
+    if (LOCKED_STATUSES.includes(foundMap[r.seqno_darro!]?.status ?? "")) {
+      if (!lockedSeqnos.includes(r.seqno_darro!))
+        lockedSeqnos.push(r.seqno_darro!);
       return false;
     }
     return true;
@@ -144,7 +211,7 @@ export async function PUT(req: NextRequest) {
   const existingMap = Object.fromEntries(existingCounts.map((r) => [r.seqno_darro, r._count]));
 
   // Summary by SEQNO
-  const bySEQNO: Record<string, { landowner: string | null; province: string | null; count: number; existingCount: number; arbs: typeof validFinal; amendarea: number | null; amendarea_validated: number | null }> = {};
+  const bySEQNO: Record<string, { landowner: string | null; province: string | null; count: number; existingCount: number; arbs: typeof validFinal; amendarea: number | null; amendarea_validated: number | null; condoned_amount: number | null; net_of_reval_no_neg: number | null }> = {};
   for (const r of validFinal) {
     const s = r.seqno_darro!;
     if (!bySEQNO[s]) {
@@ -156,6 +223,8 @@ export async function PUT(req: NextRequest) {
         arbs: [],
         amendarea: foundMap[s]?.amendarea ?? null,
         amendarea_validated: foundMap[s]?.amendarea_validated ?? null,
+        condoned_amount: foundMap[s]?.condoned_amount ?? null,
+        net_of_reval_no_neg: foundMap[s]?.net_of_reval_no_neg ?? null,
       };
     }
     bySEQNO[s].count++;
@@ -166,8 +235,10 @@ export async function PUT(req: NextRequest) {
     total: rawRows.length,
     valid: validFinal.length,
     errors,
+    arbIdConflicts,
     notFoundSeqnos,
     outOfJurisdictionSeqnos,
+    lockedSeqnos,
     bySEQNO,
     mode: mode ?? "append",
   });
@@ -195,9 +266,14 @@ export async function POST(req: NextRequest) {
   }
 
   const valid: ReturnType<typeof mapRow>[] = [];
+  const seenIds = new Set<string>();
   for (const row of rawRows) {
     const mapped = mapRow(row);
-    if (!mapped.seqno_darro || !mapped.arb_name || !mapped.carpable || mapped.area_allocated === null) continue;
+    if (!mapped.seqno_darro || !mapped.arb_name || !mapped.arb_id || !mapped.carpable || mapped.area_allocated === null) continue;
+    if (!mapped.allocated_condoned_amount || !mapped.eligibility) continue;
+    if (mapped.eligibility === "Not Eligible" && !mapped.eligibility_reason) continue;
+    if (seenIds.has(mapped.arb_id)) continue; // skip duplicate ARB_IDs in file
+    seenIds.add(mapped.arb_id);
     valid.push(mapped);
   }
 
@@ -218,25 +294,31 @@ export async function POST(req: NextRequest) {
   });
 
   try {
-    await prisma.$transaction(async (tx) => {
+    const affectedSeqnos = [...new Set(toInsert.map((r) => r.seqno_darro!))];
+    const deleteStmt = rawDb.prepare(`DELETE FROM "Arb" WHERE seqno_darro = ?`);
+    const insertStmt = rawDb.prepare(
+      `INSERT INTO "Arb" (seqno_darro, arb_name, arb_id, ep_cloa_no, carpable, area_allocated, allocated_condoned_amount, eligibility, eligibility_reason, date_encoded, date_distributed, remarks, uploaded_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+    );
+
+    const doWrites = rawDb.transaction(() => {
       if (mode === "replace") {
-        await tx.arb.deleteMany({ where: { seqno_darro: { in: seqnos } } });
+        for (const s of seqnos) deleteStmt.run(s);
       }
       for (const r of toInsert) {
-        await tx.arb.create({
-          data: {
-            seqno_darro: r.seqno_darro!,
-            arb_name: r.arb_name,
-            arb_no: r.arb_no,
-            ep_cloa_no: r.ep_cloa_no,
-            carpable: r.carpable,
-            area_allocated: r.area_allocated,
-            remarks: r.remarks,
-            uploaded_by: "System",
-          },
-        });
+        insertStmt.run(
+          r.seqno_darro!, r.arb_name, r.arb_id, r.ep_cloa_no, r.carpable,
+          r.area_allocated, r.allocated_condoned_amount, r.eligibility, r.eligibility_reason,
+          r.eligibility === "Not Eligible" ? null : r.date_encoded,
+          r.eligibility === "Not Eligible" ? null : r.date_distributed,
+          r.remarks, "System"
+        );
       }
     });
+    doWrites();
+
+    for (const seqno of affectedSeqnos) {
+      await computeAndUpdateStatus(seqno);
+    }
   } catch (err) {
     console.error("[ARB upload] import error:", err);
     return NextResponse.json({ error: "Database error during import. Check server logs." }, { status: 500 });
