@@ -65,7 +65,40 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const ASP_STATUS_VALUES = ["With ASP", "Without ASP"];
 
-  const updateData: { status?: string | null; condoned_amount?: number | null; amendarea_validated?: number | null; amendarea_validated_confirmed?: boolean; condoned_amount_confirmed?: boolean; asp_status?: string | null; cloa_status?: string | null; remarks?: string | null; non_eligibility_reason?: string | null; municipality?: string | null; barangay?: string | null } = {};
+  // Revert "Not Eligible for Encoding" — restore auto-computed status
+  if (body.revert_not_eligible === true) {
+    if (existing.status !== "Not Eligible for Encoding")
+      return NextResponse.json({ error: "Record is not currently set to Not Eligible for Encoding." }, { status: 400 });
+
+    const insertAudit = rawDb.prepare(
+      `INSERT INTO "AuditLog" (seqno_darro, action, field_changed, old_value, new_value, changed_by, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+    );
+    rawDb.prepare(`UPDATE "Landholding" SET "status" = NULL, "non_eligibility_reason" = NULL, "updated_at" = datetime('now') WHERE seqno_darro = ?`).run(seqno);
+    insertAudit.run(seqno, "STATUS_UPDATE", "status", "Not Eligible for Encoding", "(reverted — auto-recompute)", sessionUser.username, "individual_modal");
+    insertAudit.run(seqno, "RECORD_UPDATE", "non_eligibility_reason", existing.non_eligibility_reason ?? "", "", sessionUser.username, "individual_modal");
+    await computeAndUpdateStatus(seqno);
+    const updated = await prisma.landholding.findUnique({ where: { seqno_darro: seqno }, include: { arbs: { orderBy: { id: "asc" } } } });
+    return NextResponse.json(updated);
+  }
+
+  // Guard: cannot set "Not Eligible for Encoding" if any ARB has Dates Encoded/Distributed
+  if ("status" in body && body.status === "Not Eligible for Encoding") {
+    const arbWithDate = await prisma.arb.findFirst({
+      where: {
+        seqno_darro: seqno,
+        OR: [{ date_encoded: { not: null } }, { date_distributed: { not: null } }],
+      },
+      select: { id: true },
+    });
+    if (arbWithDate) {
+      return NextResponse.json(
+        { error: "Cannot set to Not Eligible for Encoding — one or more ARBs have Dates Encoded/Distributed filled in." },
+        { status: 400 }
+      );
+    }
+  }
+
+  const updateData: { status?: string | null; condoned_amount?: number | null; amendarea_validated?: number | null; amendarea_validated_confirmed?: boolean; condoned_amount_confirmed?: boolean; asp_status?: string | null; cloa_status?: string | null; remarks?: string | null; non_eligibility_reason?: string | null; municipality?: string | null; barangay?: string | null; province_edited?: string | null } = {};
   if ("status" in body) updateData.status = typeof body.status === "string" ? body.status : null;
   if ("condoned_amount" in body) {
     const newVal = body.condoned_amount == null ? null : Number(body.condoned_amount);
@@ -121,6 +154,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if ("non_eligibility_reason" in body) updateData.non_eligibility_reason = typeof body.non_eligibility_reason === "string" ? body.non_eligibility_reason : null;
   if ("municipality" in body) updateData.municipality = typeof body.municipality === "string" && body.municipality.trim() ? body.municipality.trim() : null;
   if ("barangay" in body) updateData.barangay = typeof body.barangay === "string" && body.barangay.trim() ? body.barangay.trim() : null;
+  if ("province_edited" in body) {
+    if (sessionUser.role !== "super_admin")
+      return NextResponse.json({ error: "Only super_admin can change the province." }, { status: 403 });
+    if (!body.province_edited?.trim())
+      return NextResponse.json({ error: "Province cannot be empty." }, { status: 400 });
+    updateData.province_edited = body.province_edited.trim();
+  }
 
   if (Object.keys(updateData).length === 0) {
     return NextResponse.json({ error: "No valid fields to update." }, { status: 400 });
@@ -139,12 +179,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       .prepare(`UPDATE "Landholding" SET ${setClauses}, "updated_at" = datetime('now') WHERE seqno_darro = ?`)
       .run(...values, seqno);
 
-    // Audit log
+    // Audit log — only log fields where the value actually changed
     const insertAudit = rawDb.prepare(
-      `INSERT INTO "AuditLog" (seqno_darro, action, field_changed, old_value, new_value, changed_by, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO "AuditLog" (seqno_darro, action, field_changed, old_value, new_value, changed_by, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     );
     for (const key of keys) {
-      insertAudit.run(seqno, "RECORD_UPDATE", key, String(existing[key] ?? ""), String(updateData[key] ?? ""), sessionUser.username);
+      const oldStr = String(existing[key] ?? "");
+      const newStr = String(updateData[key] ?? "");
+      if (oldStr === newStr) continue;
+      insertAudit.run(seqno, "RECORD_UPDATE", key, oldStr, newStr, sessionUser.username, "individual_modal");
     }
 
     // Recompute status
@@ -158,6 +201,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json(updated);
   } catch (e) {
     console.error("PATCH /api/records/[seqno] error:", e);
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+    return NextResponse.json({ error: "An internal error occurred. Please try again." }, { status: 500 });
   }
 }

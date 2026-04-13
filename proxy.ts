@@ -8,12 +8,17 @@ const EDITOR_PAGES  = ["/batch"];
 function isAdminRole(role: string)  { return ["super_admin", "admin"].includes(role); }
 function isEditorRole(role: string) { return ["super_admin", "admin", "editor"].includes(role); }
 
+function noindex(res: NextResponse): NextResponse {
+  res.headers.set("X-Robots-Tag", "noindex, nofollow");
+  return res;
+}
+
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Always allow static assets and public auth routes
   if (pathname.startsWith("/api/auth") || pathname === "/login" || pathname === "/change-password") {
-    return NextResponse.next();
+    return noindex(NextResponse.next());
   }
 
   const token = req.cookies.get(SESSION_COOKIE)?.value;
@@ -21,27 +26,27 @@ export async function proxy(req: NextRequest) {
 
   // Not authenticated → redirect to login
   if (!user) {
-    return NextResponse.redirect(new URL("/login", req.url));
+    return noindex(NextResponse.redirect(new URL("/login", req.url)));
   }
 
   // Already logged in, trying to visit login → redirect home
   if (pathname === "/login") {
-    return NextResponse.redirect(new URL("/", req.url));
+    return noindex(NextResponse.redirect(new URL("/", req.url)));
   }
 
   // Must change password → redirect
   if (user.must_change_password && pathname !== "/change-password") {
-    return NextResponse.redirect(new URL("/change-password", req.url));
+    return noindex(NextResponse.redirect(new URL("/change-password", req.url)));
   }
 
   // Admin-only pages
   if (ADMIN_PAGES.some((p) => pathname.startsWith(p)) && !isAdminRole(user.role)) {
-    return NextResponse.redirect(new URL("/", req.url));
+    return noindex(NextResponse.redirect(new URL("/", req.url)));
   }
 
   // Editor+ pages
   if (EDITOR_PAGES.some((p) => pathname.startsWith(p)) && !isEditorRole(user.role)) {
-    return NextResponse.redirect(new URL("/", req.url));
+    return noindex(NextResponse.redirect(new URL("/", req.url)));
   }
 
   // Admin-only API routes
@@ -49,7 +54,7 @@ export async function proxy(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
-  return NextResponse.next();
+  return noindex(NextResponse.next());
 }
 
 export const config = {

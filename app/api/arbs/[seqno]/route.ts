@@ -63,8 +63,8 @@ export async function DELETE(
   const deleteResult = rawDb.prepare(`DELETE FROM "Arb" WHERE seqno_darro = ?`).run(decoded);
   const count = deleteResult.changes;
   rawDb.prepare(
-    `INSERT INTO "AuditLog" (seqno_darro, action, field_changed, old_value, new_value, changed_by, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
-  ).run(decoded, "ARB_DELETE_ALL", "arbs", `${count} ARB(s) deleted`, null, sessionUser.username);
+    `INSERT INTO "AuditLog" (seqno_darro, action, field_changed, old_value, new_value, changed_by, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+  ).run(decoded, "ARB_DELETE_ALL", "arbs", `${count} ARB(s) deleted`, null, sessionUser.username, "arb_modal");
   await computeAndUpdateStatus(decoded);
 
   return NextResponse.json({ deleted: count });

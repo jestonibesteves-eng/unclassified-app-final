@@ -114,5 +114,6 @@ model AuditLog {
   old_value     String?
   new_value     String?
   changed_by    String?     @default("System")
+  source        String?
   created_at    DateTime    @default(now())
 }

@@ -160,13 +160,22 @@ export async function POST(req: NextRequest) {
         a.arb_id?.trim().toUpperCase() || null, a.ep_cloa_no?.trim().toUpperCase() || null,
         carp, a.area_allocated ?? null, a.allocated_condoned_amount!.trim(),
         elig, elig === "Not Eligible" ? a.eligibility_reason!.trim() : null,
-        elig === "Not Eligible" ? null : (a.date_encoded?.trim() || null),
-        elig === "Not Eligible" ? null : (a.date_distributed?.trim() || null),
+        (elig === "Not Eligible" || carp === "NON-CARPABLE") ? null : (a.date_encoded?.trim() || null),
+        (elig === "Not Eligible" || carp === "NON-CARPABLE") ? null : (a.date_distributed?.trim() || null),
         a.remarks?.trim() || null, "Manual"
       );
     }
   });
   doWrites();
+
+  rawDb.prepare(
+    `INSERT INTO "AuditLog" (seqno_darro, action, field_changed, old_value, new_value, changed_by, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+  ).run(
+    normalizedSeqno, "ARB_SAVE", "arbs",
+    mode === "replace" ? "Replaced existing ARBs" : "Appended to existing ARBs",
+    `${valid.length} ARB(s) saved`,
+    sessionUser.username, "arb_manual"
+  );
 
   await computeAndUpdateStatus(normalizedSeqno);
   return NextResponse.json({ saved: valid.length });

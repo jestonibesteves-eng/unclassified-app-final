@@ -181,6 +181,6 @@ export async function GET(req: NextRequest) {
   });
   } catch (err) {
     console.error("[arbs/list] ERROR:", err);
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: "An internal error occurred. Please try again." }, { status: 500 });
   }
 }

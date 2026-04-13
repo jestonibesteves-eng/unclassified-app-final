@@ -27,6 +27,9 @@ function useCountUp(target: number, duration = 900) {
 /* ─── Compact number formatter ─── */
 function formatCompact(n: number): string {
   const abs = Math.abs(n);
+  if (abs >= 1_000_000_000) {
+    return (Math.trunc(n / 100_000_000) / 10).toFixed(1).replace(/\.0$/, "") + "B";
+  }
   if (abs >= 1_000_000) {
     return (Math.trunc(n / 100_000) / 10).toFixed(1).replace(/\.0$/, "") + "M";
   }
@@ -38,21 +41,25 @@ function formatCompact(n: number): string {
 
 /* ─── Stat card ─── */
 const CARD_CFG = {
-  green: { top: "border-t-emerald-500", num: "text-emerald-700", dot: "bg-emerald-500" },
-  amber: { top: "border-t-amber-500",   num: "text-amber-700",   dot: "bg-amber-500"  },
-  red:   { top: "border-t-red-500",     num: "text-red-600",     dot: "bg-red-500"    },
-  blue:  { top: "border-t-blue-500",    num: "text-blue-700",    dot: "bg-blue-500"   },
+  green:  { top: "border-t-emerald-500", num: "text-emerald-700", dot: "bg-emerald-500" },
+  amber:  { top: "border-t-amber-500",   num: "text-amber-700",   dot: "bg-amber-500"  },
+  red:    { top: "border-t-red-500",     num: "text-red-600",     dot: "bg-red-500"    },
+  blue:   { top: "border-t-blue-500",    num: "text-blue-700",    dot: "bg-blue-500"   },
+  purple: { top: "border-t-purple-500",  num: "text-purple-700",  dot: "bg-purple-500" },
+  teal:   { top: "border-t-teal-500",    num: "text-teal-700",    dot: "bg-teal-500"   },
+  orange: { top: "border-t-orange-500",  num: "text-orange-700",  dot: "bg-orange-500" },
 } as const;
 
 function StatCard({
-  label, rawValue, displayValue, sub, color, index,
+  label, rawValue, displayValue, sub, color, index, prefix = "",
 }: {
-  label: string;
+  label: React.ReactNode;
   rawValue: number;
   displayValue: string;
   sub: string;
   color: keyof typeof CARD_CFG;
   index: number;
+  prefix?: string;
 }) {
   const count = useCountUp(rawValue, 800 + index * 100);
   const done = count >= rawValue;
@@ -80,7 +87,7 @@ function StatCard({
     >
       <div className={`card-bezel-inner h-full border-t-4 ${cfg.top} p-5`}>
         <div className="flex items-start justify-between mb-4">
-          <p className="text-[10px] uppercase tracking-[0.13em] font-semibold text-gray-400 leading-snug">
+          <p className="text-[10px] tracking-[0.13em] font-semibold text-gray-400 leading-snug">
             {label}
           </p>
           <span className={`w-2 h-2 rounded-full flex-shrink-0 ${cfg.dot} mt-0.5`} />
@@ -96,8 +103,8 @@ function StatCard({
           </span>
           <p className={`text-[1.6rem] sm:text-[2.5rem] leading-none font-bold tabular-nums whitespace-nowrap overflow-hidden text-ellipsis ${cfg.num}`}>
             {done
-              ? (isOverflow ? formatCompact(rawValue) : displayValue)
-              : (isOverflow ? formatCompact(count) : count.toLocaleString())}
+              ? (isOverflow ? prefix + formatCompact(rawValue) : displayValue)
+              : (isOverflow ? prefix + formatCompact(count) : prefix + count.toLocaleString())}
           </p>
         </div>
         <p className="text-[11px] text-gray-400">{sub}</p>
@@ -146,7 +153,7 @@ export function IssueStrip({ data }: { data: StripData }) {
       <div className="card-bezel-inner-open">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[10px] uppercase tracking-[0.13em] font-semibold text-gray-400">
-            Issue Breakdown
+            Data Issue Breakdown
           </span>
           <span className="text-[11px] font-mono text-gray-400">
             {data.total.toLocaleString()} records
@@ -186,20 +193,31 @@ export function IssueStrip({ data }: { data: StripData }) {
 
 /* ─── Stat cards grid ─── */
 export function DashboardStatCards({
-  total, totalArea, validatedCount, arbCount,
-  noIssuesCount, useValidated,
+  total, totalArea, validatedCount,
+  distinctCarpableARBCount, serviceCarpableARBCount, nonCarpableARBCount,
+  noIssuesCount, useValidated, distinctLOCount, totalCondoned,
+  cocromCount, cocromForValidation, cocromForEncoding, cocromEncoded, cocromDistributed,
 }: {
   total: number;
   totalArea: number;
   validatedCount: number;
-  arbCount: number;
+  distinctCarpableARBCount: number;
+  serviceCarpableARBCount: number;
+  nonCarpableARBCount: number;
   noIssuesCount: number;
   useValidated: boolean;
+  distinctLOCount: number;
+  totalCondoned: number;
+  cocromCount: number;
+  cocromForValidation: number;
+  cocromForEncoding: number;
+  cocromEncoded: number;
+  cocromDistributed: number;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-4 mb-6 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 mb-6 lg:grid-cols-6">
       <StatCard
-        label="Total Records"
+        label="TOTAL RECORDS"
         rawValue={total}
         displayValue={total.toLocaleString()}
         sub="Landholdings"
@@ -207,7 +225,15 @@ export function DashboardStatCards({
         index={0}
       />
       <StatCard
-        label={useValidated ? "Total Area · Validated" : "Total Area · Original"}
+        label={<>TOTAL NO. OF LO<span className="text-[8px]">s</span></>}
+        rawValue={distinctLOCount}
+        displayValue={distinctLOCount.toLocaleString()}
+        sub="Distinct landowners"
+        color="purple"
+        index={1}
+      />
+      <StatCard
+        label={useValidated ? "TOTAL AREA · VALIDATED" : "TOTAL AREA · ORIGINAL"}
         rawValue={Math.floor(totalArea)}
         displayValue={totalArea.toLocaleString("en-PH", {
           minimumFractionDigits: 2,
@@ -219,23 +245,35 @@ export function DashboardStatCards({
             : "Based on original AMENDAREA"
         }
         color={useValidated ? "amber" : "blue"}
-        index={1}
-      />
-      <StatCard
-        label="With Issues"
-        rawValue={total - noIssuesCount}
-        displayValue={(total - noIssuesCount).toLocaleString()}
-        sub="Require LBP Reconciliation"
-        color="red"
         index={2}
       />
       <StatCard
-        label="ARBs Uploaded"
-        rawValue={arbCount}
-        displayValue={arbCount.toLocaleString()}
-        sub="Across all landholdings"
-        color="blue"
+        label="TOTAL AMOUNT CONDONED"
+        rawValue={Math.floor(totalCondoned)}
+        displayValue={"₱" + totalCondoned.toLocaleString("en-PH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}
+        sub="Validated condoned amount"
+        color="teal"
         index={3}
+        prefix="₱"
+      />
+      <StatCard
+        label={<>TOTAL NO. OF COCROM<span className="text-[8px]">s</span></>}
+        rawValue={cocromCount}
+        displayValue={cocromCount.toLocaleString()}
+        sub={`${cocromForValidation.toLocaleString()} for val. · ${cocromForEncoding.toLocaleString()} for enc. · ${cocromEncoded.toLocaleString()} enc'd · ${cocromDistributed.toLocaleString()} distrib.`}
+        color="orange"
+        index={4}
+      />
+      <StatCard
+        label={<>ARB<span className="text-[8px]">s</span> UPLOADED</>}
+        rawValue={distinctCarpableARBCount}
+        displayValue={distinctCarpableARBCount.toLocaleString()}
+        sub={`${serviceCarpableARBCount.toLocaleString()} service · ${nonCarpableARBCount.toLocaleString()} non-CARPable`}
+        color="blue"
+        index={5}
       />
     </div>
   );

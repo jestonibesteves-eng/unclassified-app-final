@@ -1,8 +1,8 @@
 import { SignJWT, jwtVerify } from "jose";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET ?? "dar-region5-fallback-secret"
-);
+const authSecret = process.env.AUTH_SECRET;
+if (!authSecret) throw new Error("AUTH_SECRET environment variable is required but not set.");
+const SECRET = new TextEncoder().encode(authSecret);
 
 export type SessionUser = {
   id: string;
@@ -21,7 +21,7 @@ export async function createSessionToken(user: SessionUser): Promise<string> {
   return new SignJWT({ user })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("8h")
+    .setExpirationTime("1h")
     .sign(SECRET);
 }
 

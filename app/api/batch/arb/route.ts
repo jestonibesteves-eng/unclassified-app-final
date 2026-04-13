@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma, rawDb } from "@/lib/db";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
+import { Readable } from "stream";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
 
 const EDITOR_ROLES = ["super_admin", "admin", "editor"];
@@ -30,10 +31,54 @@ function toAreaStr(val: unknown): string | null {
   return hasStar ? `${n}*` : String(n);
 }
 
-function parseFile(buffer: Buffer): RawRow[] {
-  const wb = XLSX.read(buffer, { type: "buffer" });
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  return XLSX.utils.sheet_to_json(ws, { defval: "" });
+function getCellText(cell: ExcelJS.Cell): unknown {
+  const v = cell.value;
+  if (v == null) return "";
+  if (v instanceof Date) return v.toISOString().split("T")[0];
+  if (typeof v === "object") {
+    if ("richText" in v) return (v as ExcelJS.CellRichTextValue).richText.map((r) => r.text).join("");
+    if ("text" in v) return (v as ExcelJS.CellHyperlinkValue).text;
+    if ("result" in v) {
+      const res = (v as ExcelJS.CellFormulaValue).result;
+      return res instanceof Date ? res.toISOString().split("T")[0] : res ?? "";
+    }
+    return "";
+  }
+  return v;
+}
+
+async function parseFile(buffer: Buffer, filename: string): Promise<RawRow[]> {
+  const workbook = new ExcelJS.Workbook();
+  if (filename.toLowerCase().endsWith(".csv")) {
+    const stream = new Readable();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    stream.push(buffer as any);
+    stream.push(null);
+    await workbook.csv.read(stream);
+  } else {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await workbook.xlsx.load(buffer as any);
+  }
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet) return [];
+
+  const headers: (string | null)[] = [];
+  worksheet.getRow(1).eachCell({ includeEmpty: true }, (cell, colNumber) => {
+    const v = getCellText(cell);
+    headers[colNumber] = v != null && String(v).trim() !== "" ? String(v) : null;
+  });
+
+  const rows: RawRow[] = [];
+  worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    if (rowNumber === 1) return;
+    const obj: RawRow = {};
+    row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      const header = headers[colNumber];
+      if (header != null) obj[header] = getCellText(cell);
+    });
+    rows.push(obj);
+  });
+  return rows;
 }
 
 type ParseError = { row: number; reason: string };
@@ -166,7 +211,7 @@ export async function PUT(req: NextRequest) {
   const buffer = Buffer.from(await file.arrayBuffer());
   let rawRows: RawRow[];
   try {
-    rawRows = parseFile(buffer);
+    rawRows = await parseFile(buffer, file.name);
   } catch {
     return NextResponse.json({ error: "Could not parse file. Make sure it is a valid .xlsx or .csv file." }, { status: 400 });
   }
@@ -258,7 +303,7 @@ export async function POST(req: NextRequest) {
   const buffer = Buffer.from(await file.arrayBuffer());
   let rawRows: RawRow[];
   try {
-    rawRows = parseFile(buffer);
+    rawRows = await parseFile(buffer, file.name);
   } catch {
     return NextResponse.json({ error: "Could not parse file." }, { status: 400 });
   }
@@ -302,7 +347,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const insertAudit = rawDb.prepare(
-      `INSERT INTO "AuditLog" (seqno_darro, action, field_changed, old_value, new_value, changed_by, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO "AuditLog" (seqno_darro, action, field_changed, old_value, new_value, changed_by, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     );
 
     rawDb.transaction(() => {
@@ -385,7 +430,7 @@ export async function POST(req: NextRequest) {
           .run(...values, arb.id);
 
         for (const [field, oldVal, newVal] of auditEntries) {
-          insertAudit.run(r.seqno_darro, "ARB_UPDATE", field, oldVal, newVal, sessionUser.username);
+          insertAudit.run(r.seqno_darro, "ARB_UPDATE", field, oldVal, newVal, sessionUser.username, "batch_arb");
         }
       }
     })();

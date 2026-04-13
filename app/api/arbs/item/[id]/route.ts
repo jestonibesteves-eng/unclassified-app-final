@@ -72,8 +72,9 @@ export async function PATCH(
   const newArbId = arb_id?.trim().toUpperCase() || null;
   const newEpCloaNo = ep_cloa_no?.trim().toUpperCase() || null;
   const newAreaAllocated = area_allocated?.trim() || null;
-  const newDateEncoded = date_encoded?.trim() || null;
-  const newDateDistributed = newDateEncoded ? (date_distributed?.trim() || null) : null;
+  const datesBlocked = normalizedEligibility === "Not Eligible" || normalizedCarpable === "NON-CARPABLE";
+  const newDateEncoded = datesBlocked ? null : (date_encoded?.trim() || null);
+  const newDateDistributed = (datesBlocked || !newDateEncoded) ? null : (date_distributed?.trim() || null);
 
   rawDb.prepare(
     `UPDATE "Arb" SET arb_name = ?, arb_id = ?, ep_cloa_no = ?, carpable = ?, area_allocated = ?,
@@ -87,12 +88,12 @@ export async function PATCH(
     arbId
   );
   rawDb.prepare(
-    `INSERT INTO "AuditLog" (seqno_darro, action, field_changed, old_value, new_value, changed_by, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
+    `INSERT INTO "AuditLog" (seqno_darro, action, field_changed, old_value, new_value, changed_by, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
   ).run(
     arb.seqno_darro, "ARB_EDIT", "arb",
     JSON.stringify({ arb_name: arb.arb_name, arb_id: arb.arb_id, ep_cloa_no: arb.ep_cloa_no, carpable: arb.carpable, area_allocated: arb.area_allocated }),
     JSON.stringify({ arb_name: newArbName, arb_id: newArbId, ep_cloa_no: newEpCloaNo, carpable: normalizedCarpable, area_allocated: newAreaAllocated }),
-    sessionUser.username
+    sessionUser.username, "arb_modal"
   );
   await computeAndUpdateStatus(arb.seqno_darro);
 
@@ -125,11 +126,11 @@ export async function DELETE(
 
   rawDb.prepare(`DELETE FROM "Arb" WHERE id = ?`).run(arbId);
   rawDb.prepare(
-    `INSERT INTO "AuditLog" (seqno_darro, action, field_changed, old_value, new_value, changed_by, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
+    `INSERT INTO "AuditLog" (seqno_darro, action, field_changed, old_value, new_value, changed_by, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
   ).run(
     arb.seqno_darro, "ARB_DELETE", "arb",
     JSON.stringify({ arb_name: arb.arb_name, arb_id: arb.arb_id, ep_cloa_no: arb.ep_cloa_no }),
-    null, sessionUser.username
+    null, sessionUser.username, "arb_modal"
   );
   await computeAndUpdateStatus(arb.seqno_darro);
 

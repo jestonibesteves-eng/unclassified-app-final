@@ -117,9 +117,9 @@ const NON_ELIGIBILITY_REASONS = [
   "NOT FOUND IN LRA SYSTEM", "WRONG PROVINCE",
   "FOR FURTHER RESEARCH (NO CONDONED AMOUNT)", "PROVISIONAL REGISTRATION",
   "TIMBERLAND PER PROJECTION", "WITH DEED OF SALE",
-  "DETAILS DOES NOT MATCH vs. OTHER DOCS (ASP, CLOA, etc..)",
+  "DETAILS DOES NOT MATCH vs. OTHER DOCS (ASP, CLOA, etc.)",
   "OCCUPIED BY ADVERSE CLAIMANTS", "DUPLICATE RECORD",
-  "NO RECORD AT DAR AND ROD", "NO RECORD AT DAR AND ROD; WITH ISSUED CLT",
+  "NO RECORD AT DAR AND ROD",
 ];
 
 function excelDateToString(value: string | null): string | null {
@@ -207,9 +207,13 @@ function MetricPill({ label, value, warn, indicator }: {
 export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, hasNext }: { seqno: string; onClose: () => void; onSaved: () => void; onPrev?: () => void; onNext?: () => void; hasPrev?: boolean; hasNext?: boolean }) {
   const [data, setData] = useState<LandholdingDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<{ status: number; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [reverting, setReverting] = useState(false);
+  const [showNotEligibleConfirm, setShowNotEligibleConfirm] = useState(false);
   const toast = useToast();
-  const { isEditor } = useUser();
+  const { isEditor, user } = useUser();
+  const isSuperAdmin = user?.role === "super_admin";
   const [status, setStatus] = useState("");
   const [nonEligibilityReason, setNonEligibilityReason] = useState("");
   const [nonEligibilityOther, setNonEligibilityOther] = useState("");
@@ -230,11 +234,24 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
   const [arbEditError, setArbEditError] = useState("");
   const [confirmDeleteArbId, setConfirmDeleteArbId] = useState<number | null>(null);
   const [deletingArb, setDeletingArb] = useState(false);
+  const [editingProvince, setEditingProvince] = useState(false);
+  const [provinceInput, setProvinceInput] = useState("");
+  const [provinceList, setProvinceList] = useState<string[]>([]);
+  const [savingProvince, setSavingProvince] = useState(false);
 
   useEffect(() => {
     fetch(`/api/records/${encodeURIComponent(seqno)}`)
-      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then((d: LandholdingDetail) => {
+      .then(async (r) => {
+        if (!r.ok) {
+          const body = await r.json().catch(() => ({}));
+          setLoadError({ status: r.status, message: body.error ?? `HTTP ${r.status}` });
+          setLoading(false);
+          return null;
+        }
+        return r.json();
+      })
+      .then((d: LandholdingDetail | null) => {
+        if (!d) return;
         setData(d);
         setStatus(d.status ?? "For Initial Validation");
         if (d.status === "Not Eligible for Encoding" && d.non_eligibility_reason) {
@@ -267,13 +284,16 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        if (showNotEligibleConfirm) { setShowNotEligibleConfirm(false); return; }
+        onClose();
+      }
       if (e.key === "ArrowLeft" && e.ctrlKey && hasPrev && onPrev) { e.preventDefault(); onPrev(); }
       if (e.key === "ArrowRight" && e.ctrlKey && hasNext && onNext) { e.preventDefault(); onNext(); }
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, onPrev, onNext, hasPrev, hasNext]);
+  }, [onClose, onPrev, onNext, hasPrev, hasNext, showNotEligibleConfirm]);
 
   const effectiveNonEligibilityReason = nonEligibilityReason === "__other__" ? nonEligibilityOther.trim() : nonEligibilityReason;
 
@@ -310,10 +330,27 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
     );
   })();
 
-  async function handleSave() {
+  function handleSave() {
     if (status === "Not Eligible for Encoding" && !effectiveNonEligibilityReason) {
       toast("Reason for Non-Eligibility is required.", "error"); return;
     }
+    if (status === "Not Eligible for Encoding") {
+      const arbWithDate = data?.arbs.find((a) => a.date_encoded || a.date_distributed);
+      if (arbWithDate) {
+        toast("Cannot set to Not Eligible for Encoding — one or more ARBs have Dates Encoded/Distributed filled in.", "error");
+        return;
+      }
+    }
+    // Show confirmation when transitioning INTO Not Eligible for Encoding
+    if (status === "Not Eligible for Encoding" && data?.status !== "Not Eligible for Encoding") {
+      setShowNotEligibleConfirm(true);
+      return;
+    }
+    void executeSave();
+  }
+
+  async function executeSave() {
+    setShowNotEligibleConfirm(false);
     setSaving(true);
     const body: Record<string, unknown> = { status };
     const parsedAmount = condonedAmount.trim() === "" ? null : parseFloat(condonedAmount);
@@ -352,6 +389,26 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
     onSaved();
   }
 
+  async function handleRevert() {
+    setReverting(true);
+    const res = await fetch(`/api/records/${encodeURIComponent(seqno)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ revert_not_eligible: true }),
+    });
+    const result = await res.json();
+    if (!res.ok) { toast(result.error ?? "Revert failed.", "error"); setReverting(false); return; }
+    setData(result);
+    setStatus(result.status ?? "For Initial Validation");
+    setNonEligibilityReason("");
+    setNonEligibilityOther("");
+    setAreaConfirmed(result.amendarea_validated_confirmed ?? false);
+    setCondonedConfirmed(result.condoned_amount_confirmed ?? false);
+    toast("Status reverted and recomputed.", "success");
+    setReverting(false);
+    onSaved();
+  }
+
   async function executeUndo(field: "area" | "condoned") {
     const body = field === "area"
       ? { amendarea_validated_confirmed: false }
@@ -372,6 +429,22 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
       toast(result.error ?? "Failed to undo confirmation.", "error");
     }
     setPendingUndo(null);
+  }
+
+  async function handleProvinceChange() {
+    if (!provinceInput.trim()) return;
+    setSavingProvince(true);
+    const res = await fetch(`/api/records/${encodeURIComponent(seqno)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ province_edited: provinceInput.trim() }),
+    });
+    const d = await res.json();
+    setSavingProvince(false);
+    if (!res.ok) { toast(d.error ?? "Failed to update province.", "error"); return; }
+    setData(d);
+    setEditingProvince(false);
+    toast("Province updated.", "success");
   }
 
   async function handleArbSave() {
@@ -433,7 +506,9 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
   const isZeroCondoned = !isNegativeReval && data?.net_of_reval != null && data.net_of_reval === 0 && (data?.net_of_reval_no_neg ?? 0) === 0;
   const negativeReval = (isNegativeReval || isZeroCondoned) && !userEnteredPositiveCondoned && !savedCondonedPositive;
 
-  return createPortal(
+  return (
+    <>
+    {createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-[2px] p-4"
       style={{ animation: "modal-backdrop-in 0.2s ease-out both" }}
@@ -522,11 +597,6 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
                 )}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0 ml-4">
-                {hasFlag && !(userEnteredPositiveCondoned && data?.data_flags?.includes("Negative")) && (
-                  <span className="px-2.5 py-1 rounded-lg bg-red-500/20 border border-red-400/40 text-red-200 text-[11px] font-bold uppercase tracking-wide">
-                    ⚠ Flagged
-                  </span>
-                )}
                 {data && (() => {
                   const showAreaWarning = isAreaEffectivelyConfirmed && isCondonedEffectivelyConfirmed && (() => {
                     const validatedArea = data.amendarea_validated ?? data.amendarea ?? 0;
@@ -674,6 +744,33 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
             </div>
           )}
 
+          {!loading && loadError && (
+            <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
+              {loadError.status === 403 ? (
+                <>
+                  <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-amber-600" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <p className="text-[15px] font-semibold text-gray-800 mb-1">This landholding has been transferred</p>
+                  <p className="text-[13px] text-gray-500 max-w-xs">It has been moved to another province and is no longer within your jurisdiction.</p>
+                </>
+              ) : (
+                <>
+                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <p className="text-[15px] font-semibold text-gray-800 mb-1">Could not load record</p>
+                  <p className="text-[13px] text-gray-500">{loadError.message}</p>
+                </>
+              )}
+              <button onClick={onClose} className="mt-5 px-4 py-2 text-[13px] border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50">Close</button>
+            </div>
+          )}
+
           {!loading && data && tab === "details" && (
             <div className="p-5 space-y-4">
 
@@ -697,7 +794,49 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
                   <div className="col-span-2 sm:col-span-2">
                     <Field label="Landowner (Full)" value={data.landowner} />
                   </div>
-                  <Field label="Province" value={data.province_edited} />
+                  {isSuperAdmin ? (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest font-semibold text-gray-400 mb-1 leading-none">Province</p>
+                      {editingProvince ? (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <select
+                            value={provinceInput}
+                            onChange={(e) => setProvinceInput(e.target.value)}
+                            className="border border-blue-300 rounded px-2 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                          >
+                            <option value="">— select —</option>
+                            {provinceList.map((p) => <option key={p} value={p}>{p}</option>)}
+                          </select>
+                          <button
+                            onClick={() => void handleProvinceChange()}
+                            disabled={savingProvince || !provinceInput.trim() || provinceInput === data.province_edited}
+                            className="px-2 py-1 text-[11px] bg-blue-700 text-white rounded hover:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            {savingProvince ? "Saving…" : "Save"}
+                          </button>
+                          <button onClick={() => setEditingProvince(false)} className="px-2 py-1 text-[11px] border border-gray-300 text-gray-500 rounded hover:bg-gray-50">Cancel</button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <p className="text-[13px] font-medium text-gray-900">{data.province_edited ?? <span className="text-gray-300">—</span>}</p>
+                          <button
+                            onClick={() => {
+                              setProvinceInput(data.province_edited ?? "");
+                              setEditingProvince(true);
+                              if (provinceList.length === 0)
+                                fetch("/api/provinces").then((r) => r.json()).then((d) => setProvinceList(d.provinces ?? []));
+                            }}
+                            className="text-gray-300 hover:text-blue-600 transition-colors"
+                            title="Change province"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <Field label="Province" value={data.province_edited} />
+                  )}
                   <Field label="Location" value={data.location} />
                   <Field label="Date AP" value={excelDateToString(data.dateap)} />
                   <Field label="Date BK" value={excelDateToString(data.datebk)} />
@@ -764,23 +903,32 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
               </SectionCard>
 
               {/* Data Quality */}
-              <SectionCard icon="🔍" title="Data Quality" accent={hasFlag ? "border-l-red-500" : "border-l-gray-300"}>
+              <SectionCard icon="🔍" title="Data Quality" accent={(hasFlag && !savedCondonedPositive) ? "border-l-red-500" : "border-l-gray-300"}>
                 <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
                   <div className="col-span-2">
-                    {data.data_flags ? (
-                      <div>
-                        <p className="text-[10px] uppercase tracking-widest font-semibold text-gray-400 mb-1.5">Data Flags</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {data.data_flags.split(";").map((f) => (
-                            <span key={f} className="px-2.5 py-1 rounded-md bg-red-100 text-red-700 border border-red-200 text-[12px] font-semibold">
-                              {f.trim()}
-                            </span>
-                          ))}
+                    {(() => {
+                      const activeFlags = data.data_flags
+                        ? data.data_flags.split(";").map((f) => f.trim()).filter((f) => {
+                            // Hide "Negative NET OF REVAL" flag when a positive condoned amount has been saved
+                            if (f.includes("Negative NET OF REVAL") && savedCondonedPositive) return false;
+                            return true;
+                          })
+                        : [];
+                      return activeFlags.length > 0 ? (
+                        <div>
+                          <p className="text-[10px] uppercase tracking-widest font-semibold text-gray-400 mb-1.5">Data Flags</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {activeFlags.map((f) => (
+                              <span key={f} className="px-2.5 py-1 rounded-md bg-red-100 text-red-700 border border-red-200 text-[12px] font-semibold">
+                                {f}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <Field label="Data Flags" value={null} />
-                    )}
+                      ) : (
+                        <Field label="Data Flags" value={null} />
+                      );
+                    })()}
                   </div>
                   <Field label="Duplicate CLNO" value={data.duplicate_clno} />
                   <Field label="Cross Province" value={data.cross_province} />
@@ -808,6 +956,27 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
                           </option>
                         ))}
                       </select>
+                      {data?.status === "Not Eligible for Encoding" && (
+                        <button
+                          onClick={handleRevert}
+                          disabled={reverting || saving}
+                          className="group mt-2 w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 hover:border-amber-300 active:bg-amber-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150 text-left"
+                        >
+                          <span className="flex-shrink-0 w-6 h-6 rounded-md bg-amber-200 group-hover:bg-amber-300 group-disabled:bg-amber-100 flex items-center justify-center transition-colors duration-150">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-amber-700" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M7.793 2.232a.75.75 0 01-.025 1.06L3.622 7.25h10.003a5.375 5.375 0 010 10.75H10a.75.75 0 010-1.5h3.625a3.875 3.875 0 000-7.75H3.622l4.146 3.957a.75.75 0 01-1.036 1.085l-5.5-5.25a.75.75 0 010-1.085l5.5-5.25a.75.75 0 011.061.025z" clipRule="evenodd" />
+                            </svg>
+                          </span>
+                          <span className="flex flex-col min-w-0">
+                            <span className="text-[12px] font-semibold text-amber-800 leading-tight">
+                              {reverting ? "Reverting…" : "Revert Status"}
+                            </span>
+                            <span className="text-[10px] text-amber-600 leading-snug">
+                              {reverting ? "Please wait…" : "Restore auto-computed status"}
+                            </span>
+                          </span>
+                        </button>
+                      )}
                       {status === "Not Eligible for Encoding" && (
                         <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
                           <label className="block text-[10px] uppercase tracking-widest font-bold text-red-600 mb-1.5">
@@ -1119,7 +1288,7 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
                               <td className="px-2 py-1.5"><input value={editingArb.ep_cloa_no} onChange={(e) => setEditingArb((p) => p && ({ ...p, ep_cloa_no: e.target.value.toUpperCase() }))} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-green-600" /></td>
                               <td className="px-2 py-1.5">{isLocked ? <span className="text-[12px] font-mono text-right block text-gray-800 px-1">{editingArb.area_allocated || "—"}</span> : <input value={editingArb.area_allocated} onChange={(e) => setEditingArb((p) => p && ({ ...p, area_allocated: e.target.value }))} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] text-right focus:outline-none focus:ring-1 focus:ring-green-600" />}</td>
                               <td className="px-2 py-1.5">
-                                <select value={editingArb.carpable} onChange={(e) => setEditingArb((p) => p && ({ ...p, carpable: e.target.value }))} className={`w-full border rounded px-2 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-green-600 bg-white ${!editingArb.carpable ? "border-red-300" : "border-gray-300"}`}>
+                                <select value={editingArb.carpable} onChange={(e) => setEditingArb((p) => p && ({ ...p, carpable: e.target.value, date_encoded: e.target.value === "NON-CARPABLE" ? "" : p.date_encoded, date_distributed: e.target.value === "NON-CARPABLE" ? "" : p.date_distributed }))} className={`w-full border rounded px-2 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-green-600 bg-white ${!editingArb.carpable ? "border-red-300" : "border-gray-300"}`}>
                                   <option value="">—</option>
                                   <option value="CARPABLE">CARPABLE</option>
                                   <option value="NON-CARPABLE">NON-CARPABLE</option>
@@ -1136,8 +1305,8 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
                                 )}
                               </td>
                               <td className="px-2 py-1.5"><input value={editingArb.allocated_condoned_amount} onChange={(e) => setEditingArb((p) => p && ({ ...p, allocated_condoned_amount: e.target.value }))} placeholder="e.g. ₱12,345.00 or N/A" className={`w-full border rounded px-2 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-green-600 ${!editingArb.allocated_condoned_amount.trim() ? "border-red-300" : "border-gray-300"}`} /></td>
-                              <td className="px-2 py-1.5"><input type="date" value={toDateInput(editingArb.date_encoded)} onChange={(e) => setEditingArb((p) => p && ({ ...p, date_encoded: fromDateInput(e.target.value), date_distributed: e.target.value ? p.date_distributed : "" }))} disabled={editingArb.eligibility === "Not Eligible"} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] font-mono focus:outline-none focus:ring-1 focus:ring-green-600 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" /></td>
-                              <td className="px-2 py-1.5"><input type="date" value={toDateInput(editingArb.date_distributed)} onChange={(e) => setEditingArb((p) => p && ({ ...p, date_distributed: fromDateInput(e.target.value) }))} disabled={editingArb.eligibility === "Not Eligible" || !editingArb.date_encoded} title={!editingArb.date_encoded ? "Date Encoded is required first" : undefined} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] font-mono focus:outline-none focus:ring-1 focus:ring-green-600 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" /></td>
+                              <td className="px-2 py-1.5"><input type="date" value={toDateInput(editingArb.date_encoded)} onChange={(e) => setEditingArb((p) => p && ({ ...p, date_encoded: fromDateInput(e.target.value), date_distributed: e.target.value ? p.date_distributed : "" }))} disabled={editingArb.eligibility === "Not Eligible" || editingArb.carpable === "NON-CARPABLE"} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] font-mono focus:outline-none focus:ring-1 focus:ring-green-600 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" /></td>
+                              <td className="px-2 py-1.5"><input type="date" value={toDateInput(editingArb.date_distributed)} onChange={(e) => setEditingArb((p) => p && ({ ...p, date_distributed: fromDateInput(e.target.value) }))} disabled={editingArb.eligibility === "Not Eligible" || editingArb.carpable === "NON-CARPABLE" || !editingArb.date_encoded} title={!editingArb.date_encoded ? "Date Encoded is required first" : undefined} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] font-mono focus:outline-none focus:ring-1 focus:ring-green-600 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" /></td>
                               <td className="px-2 py-1.5"><input value={editingArb.remarks} onChange={(e) => setEditingArb((p) => p && ({ ...p, remarks: e.target.value }))} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-green-600" /></td>
                               <td className="px-3 py-1.5 text-center whitespace-nowrap">
                                 <button onClick={handleArbSave} disabled={savingArb} className="text-[11px] px-2 py-1 bg-green-700 text-white rounded hover:bg-green-600 disabled:opacity-40 mr-1">{savingArb ? "…" : "Save"}</button>
@@ -1221,6 +1390,42 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
       </div>
     </div>,
     document.body
+    )}
+    {showNotEligibleConfirm && createPortal(
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-[2px] p-4">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+          <div className="flex items-start gap-3 mb-4">
+            <span className="flex-shrink-0 w-9 h-9 rounded-full bg-red-100 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-red-600" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+              </svg>
+            </span>
+            <div>
+              <h3 className="text-[15px] font-bold text-gray-900 leading-tight mb-1">Set as Not Eligible for Encoding?</h3>
+              <p className="text-[13px] text-gray-500 leading-snug">
+                This will mark <span className="font-semibold text-gray-700">{seqno}</span> as <span className="font-semibold text-red-600">Not Eligible for Encoding</span>. The reason will be logged. This action can be reverted later.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={() => setShowNotEligibleConfirm(false)}
+              className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-[13px] hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => void executeSave()}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[13px] font-semibold"
+            >
+              Yes, Set Not Eligible
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    )}
+    </>
   );
 }
 

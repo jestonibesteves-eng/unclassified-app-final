@@ -16,6 +16,7 @@ type User = {
   is_active: boolean;
   must_change_password: boolean;
   created_at: string;
+  created_by_user: { id: number; username: string; full_name: string } | null;
 };
 
 const ROLES = ["super_admin", "admin", "editor", "viewer"];
@@ -76,6 +77,7 @@ function generatePassword(): string {
 export default function UsersPage() {
   const { user: sessionUser } = useUser();
   const isRegional = sessionUser?.office_level === "regional";
+  const isProvincialAdmin = sessionUser?.office_level === "provincial" && sessionUser?.role === "admin";
 
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,6 +91,11 @@ export default function UsersPage() {
   const [copied, setCopied] = useState(false);
   const [provinces, setProvinces] = useState<string[]>([]);
   const toast = useToast();
+
+  const hasSuperAdmin = users.some((u) => u.role === "super_admin" && u.is_active);
+  const allowedRoles = isProvincialAdmin
+    ? ["editor", "viewer"]
+    : ROLES.filter((r) => r !== "super_admin" || !hasSuperAdmin);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -108,9 +115,19 @@ export default function UsersPage() {
       .then((d) => setProvinces(d.provinces ?? []));
   }, []);
 
+  useEffect(() => {
+    if (!modalMode) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") closeModal();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [modalMode]);
+
   function openCreate() {
     setForm({
       ...emptyForm(),
+      role: "viewer",
       office_level: isRegional ? "regional" : "provincial",
       province: isRegional ? "" : (sessionUser?.province ?? ""),
     });
@@ -255,6 +272,7 @@ export default function UsersPage() {
                     <th className="px-4 py-3 text-left font-semibold text-[11px] uppercase tracking-wide">Office Level</th>
                     <th className="px-4 py-3 text-left font-semibold text-[11px] uppercase tracking-wide">Province / Municipality</th>
                     <th className="px-4 py-3 text-left font-semibold text-[11px] uppercase tracking-wide">Status</th>
+                    <th className="px-4 py-3 text-left font-semibold text-[11px] uppercase tracking-wide">Created</th>
                     <th className="px-4 py-3 text-left font-semibold text-[11px] uppercase tracking-wide">Actions</th>
                   </tr>
                 </thead>
@@ -287,6 +305,12 @@ export default function UsersPage() {
                         <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${u.is_active ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"}`}>
                           {u.is_active ? "Active" : "Inactive"}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-[12px] text-gray-500">
+                        <div>{new Date(u.created_at).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })}</div>
+                        <div className="text-gray-400 text-[11px]">
+                          {u.created_by_user ? `by ${u.created_by_user.full_name}` : "—"}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
@@ -407,18 +431,34 @@ export default function UsersPage() {
                 )}
                 <div>
                   <label className="block text-[10px] uppercase tracking-widest font-semibold text-gray-400 mb-1.5">Role <span className="text-red-400">*</span></label>
-                  <select value={form.role} onChange={(e) => f("role", e.target.value)}
+                  <select
+                    value={form.role}
+                    onChange={(e) => {
+                      const newRole = e.target.value;
+                      f("role", newRole);
+                      if (newRole === "super_admin") {
+                        f("office_level", "regional");
+                      } else if (newRole === "admin" && form.office_level === "municipal") {
+                        f("office_level", "provincial");
+                      }
+                    }}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-600 bg-white">
-                    {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+                    {allowedRoles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase tracking-widest font-semibold text-gray-400 mb-1.5">Office Level <span className="text-red-400">*</span></label>
-                  <select value={form.office_level} onChange={(e) => f("office_level", e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-600 bg-white capitalize">
-                    {OFFICE_LEVELS.filter((l) => isRegional || l !== "regional").map((l) => (
-                      <option key={l} value={l} className="capitalize">{l.charAt(0).toUpperCase() + l.slice(1)}</option>
-                    ))}
+                  <select
+                    value={form.office_level}
+                    onChange={(e) => f("office_level", e.target.value)}
+                    disabled={form.role === "super_admin"}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-green-600 bg-white capitalize disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed">
+                    {OFFICE_LEVELS
+                      .filter((l) => isRegional || l !== "regional")
+                      .filter((l) => ["admin", "super_admin"].includes(form.role) ? l !== "municipal" : true)
+                      .map((l) => (
+                        <option key={l} value={l} className="capitalize">{l.charAt(0).toUpperCase() + l.slice(1)}</option>
+                      ))}
                   </select>
                 </div>
                 {form.office_level !== "regional" && (

@@ -36,6 +36,50 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "You can only manage users within your province." }, { status: 403 });
   }
 
+  // Provincial admins can only assign editor/viewer roles
+  if (sessionUser.office_level === "provincial" && sessionUser.role === "admin") {
+    const resolvedRole = role ?? target.role;
+    if (!["editor", "viewer"].includes(resolvedRole))
+      return NextResponse.json({ error: "Provincial admins can only assign editor or viewer roles." }, { status: 403 });
+  }
+
+  // super_admin must always be regional level
+  const resolvedRole = role ?? target.role;
+  const resolvedLevel = office_level ?? target.office_level;
+  const resolvedProvince = province ?? target.province;
+
+  if (resolvedRole === "super_admin" && resolvedLevel !== "regional")
+    return NextResponse.json({ error: "Super admin accounts must be at the regional office level." }, { status: 400 });
+
+  // admin accounts cannot be at the municipal level
+  if (resolvedRole === "admin" && resolvedLevel === "municipal")
+    return NextResponse.json({ error: "Admin accounts cannot be at the municipal office level." }, { status: 400 });
+
+  // Only 1 active super_admin allowed
+  if (resolvedRole === "super_admin") {
+    const existing = await prisma.user.findFirst({
+      where: { role: "super_admin", is_active: true, id: { not: target.id } },
+    });
+    if (existing)
+      return NextResponse.json({ error: "A super admin account already exists. Only one is allowed." }, { status: 409 });
+  }
+
+  // Only 1 active admin allowed per province at provincial level
+  if (resolvedRole === "admin" && resolvedLevel === "provincial" && resolvedProvince) {
+    const existingAdmin = await prisma.user.findFirst({
+      where: {
+        role: "admin", office_level: "provincial",
+        province: resolvedProvince, is_active: true,
+        id: { not: target.id },
+      },
+    });
+    if (existingAdmin)
+      return NextResponse.json(
+        { error: `An admin account already exists for ${resolvedProvince}. Only one provincial admin per province is allowed.` },
+        { status: 409 }
+      );
+  }
+
   // Prevent self-deactivation
   if (is_active === false && String(target.id) === sessionUser.id)
     return NextResponse.json({ error: "You cannot deactivate your own account." }, { status: 400 });

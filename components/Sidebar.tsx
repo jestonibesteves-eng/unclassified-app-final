@@ -76,7 +76,7 @@ function IconClose() {
 }
 
 /* ─── Nav structure (role-filtered at render time) ─── */
-type NavItem = { href: string; label: string; Icon: () => React.ReactElement };
+type NavItem = { href: string; label: string; Icon: () => React.ReactElement; children?: { href: string; label: string }[] };
 type NavGroup = { label: string | null; items: NavItem[]; minRole?: "editor" | "admin" };
 
 const ALL_NAV_GROUPS: NavGroup[] = [
@@ -91,8 +91,24 @@ const ALL_NAV_GROUPS: NavGroup[] = [
     label: "Operations",
     minRole: "editor",
     items: [
-      { href: "/batch", label: "Batch Update (LH)", Icon: IconBatch },
-      { href: "/arbs",  label: "ARB Viewer",   Icon: IconARB   },
+      {
+        href: "/batch/lh-info",
+        label: "Batch Update (LH)",
+        Icon: IconBatch,
+        children: [
+          { href: "/batch/lh-info",     label: "LH Info Update" },
+          { href: "/batch/area-amount", label: "Area & Amount Confirmation" },
+        ],
+      },
+      {
+        href: "/arbs/upload",
+        label: "ARB Batch Update",
+        Icon: IconARB,
+        children: [
+          { href: "/arbs/upload", label: "ARB Upload & Viewer" },
+          { href: "/arbs/info-update", label: "ARB Info Update" },
+        ],
+      },
     ],
   },
   {
@@ -135,7 +151,7 @@ export default function Sidebar() {
     if (g.label === "Operations") {
       const items = isEditor
         ? g.items
-        : g.items.filter((i) => i.href === "/arbs");
+        : g.items.filter((i) => i.href === "/arbs/upload");
       return { ...g, items, minRole: undefined };
     }
     return g;
@@ -229,43 +245,74 @@ export default function Sidebar() {
                 </p>
               )}
               <div className="space-y-0.5">
-                {group.items.map(({ href, label, Icon }) => {
-                  const active = pathname === href;
+                {group.items.map(({ href, label, Icon, children }) => {
+                  const parentActive = children
+                    ? children.some((c) => pathname === c.href)
+                    : pathname === href;
                   return (
-                    <Link
-                      key={href}
-                      href={href}
-                      className={`
-                        group flex items-center gap-2.5 px-2.5 py-2 rounded-[10px]
-                        text-[12.5px] font-medium tracking-tight
-                        transition-all duration-200
-                        ${active
-                          ? "text-white"
-                          : "text-green-400/60 hover:text-green-100 hover:bg-white/[0.04]"
-                        }
-                      `}
-                      style={active ? {
-                        background: "rgba(255,255,255,0.09)",
-                        boxShadow:
-                          "inset 0 1px 0 rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.2)",
-                      } : {}}
-                    >
-                      <span
-                        className={`flex-shrink-0 transition-colors duration-200 ${
-                          active
-                            ? "text-green-300"
-                            : "text-green-700 group-hover:text-green-400"
-                        }`}
+                    <div key={href}>
+                      <Link
+                        href={href}
+                        className={`
+                          group flex items-center gap-2.5 px-2.5 py-2 rounded-[10px]
+                          text-[12.5px] font-medium tracking-tight
+                          transition-all duration-200
+                          ${parentActive
+                            ? "text-white"
+                            : "text-green-400/60 hover:text-green-100 hover:bg-white/[0.04]"
+                          }
+                        `}
+                        style={parentActive ? {
+                          background: "rgba(255,255,255,0.09)",
+                          boxShadow:
+                            "inset 0 1px 0 rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.2)",
+                        } : {}}
                       >
-                        <Icon />
-                      </span>
+                        <span
+                          className={`flex-shrink-0 transition-colors duration-200 ${
+                            parentActive
+                              ? "text-green-300"
+                              : "text-green-700 group-hover:text-green-400"
+                          }`}
+                        >
+                          <Icon />
+                        </span>
+                        <span className="flex-1 truncate">{label}</span>
+                        {parentActive && !children && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0 opacity-80" />
+                        )}
+                      </Link>
 
-                      <span className="flex-1 truncate">{label}</span>
-
-                      {active && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0 opacity-80" />
+                      {/* Child items */}
+                      {children && (
+                        <div className="ml-4 mt-0.5 mb-0.5 pl-3 space-y-0.5 border-l border-white/[0.07]">
+                          {children.map((child) => {
+                            const childActive = pathname === child.href;
+                            return (
+                              <Link
+                                key={child.href}
+                                href={child.href}
+                                className={`
+                                  flex items-center gap-2 px-2.5 py-1.5 rounded-[8px]
+                                  text-[12px] font-medium tracking-tight
+                                  transition-all duration-150
+                                  ${childActive
+                                    ? "text-white bg-white/[0.08]"
+                                    : "text-green-400/50 hover:text-green-200 hover:bg-white/[0.04]"
+                                  }
+                                `}
+                              >
+                                <span className={`w-1 h-1 rounded-full flex-shrink-0 ${childActive ? "bg-green-400" : "bg-green-700"}`} />
+                                <span className="flex-1 truncate">{child.label}</span>
+                                {childActive && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0 opacity-80" />
+                                )}
+                              </Link>
+                            );
+                          })}
+                        </div>
                       )}
-                    </Link>
+                    </div>
                   );
                 })}
               </div>
