@@ -217,7 +217,7 @@ export function StatusWithAreaChart({ data }: { data: StatusKV[] }) {
             onClick={() => setMode("records")}
             className={`px-3 py-1 transition-colors ${mode === "records" ? "bg-green-900 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
           >
-            No. of Records
+            No. of LHs
           </button>
           <button
             onClick={() => setMode("area")}

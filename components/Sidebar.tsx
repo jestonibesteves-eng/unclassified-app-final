@@ -66,6 +66,15 @@ function IconUsers() {
     </svg>
   );
 }
+function IconBackup() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round">
+      <ellipse cx="7" cy="4" rx="5" ry="2" />
+      <path d="M2 4v3c0 1.1 2.24 2 5 2s5-.9 5-2V4" />
+      <path d="M2 7v3c0 1.1 2.24 2 5 2s5-.9 5-2V7" />
+    </svg>
+  );
+}
 function IconClose() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -76,7 +85,7 @@ function IconClose() {
 }
 
 /* ─── Nav structure (role-filtered at render time) ─── */
-type NavItem = { href: string; label: string; Icon: () => React.ReactElement; children?: { href: string; label: string }[] };
+type NavItem = { href: string; label: string; Icon: () => React.ReactElement; children?: { href: string; label: string }[]; superAdminOnly?: boolean };
 type NavGroup = { label: string | null; items: NavItem[]; minRole?: "editor" | "admin" };
 
 const ALL_NAV_GROUPS: NavGroup[] = [
@@ -122,7 +131,8 @@ const ALL_NAV_GROUPS: NavGroup[] = [
     label: "Admin",
     minRole: "admin",
     items: [
-      { href: "/users", label: "User Management", Icon: IconUsers },
+      { href: "/users",          label: "User Management", Icon: IconUsers                         },
+      { href: "/admin/backup",   label: "Backup",          Icon: IconBackup, superAdminOnly: true },
     ],
   },
 ];
@@ -133,6 +143,7 @@ export default function Sidebar() {
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
   const { user, isAdmin, isEditor } = useUser();
+  const isSuperAdmin = user?.role === "super_admin";
   const { open, close } = useSidebar();
 
   // Close sidebar on route change (mobile UX)
@@ -153,6 +164,10 @@ export default function Sidebar() {
         ? g.items
         : g.items.filter((i) => i.href === "/arbs/upload");
       return { ...g, items, minRole: undefined };
+    }
+    if (g.label === "Admin") {
+      const items = g.items.filter((i) => !i.superAdminOnly || isSuperAdmin);
+      return { ...g, items };
     }
     return g;
   }).filter((g) => g.items.length > 0 && canSeeGroup(g));
