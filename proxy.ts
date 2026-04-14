@@ -1,9 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
+import { jwtVerify } from "jose";
+
+const SESSION_COOKIE = "dar_session";
 
 /* ── Route permission rules ── */
 const ADMIN_PAGES   = ["/flags", "/audit", "/users"];
 const EDITOR_PAGES  = ["/batch"];
+
+type SessionUser = {
+  role: string;
+  must_change_password: boolean;
+};
+
+async function getSessionUser(token: string): Promise<SessionUser | null> {
+  try {
+    const secret = process.env.AUTH_SECRET;
+    if (!secret) return null;
+    const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
+    return (payload as { user: SessionUser }).user ?? null;
+  } catch {
+    return null;
+  }
+}
 
 function isAdminRole(role: string)  { return ["super_admin", "admin"].includes(role); }
 function isEditorRole(role: string) { return ["super_admin", "admin", "editor"].includes(role); }
@@ -22,16 +40,11 @@ export async function proxy(req: NextRequest) {
   }
 
   const token = req.cookies.get(SESSION_COOKIE)?.value;
-  const user = token ? await verifySessionToken(token) : null;
+  const user = token ? await getSessionUser(token) : null;
 
   // Not authenticated → redirect to login
   if (!user) {
     return noindex(NextResponse.redirect(new URL("/login", req.url)));
-  }
-
-  // Already logged in, trying to visit login → redirect home
-  if (pathname === "/login") {
-    return noindex(NextResponse.redirect(new URL("/", req.url)));
   }
 
   // Must change password → redirect
