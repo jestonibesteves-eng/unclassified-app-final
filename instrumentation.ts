@@ -8,7 +8,14 @@ export async function register() {
     const dbPath = path.isAbsolute(raw) ? raw : path.resolve(process.cwd(), raw);
     const dbDir  = path.dirname(dbPath);
 
-    // ── 1. Apply any staged restore BEFORE opening the database ──────────────
+    // ── 1. Ensure the database directory exists ───────────────────────────────
+    const dbDirectory = path.dirname(dbPath);
+    if (!fs.existsSync(dbDirectory)) {
+      fs.mkdirSync(dbDirectory, { recursive: true });
+      console.log(`[startup] Created database directory: ${dbDirectory}`);
+    }
+
+    // ── 2. Apply any staged restore BEFORE opening the database ──────────────
     const pendingDb   = path.join(dbDir, "dev.db.pending-restore");
     const pendingMeta = path.join(dbDir, "dev.db.pending-restore-meta");
     if (fs.existsSync(pendingDb)) {

@@ -1,6 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import Database from "better-sqlite3";
+import fs from "fs";
+import path from "path";
 
 type GlobalDb = { prisma: PrismaClient; rawDb: Database.Database };
 const g = globalThis as unknown as GlobalDb;
@@ -27,7 +29,11 @@ function runMigrations(db: Database.Database) {
 }
 
 function createRawDb() {
-  const db = new Database(getDbUrl().replace(/^file:/, ""));
+  const raw    = getDbUrl().replace(/^file:/, "");
+  const dbPath = path.isAbsolute(raw) ? raw : path.resolve(process.cwd(), raw);
+  const dbDir  = path.dirname(dbPath);
+  if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
+  const db = new Database(dbPath);
   db.pragma("busy_timeout = 10000");
   runMigrations(db);
   return db;
