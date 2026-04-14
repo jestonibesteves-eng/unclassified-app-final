@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
-  PieChart, Pie, Legend, LabelList, TooltipContentProps,
+  PieChart, Pie, Legend, LabelList,
 } from "recharts";
 
 /* ─── Color palettes ─── */
@@ -52,7 +52,13 @@ function DarkTooltip({
 }
 
 /* ─── Province chart tooltip (area formatted with ha.) ─── */
-function ProvinceTooltip({ active, payload, label }: TooltipContentProps<number, string>) {
+function ProvinceTooltip({
+  active, payload, label,
+}: {
+  active?: boolean;
+  payload?: Array<{ name: string; value?: number; color?: string }>;
+  label?: string;
+}) {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-gray-900 text-white text-[11px] px-3 py-2 rounded-lg shadow-xl border border-gray-700">
