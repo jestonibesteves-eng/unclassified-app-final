@@ -17,6 +17,7 @@ import {
 import DashboardAreaToggle from "@/components/DashboardAreaToggle";
 import DashboardProvinceFilter from "@/components/DashboardProvinceFilter";
 import { DashboardStatCards, IssueStrip } from "@/components/DashboardClient";
+import DashboardProgress from "@/components/DashboardProgress";
 
 async function getStats(provinceFilter: string | string[] | null) {
   const scope =
@@ -605,6 +606,9 @@ export default async function Dashboard({
           />
         </ChartCard>
       </div>
+
+      {/* ── COCROM Distribution Progress ── */}
+      <DashboardProgress />
 
       {/* ── Not Eligible for Encoding (full-width) ── */}
       <div className="mt-6">
