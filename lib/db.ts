@@ -7,11 +7,18 @@ import path from "path";
 type GlobalDb = { prisma: PrismaClient; rawDb: Database.Database };
 const g = globalThis as unknown as GlobalDb;
 
+// During `next build`, Next.js evaluates module-level code to collect page
+// data, but never actually invokes API route handlers. Skipping DB
+// initialisation avoids EACCES errors when the DB directory is outside the
+// build sandbox (e.g. Hostinger with an external DATABASE_URL path).
+const IS_BUILD = process.env.NEXT_PHASE === "phase-production-build";
+
 function getDbUrl() {
   return process.env.DATABASE_URL ?? "file:./dev.db";
 }
 
 function createPrismaClient() {
+  if (IS_BUILD) return null as unknown as PrismaClient;
   const adapter = new PrismaBetterSqlite3({ url: getDbUrl() });
   return new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0]);
 }
@@ -29,6 +36,7 @@ function runMigrations(db: Database.Database) {
 }
 
 function createRawDb() {
+  if (IS_BUILD) return null as unknown as Database.Database;
   const raw    = getDbUrl().replace(/^file:/, "");
   const dbPath = path.isAbsolute(raw) ? raw : path.resolve(process.cwd(), raw);
   const dbDir  = path.dirname(dbPath);
