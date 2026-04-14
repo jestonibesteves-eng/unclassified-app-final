@@ -9,8 +9,6 @@ export async function register() {
     const dbDir  = path.dirname(dbPath);
 
     // ── 1. Apply any staged restore BEFORE opening the database ──────────────
-    // Pending-restore files live next to the database so they survive
-    // redeployments and work whether the DB is inside or outside the app folder.
     const pendingDb   = path.join(dbDir, "dev.db.pending-restore");
     const pendingMeta = path.join(dbDir, "dev.db.pending-restore-meta");
     if (fs.existsSync(pendingDb)) {
@@ -35,11 +33,13 @@ export async function register() {
     }
 
     // ── 3. Schedule daily auto-backup at 2:00 AM ─────────────────────────────
-    scheduleDailyBackup();
+    // Backup logic is inlined here (not imported from lib/backup) so the edge
+    // bundler does not attempt to trace Node.js-only modules into the edge build.
+    scheduleDailyBackup(dbPath);
   }
 }
 
-function scheduleDailyBackup() {
+function scheduleDailyBackup(dbPath: string) {
   function msUntilNextTwoAM(): number {
     const now  = new Date();
     const next = new Date(now);
@@ -50,8 +50,26 @@ function scheduleDailyBackup() {
 
   async function runBackup() {
     try {
-      const { createBackup } = await import("./lib/backup");
-      const filename = await createBackup("auto");
+      const fs       = (await import("fs")).default;
+      const path     = (await import("path")).default;
+      const Database = (await import("better-sqlite3")).default;
+
+      const backupDir = process.env.BACKUP_DIR || path.join(path.dirname(dbPath), "backups");
+      if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const ts  = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;
+      const filename = `dev_${ts}_auto.db`;
+      const dest = path.join(backupDir, filename);
+
+      const db = new Database(dbPath);
+      try {
+        await db.backup(dest);
+      } finally {
+        db.close();
+      }
+
       console.log(`[backup] Daily backup created: ${filename}`);
     } catch (err) {
       console.error("[backup] Daily backup failed:", err);
