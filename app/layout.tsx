@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
-import MobileHeader from "@/components/MobileHeader";
+import AppShell from "@/components/AppShell";
 import { ToastProvider } from "@/components/Toast";
 import { UserProvider } from "@/components/UserContext";
 import { SidebarProvider } from "@/components/SidebarContext";
@@ -32,15 +31,7 @@ export default function RootLayout({
         <UserProvider>
           <SidebarProvider>
             <ToastProvider>
-              <Sidebar />
-              {/* Flex wrapper: invisible spacer reserves sidebar space on desktop */}
-              <div className="flex flex-1 min-h-dvh">
-                <div className="hidden md:block w-64 flex-shrink-0" aria-hidden="true" />
-                <main className="flex-1 min-w-0 min-h-dvh bg-gray-50 flex flex-col">
-                  <MobileHeader />
-                  <div className="flex-1 p-6">{children}</div>
-                </main>
-              </div>
+              <AppShell>{children}</AppShell>
             </ToastProvider>
           </SidebarProvider>
         </UserProvider>
