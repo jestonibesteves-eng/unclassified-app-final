@@ -38,6 +38,15 @@ export async function GET(req: NextRequest) {
       : {}),
   };
 
+  // Shared WHERE conditions for raw SQL match/amount queries — avoids full table scans
+  const rawFilterParts: Prisma.Sql[] = [];
+  if (scopedProvince) rawFilterParts.push(Prisma.sql`l.province_edited = ${scopedProvince}`);
+  if (scopedMunicipality) rawFilterParts.push(Prisma.sql`l.municipality LIKE ${"%" + scopedMunicipality + "%"}`);
+  if (search) rawFilterParts.push(Prisma.sql`(l.seqno_darro LIKE ${"%" + search + "%"} OR l.landowner LIKE ${"%" + search + "%"} OR l.clno LIKE ${"%" + search + "%"})`);
+  const rawFilterWhere = rawFilterParts.length > 0
+    ? Prisma.sql`WHERE ${Prisma.join(rawFilterParts, " AND ")}`
+    : Prisma.sql``;
+
   // For match filtering, use raw SQL to compare SUM(area_allocated) vs amendarea_validated
   let matchSeqnos: string[] | null = null;
   if (match === "matched" || match === "mismatched") {
@@ -47,6 +56,7 @@ export async function GET(req: NextRequest) {
              COALESCE(l.amendarea_validated, l.amendarea) AS validated
       FROM Landholding l
       JOIN Arb a ON a.seqno_darro = l.seqno_darro
+      ${rawFilterWhere}
       GROUP BY l.seqno_darro
     `;
     matchSeqnos = rows
@@ -69,6 +79,7 @@ export async function GET(req: NextRequest) {
              COALESCE(l.condoned_amount, l.net_of_reval_no_neg) AS validated
       FROM Landholding l
       JOIN Arb a ON a.seqno_darro = l.seqno_darro
+      ${rawFilterWhere}
       GROUP BY l.seqno_darro
     `;
     amountSeqnos = rows

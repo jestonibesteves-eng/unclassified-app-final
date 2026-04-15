@@ -335,6 +335,49 @@ export async function PUT(req: NextRequest) {
   });
 }
 
+// Async generator that streams rows from an XLSX buffer without loading the full workbook.
+// Each row is yielded and can be discarded after processing — peak memory is one row at a time.
+async function* streamXlsxRows(buffer: Buffer): AsyncGenerator<RawRow> {
+  const readable = new Readable({ read() {} });
+  readable.push(buffer);
+  readable.push(null);
+
+  const workbookReader = new (ExcelJS.stream.xlsx.WorkbookReader as new (
+    input: Readable,
+    options: Record<string, string>
+  ) => AsyncIterable<AsyncIterable<ExcelJS.Row>>)(readable, {
+    sharedStrings: "cache",
+    hyperlinks: "ignore",
+    styles: "ignore",
+    worksheets: "emit",
+    entries: "emit",
+  });
+
+  let headers: (string | null)[] = [];
+  let firstRow = true;
+
+  for await (const worksheetReader of workbookReader) {
+    for await (const row of worksheetReader) {
+      if (firstRow) {
+        headers = [];
+        row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+          const v = getCellText(cell);
+          headers[colNumber] = v != null && String(v).trim() !== "" ? String(v) : null;
+        });
+        firstRow = false;
+        continue;
+      }
+      const obj: RawRow = {};
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        const header = headers[colNumber];
+        if (header != null) obj[header] = getCellText(cell);
+      });
+      yield obj;
+    }
+    break; // first worksheet only
+  }
+}
+
 // Commit import
 export async function POST(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
@@ -349,26 +392,33 @@ export async function POST(req: NextRequest) {
   if (!file) return NextResponse.json({ error: "No file uploaded." }, { status: 400 });
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  let rawRows: RawRow[];
+  const isXlsx = !file.name.toLowerCase().endsWith(".csv");
+
+  // CSV is parsed once and cached; XLSX is streamed fresh on each pass from the same buffer.
+  let csvRows: RawRow[] | null = null;
+
+  async function* rowsFromBuffer(): AsyncGenerator<RawRow> {
+    if (isXlsx) {
+      yield* streamXlsxRows(buffer);
+    } else {
+      if (!csvRows) csvRows = await parseFile(buffer, file!.name);
+      for (const row of csvRows) yield row;
+    }
+  }
+
+  // Pass 1 (streaming): collect unique seqno_darro values — only strings in memory
+  const seqnoSet = new Set<string>();
   try {
-    rawRows = await parseFile(buffer, file.name);
+    for await (const row of rowsFromBuffer()) {
+      const { seqno_darro } = mapRow(row);
+      if (seqno_darro) seqnoSet.add(seqno_darro);
+    }
   } catch {
-    return NextResponse.json({ error: "Could not parse file." }, { status: 400 });
+    return NextResponse.json({ error: "Could not parse file. Make sure it is a valid .xlsx or .csv file." }, { status: 400 });
   }
 
-  const valid: ReturnType<typeof mapRow>[] = [];
-  const seenIds = new Set<string>();
-  for (const row of rawRows) {
-    const mapped = mapRow(row);
-    if (!mapped.seqno_darro || !mapped.arb_name || !mapped.arb_id || !mapped.carpable || mapped.area_allocated === null) continue;
-    if (!mapped.allocated_condoned_amount || !mapped.eligibility) continue;
-    if (mapped.eligibility === "Not Eligible" && !mapped.eligibility_reason) continue;
-    if (seenIds.has(mapped.arb_id)) continue; // skip duplicate ARB_IDs in file
-    seenIds.add(mapped.arb_id);
-    valid.push(mapped);
-  }
+  const seqnos = [...seqnoSet];
 
-  const seqnos = [...new Set(valid.map((r) => r.seqno_darro!))];
   const found = await prisma.landholding.findMany({
     where: { seqno_darro: { in: seqnos } },
     select: { seqno_darro: true, province_edited: true },
@@ -378,40 +428,67 @@ export async function POST(req: NextRequest) {
   const scopedProvince =
     sessionUser.office_level !== "regional" ? sessionUser.province ?? null : null;
 
-  const toInsert = valid.filter((r) => {
-    if (!foundMap[r.seqno_darro!]) return false;
-    if (scopedProvince && foundMap[r.seqno_darro!]?.province_edited !== scopedProvince) return false;
-    return true;
-  });
+  let insertedCount = 0;
+  let skippedCount = 0;
 
   try {
-    const affectedSeqnos = [...new Set(toInsert.map((r) => r.seqno_darro!))];
     const deleteStmt = rawDb.prepare(`DELETE FROM "Arb" WHERE seqno_darro = ?`);
     const insertStmt = rawDb.prepare(
       `INSERT INTO "Arb" (seqno_darro, arb_name, arb_id, ep_cloa_no, carpable, area_allocated, allocated_condoned_amount, eligibility, eligibility_reason, date_encoded, date_distributed, remarks, uploaded_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     );
 
-    const doWrites = rawDb.transaction(() => {
-      if (mode === "replace") {
-        for (const s of seqnos) deleteStmt.run(s);
-      }
-      for (const r of toInsert) {
-        insertStmt.run(
-          r.seqno_darro!, r.arb_name, r.arb_id, r.ep_cloa_no, r.carpable,
-          r.area_allocated, r.allocated_condoned_amount, r.eligibility, r.eligibility_reason,
-          (r.eligibility === "Not Eligible" || r.carpable === "NON-CARPABLE") ? null : r.date_encoded,
-          (r.eligibility === "Not Eligible" || r.carpable === "NON-CARPABLE") ? null : r.date_distributed,
-          r.remarks, "System"
-        );
-      }
-    });
-    doWrites();
+    // Replace mode: delete all affected seqnos upfront in one transaction before streaming inserts
+    if (mode === "replace") {
+      rawDb.transaction(() => { for (const s of seqnos) deleteStmt.run(s); })();
+    }
+
+    const seenIds = new Set<string>();
+    const affectedSeqnos = new Set<string>();
+    const countBySeqno: Record<string, number> = {};
+
+    // Pass 2 (streaming): validate and accumulate rows into batches of 500.
+    // Each full batch is committed in its own transaction and then discarded,
+    // so only BATCH_SIZE rows ever live in memory at once.
+    const BATCH_SIZE = 500;
+    type MappedRow = ReturnType<typeof mapRow>;
+    let batch: MappedRow[] = [];
+
+    const flushBatch = () => {
+      if (batch.length === 0) return;
+      rawDb.transaction(() => {
+        for (const r of batch) {
+          insertStmt.run(
+            r.seqno_darro!, r.arb_name, r.arb_id, r.ep_cloa_no, r.carpable,
+            r.area_allocated, r.allocated_condoned_amount, r.eligibility, r.eligibility_reason,
+            (r.eligibility === "Not Eligible" || r.carpable === "NON-CARPABLE") ? null : r.date_encoded,
+            (r.eligibility === "Not Eligible" || r.carpable === "NON-CARPABLE") ? null : r.date_distributed,
+            r.remarks, "System"
+          );
+        }
+      })();
+      insertedCount += batch.length;
+      batch = [];
+    };
+
+    for await (const row of rowsFromBuffer()) {
+      const r = mapRow(row);
+      if (!r.seqno_darro || !r.arb_name || !r.arb_id || !r.carpable || r.area_allocated === null) { skippedCount++; continue; }
+      if (!r.allocated_condoned_amount || !r.eligibility) { skippedCount++; continue; }
+      if (r.eligibility === "Not Eligible" && !r.eligibility_reason) { skippedCount++; continue; }
+      if (seenIds.has(r.arb_id)) { skippedCount++; continue; }
+      if (!foundMap[r.seqno_darro]) { skippedCount++; continue; }
+      if (scopedProvince && foundMap[r.seqno_darro]?.province_edited !== scopedProvince) { skippedCount++; continue; }
+      seenIds.add(r.arb_id);
+      affectedSeqnos.add(r.seqno_darro);
+      countBySeqno[r.seqno_darro] = (countBySeqno[r.seqno_darro] ?? 0) + 1;
+      batch.push(r);
+      if (batch.length >= BATCH_SIZE) flushBatch();
+    }
+    flushBatch(); // commit any remaining rows
 
     const insertAudit = rawDb.prepare(
       `INSERT INTO "AuditLog" (seqno_darro, action, field_changed, old_value, new_value, changed_by, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     );
-    const countBySeqno: Record<string, number> = {};
-    for (const r of toInsert) countBySeqno[r.seqno_darro!] = (countBySeqno[r.seqno_darro!] ?? 0) + 1;
     for (const seqno of affectedSeqnos) {
       insertAudit.run(
         seqno, "ARB_UPLOAD", "arbs",
@@ -426,5 +503,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Database error during import. Check server logs." }, { status: 500 });
   }
 
-  return NextResponse.json({ imported: toInsert.length, skipped: valid.length - toInsert.length });
+  return NextResponse.json({ imported: insertedCount, skipped: skippedCount });
 }
