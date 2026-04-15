@@ -27,16 +27,46 @@ function toAreaStr(val: unknown): string | null {
   return hasStar ? `${n}*` : String(n);
 }
 
+// Normalizes any date string or Date object to mm/dd/yyyy.
+// Handles: Date objects, yyyy-mm-dd, mm-dd-yyyy, m/d/yyyy, mm/dd/yyyy.
+function normalizeDate(val: unknown): string | null {
+  if (val == null || String(val).trim() === "") return null;
+
+  // JS Date object → extract parts in local time to avoid UTC offset shifts
+  if (val instanceof Date) {
+    const m = String(val.getMonth() + 1).padStart(2, "0");
+    const d = String(val.getDate()).padStart(2, "0");
+    const y = val.getFullYear();
+    return `${m}/${d}/${y}`;
+  }
+
+  const s = String(val).trim();
+
+  // yyyy-mm-dd  (ISO / Excel text export)
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return `${iso[2]}/${iso[3]}/${iso[1]}`;
+
+  // mm-dd-yyyy  (dashes)
+  const mdy = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (mdy) return `${mdy[1].padStart(2,"0")}/${mdy[2].padStart(2,"0")}/${mdy[3]}`;
+
+  // mm/dd/yyyy or m/d/yyyy  (already correct format)
+  const slash = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slash) return `${slash[1].padStart(2,"0")}/${slash[2].padStart(2,"0")}/${slash[3]}`;
+
+  return s; // unrecognized — pass through as-is
+}
+
 function getCellText(cell: ExcelJS.Cell): unknown {
   const v = cell.value;
   if (v == null) return "";
-  if (v instanceof Date) return v.toISOString().split("T")[0];
+  if (v instanceof Date) return normalizeDate(v);
   if (typeof v === "object") {
     if ("richText" in v) return (v as ExcelJS.CellRichTextValue).richText.map((r) => r.text).join("");
     if ("text" in v) return (v as ExcelJS.CellHyperlinkValue).text;
     if ("result" in v) {
       const res = (v as ExcelJS.CellFormulaValue).result;
-      return res instanceof Date ? res.toISOString().split("T")[0] : res ?? "";
+      return res instanceof Date ? normalizeDate(res) : res ?? "";
     }
     return "";
   }
@@ -105,8 +135,9 @@ function mapRow(raw: RawRow): {
 
   const up = (v: string | null) => v?.toUpperCase() ?? null;
   const rawElig = toStr(norm["ELIGIBILITY"] ?? norm["ELIGIBILITY_FOR_DISTRIBUTION"]);
-  const eligibility = rawElig
-    ? (rawElig.toUpperCase().includes("NOT") ? "Not Eligible" : "Eligible")
+  const eligNorm = rawElig?.toUpperCase().replace(/\s+/g, " ").trim() ?? null;
+  const eligibility = eligNorm === "ELIGIBLE" ? "Eligible"
+    : eligNorm === "NOT ELIGIBLE" ? "Not Eligible"
     : null;
   const eligibility_reason = eligibility === "Not Eligible"
     ? toStr(norm["ELIGIBILITY_REASON"] ?? norm["REASON"])
@@ -122,8 +153,8 @@ function mapRow(raw: RawRow): {
     allocated_condoned_amount: toStr(norm["ALLOCATED_CONDONED_AMOUNT"] ?? norm["ALLOC_CONDONED_AMT"] ?? norm["CONDONED_AMOUNT"]),
     eligibility,
     eligibility_reason,
-    date_encoded: toStr(norm["DATE_ENCODED"]),
-    date_distributed: toStr(norm["DATE_DISTRIBUTED"]),
+    date_encoded: normalizeDate(norm["DATE_ENCODED"]),
+    date_distributed: normalizeDate(norm["DATE_DISTRIBUTED"]),
     remarks: toStr(norm["REMARKS"] ?? norm["NOTES"]),
   };
 }
@@ -193,6 +224,20 @@ export async function PUT(req: NextRequest) {
       continue;
     }
     valid.push(mapped);
+  }
+
+  // Collect rows where carpable = NON-CARPABLE but eligibility = Eligible (data inconsistency warning)
+  const carpableConflicts: { row: number; seqno: string; arb_name: string; arb_id: string }[] = [];
+  for (let i = 0; i < rawRows.length; i++) {
+    const mapped = mapRow(rawRows[i]);
+    if (mapped.carpable === "NON-CARPABLE" && mapped.eligibility === "Eligible") {
+      carpableConflicts.push({
+        row: i + 2,
+        seqno: mapped.seqno_darro ?? "",
+        arb_name: mapped.arb_name ?? "",
+        arb_id: mapped.arb_id ?? "",
+      });
+    }
   }
 
   // Check for ARB_IDs that already exist in DB (for append mode duplicate detection)
@@ -284,6 +329,7 @@ export async function PUT(req: NextRequest) {
     notFoundSeqnos,
     outOfJurisdictionSeqnos,
     lockedSeqnos,
+    carpableConflicts,
     bySEQNO,
     mode: mode ?? "append",
   });

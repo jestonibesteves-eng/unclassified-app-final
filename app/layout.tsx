@@ -5,6 +5,7 @@ import AppShell from "@/components/AppShell";
 import { ToastProvider } from "@/components/Toast";
 import { UserProvider } from "@/components/UserContext";
 import { SidebarProvider } from "@/components/SidebarContext";
+import SessionExpiryWarning from "@/components/SessionExpiryWarning";
 
 const ibmPlex = IBM_Plex_Sans({
   subsets: ["latin"],
@@ -32,6 +33,7 @@ export default function RootLayout({
           <SidebarProvider>
             <ToastProvider>
               <AppShell>{children}</AppShell>
+              <SessionExpiryWarning />
             </ToastProvider>
           </SidebarProvider>
         </UserProvider>

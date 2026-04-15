@@ -98,9 +98,9 @@ function MilestoneChart({
 
   return (
     <>
-      <div style={{ height: 148 }} className="px-1">
+      <div className="px-1">
         {chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height={148}>
             <LineChart data={chartData} margin={{ top: 8, right: 12, left: -20, bottom: 0 }}>
               <XAxis
                 dataKey="label"

@@ -160,7 +160,7 @@ function emptyRow(): ArbRow {
 /* ─── Upload File Panel ─── */
 type PreviewArb = { seqno_darro: string | null; arb_name: string | null; arb_id: string | null; ep_cloa_no: string | null; carpable: string | null; area_allocated: string | null; allocated_condoned_amount: string | null; eligibility: string | null; eligibility_reason: string | null; date_encoded: string | null; date_distributed: string | null; remarks: string | null };
 type BySEQNO = Record<string, { landowner: string | null; province: string | null; count: number; existingCount: number; arbs: PreviewArb[]; amendarea: number | null; amendarea_validated: number | null; condoned_amount: number | null; net_of_reval_no_neg: number | null }>;
-type PreviewData = { total: number; valid: number; errors: { row: number; reason: string }[]; arbIdConflicts: { row: number; arb_id: string; existing_seqno: string }[]; notFoundSeqnos: string[]; outOfJurisdictionSeqnos: string[]; lockedSeqnos: string[]; bySEQNO: BySEQNO } | null;
+type PreviewData = { total: number; valid: number; errors: { row: number; reason: string }[]; arbIdConflicts: { row: number; arb_id: string; existing_seqno: string }[]; notFoundSeqnos: string[]; outOfJurisdictionSeqnos: string[]; lockedSeqnos: string[]; carpableConflicts: { row: number; seqno: string; arb_name: string; arb_id: string }[]; bySEQNO: BySEQNO } | null;
 
 function UploadFilePanel({ onSaved }: { onSaved: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -173,6 +173,9 @@ function UploadFilePanel({ onSaved }: { onSaved: () => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showReplaceModal, setShowReplaceModal] = useState(false);
+  const [showCarpableModal, setShowCarpableModal] = useState(false);
+  const [previewPage, setPreviewPage] = useState(1);
+  const PREVIEW_PAGE_SIZE = 10;
 
   useEffect(() => {
     if (!showReplaceModal) return;
@@ -183,12 +186,22 @@ function UploadFilePanel({ onSaved }: { onSaved: () => void }) {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [showReplaceModal]);
 
+  useEffect(() => {
+    if (!showCarpableModal) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setShowCarpableModal(false);
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [showCarpableModal]);
+
   function clearPreview() {
     abortRef.current?.abort();
     abortRef.current = null;
     setPreview(null);
     setLoading(false);
     setError("");
+    setPreviewPage(1);
   }
 
   async function handlePreview() {
@@ -203,7 +216,7 @@ function UploadFilePanel({ onSaved }: { onSaved: () => void }) {
       const res = await fetch("/api/arbs/upload", { method: "PUT", body: fd, signal: controller.signal });
       const data = await res.json();
       if (!res.ok) { setError(data.error); setLoading(false); return; }
-      setPreview(data); setLoading(false);
+      setPreview(data); setPreviewPage(1); setLoading(false);
     } catch (err: unknown) {
       if (err instanceof Error && err.name === "AbortError") return;
       setError("Preview failed. Please try again."); setLoading(false);
@@ -215,6 +228,23 @@ function UploadFilePanel({ onSaved }: { onSaved: () => void }) {
     // Reset input value first — otherwise re-selecting the same filename won't fire onChange
     if (fileRef.current) fileRef.current.value = "";
     setTimeout(() => fileRef.current?.click(), 0);
+  }
+
+  function initiateImport() {
+    if (!preview) return;
+    const hasCarpableConflicts = (preview.carpableConflicts?.length ?? 0) > 0;
+    const hasReplacements = mode === "replace" && Object.values(preview.bySEQNO).some((i) => i.existingCount > 0);
+    if (hasCarpableConflicts) { setShowCarpableModal(true); return; }
+    if (hasReplacements) { setShowReplaceModal(true); return; }
+    handleImport();
+  }
+
+  function proceedAfterCarpableConfirm() {
+    setShowCarpableModal(false);
+    if (!preview) return;
+    const hasReplacements = mode === "replace" && Object.values(preview.bySEQNO).some((i) => i.existingCount > 0);
+    if (hasReplacements) { setShowReplaceModal(true); return; }
+    handleImport();
   }
 
   async function handleImport() {
@@ -448,6 +478,20 @@ function UploadFilePanel({ onSaved }: { onSaved: () => void }) {
                       </div>
                     )}
 
+                    {/* Non-CARPable but marked Eligible */}
+                    {(preview.carpableConflicts?.length ?? 0) > 0 && (
+                      <div className="px-4 py-3 bg-yellow-50">
+                        <div className="flex items-start gap-2">
+                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-yellow-500 text-white text-[10px] font-bold shrink-0 mt-0.5">{preview.carpableConflicts.length}</span>
+                          <div>
+                            <p className="text-[12px] font-semibold text-yellow-800">Non-CARPable ARB{preview.carpableConflicts.length !== 1 ? "s" : ""} marked as Eligible — confirmation required</p>
+                            <p className="text-[11px] text-yellow-700 mt-0.5">These ARBs have CARPABLE = NON-CARPABLE but ELIGIBILITY = Eligible. You will be asked to confirm before importing.</p>
+                            <p className="text-[11px] text-yellow-600 font-mono mt-1">{preview.carpableConflicts.slice(0, 4).map((c) => c.arb_id).join(", ")}{preview.carpableConflicts.length > 4 ? ` +${preview.carpableConflicts.length - 4} more` : ""}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Row-level validation errors */}
                     {preview.errors.length > 0 && (
                       <div className="px-4 py-3 bg-red-50">
@@ -468,23 +512,24 @@ function UploadFilePanel({ onSaved }: { onSaved: () => void }) {
                   </div>
                 </div>
               )}
-              <div className="flex justify-end mb-1.5">
-                {(() => {
-                  const allExpanded = Object.keys(preview.bySEQNO).every((s) => expanded[s]);
-                  return (
-                    <button
-                      onClick={() => {
-                        const keys = Object.keys(preview.bySEQNO);
-                        setExpanded(allExpanded ? {} : Object.fromEntries(keys.map((k) => [k, true])));
-                      }}
-                      className="text-[12px] text-green-700 font-semibold hover:underline"
-                    >
-                      {allExpanded ? "Collapse All" : "Expand All"}
-                    </button>
-                  );
-                })()}
+              {(() => {
+                const allEntries = Object.entries(preview.bySEQNO);
+                const totalPages = Math.ceil(allEntries.length / PREVIEW_PAGE_SIZE);
+                const allExpanded = allEntries.every(([s]) => expanded[s]);
+                return (
+              <>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[12px] text-gray-400">
+                  Showing {Math.min((previewPage - 1) * PREVIEW_PAGE_SIZE + 1, allEntries.length)}–{Math.min(previewPage * PREVIEW_PAGE_SIZE, allEntries.length)} of {allEntries.length} landholding{allEntries.length !== 1 ? "s" : ""}
+                </span>
+                <button
+                  onClick={() => setExpanded(allExpanded ? {} : Object.fromEntries(allEntries.map(([k]) => [k, true])))}
+                  className="text-[12px] text-green-700 font-semibold hover:underline"
+                >
+                  {allExpanded ? "Collapse All" : "Expand All"}
+                </button>
               </div>
-              <div className="overflow-x-auto rounded-lg border border-gray-100 mb-4">
+              <div className="overflow-x-auto rounded-lg border border-gray-100 mb-3">
                 <table className="w-full">
                   <thead className="bg-green-900 text-white text-[11px] uppercase tracking-wider">
                     <tr>
@@ -501,99 +546,130 @@ function UploadFilePanel({ onSaved }: { onSaved: () => void }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.entries(preview.bySEQNO).map(([seqno, info], i) => {
+                    {allEntries.slice((previewPage - 1) * PREVIEW_PAGE_SIZE, previewPage * PREVIEW_PAGE_SIZE).map(([seqno, info], i) => {
                       const willReplace = mode === "replace" && info.existingCount > 0;
+                      const totalArea = info.arbs.reduce((s, a) => s + parseArea(a.area_allocated), 0);
+                      const validatedArea = info.amendarea_validated ?? info.amendarea;
+                      const areaMatch = validatedArea != null && parseFloat(totalArea.toFixed(4)) === parseFloat(validatedArea.toFixed(4));
+                      const areaDiff = validatedArea != null ? totalArea - validatedArea : null;
+                      const condonedAmt = info.condoned_amount ?? info.net_of_reval_no_neg;
                       return (
                       <React.Fragment key={seqno}>
+                        {/* ── Parent row ── */}
                         <tr
-                          className={`border-t cursor-pointer transition-colors ${willReplace ? "border-orange-200 bg-orange-50/60 hover:bg-orange-50" : `border-gray-100 hover:bg-green-50 ${i % 2 === 0 ? "bg-white" : "bg-gray-50"}`}`}
+                          className={`border-t cursor-pointer transition-colors group ${
+                            willReplace
+                              ? "border-orange-200 bg-orange-50/40 hover:bg-orange-50"
+                              : `border-gray-100 hover:bg-green-50/60 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/40"}`
+                          }`}
                           onClick={() => setExpanded((prev) => ({ ...prev, [seqno]: !prev[seqno] }))}
                         >
-                          <td className="px-3 py-2 text-gray-400 text-[11px] text-center">
-                            {expanded[seqno] ? "▾" : "▸"}
+                          {/* Chevron */}
+                          <td className="pl-3 pr-1 py-3 w-8">
+                            <span className={`inline-flex items-center justify-center w-5 h-5 rounded transition-all duration-150 ${
+                              expanded[seqno] ? "bg-green-800 text-white" : "bg-gray-100 text-gray-400 group-hover:bg-green-100 group-hover:text-green-700"
+                            }`}>
+                              <svg className={`w-3 h-3 transition-transform duration-200 ${expanded[seqno] ? "rotate-180" : ""}`} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M2 4l4 4 4-4"/>
+                              </svg>
+                            </span>
                           </td>
-                          <td className="px-3 py-2 font-mono text-[13px] text-green-700 font-semibold">{seqno}</td>
-                          <td className="px-3 py-2 text-gray-800 max-w-[180px] truncate">{info.landowner ?? "—"}</td>
-                          <td className="px-3 py-2 text-gray-600">{info.province ?? "—"}</td>
-                          <td className="px-3 py-2 text-right font-semibold text-green-700">{info.count}</td>
-                          <td className="px-3 py-2 text-right text-gray-500">
+                          {/* SEQNO */}
+                          <td className="px-2 py-3">
+                            <span className="font-mono text-[12px] font-bold text-green-800 bg-green-50 border border-green-200 px-2 py-0.5 rounded-md whitespace-nowrap">{seqno}</span>
+                          </td>
+                          {/* Landowner */}
+                          <td className="px-3 py-3 max-w-[180px]">
+                            <p className="text-[13px] font-semibold text-gray-800 truncate leading-tight">{info.landowner ?? "—"}</p>
+                          </td>
+                          {/* Province */}
+                          <td className="px-3 py-3 text-[12px] text-gray-500 whitespace-nowrap">{info.province ?? "—"}</td>
+                          {/* ARBs in file */}
+                          <td className="px-3 py-3 text-right">
+                            <span className="text-[14px] font-bold text-green-700">{info.count}</span>
+                          </td>
+                          {/* Existing */}
+                          <td className="px-3 py-3 text-right text-[12px]">
                             {info.existingCount > 0
-                              ? <span className={mode === "replace" ? "text-orange-600" : "text-gray-500"}>{info.existingCount} {mode === "replace" ? "(replace)" : "(keep)"}</span>
-                              : "—"}
+                              ? <span className={`font-semibold ${willReplace ? "text-orange-600" : "text-gray-500"}`}>
+                                  {info.existingCount}
+                                  <span className="text-[10px] font-normal ml-1 opacity-70">{willReplace ? "replace" : "keep"}</span>
+                                </span>
+                              : <span className="text-gray-300">—</span>}
                           </td>
-                          {(() => {
-                            const totalArea = info.arbs.reduce((s, a) => s + parseArea(a.area_allocated), 0);
-                            const validatedArea = info.amendarea_validated ?? info.amendarea;
-                            const match = validatedArea != null && parseFloat(totalArea.toFixed(4)) === parseFloat(validatedArea.toFixed(4));
-                            const mismatch = validatedArea != null && !match;
-                            return (
-                              <>
-                                <td className="px-3 py-2 text-right font-mono text-[13px] text-gray-700">{totalArea.toFixed(4)}</td>
-                                <td className="px-3 py-2 text-right font-mono text-[13px] text-gray-500">{validatedArea != null ? validatedArea.toFixed(4) : "—"}</td>
-                                <td className="px-3 py-2 text-right font-mono text-[13px] text-gray-500">
-                                  {(info.condoned_amount ?? info.net_of_reval_no_neg) != null
-                                    ? (info.condoned_amount ?? info.net_of_reval_no_neg)!.toLocaleString("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 2 })
-                                    : "—"}
-                                </td>
-                                <td className="px-3 py-2 text-center">
-                                  {validatedArea == null ? <span className="text-gray-300 text-[12px]">—</span>
-                                    : match
-                                    ? <span className="text-emerald-600 font-bold text-[13px]" title="Matches validated AMENDAREA">✓</span>
-                                    : (() => {
-                                        const diff = totalArea - validatedArea;
-                                        const label = diff < 0
-                                          ? `Deficit of ${Math.abs(diff).toFixed(4)} ha`
-                                          : `Excess of ${diff.toFixed(4)} ha`;
-                                        return <MismatchBadge label={label} />;
-                                      })()}
-                                </td>
-                              </>
-                            );
-                          })()}
+                          {/* Total area */}
+                          <td className="px-3 py-3 text-right font-mono text-[12px] text-gray-700">{totalArea.toFixed(4)}</td>
+                          {/* Validated AMENDAREA */}
+                          <td className="px-3 py-3 text-right font-mono text-[12px] text-gray-500">{validatedArea != null ? validatedArea.toFixed(4) : "—"}</td>
+                          {/* Val. Condoned Amt */}
+                          <td className="px-3 py-3 text-right font-mono text-[12px] text-gray-500">
+                            {condonedAmt != null ? condonedAmt.toLocaleString("en-PH", { style: "currency", currency: "PHP", minimumFractionDigits: 2 }) : "—"}
+                          </td>
+                          {/* Match */}
+                          <td className="px-3 py-3 text-center">
+                            {validatedArea == null
+                              ? <span className="text-gray-200 text-[12px]">—</span>
+                              : areaMatch
+                              ? <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 text-[11px] font-bold" title="Matches validated AMENDAREA">✓</span>
+                              : (() => {
+                                  const label = areaDiff! < 0
+                                    ? `Deficit of ${Math.abs(areaDiff!).toFixed(4)} ha`
+                                    : `Excess of ${areaDiff!.toFixed(4)} ha`;
+                                  return <MismatchBadge label={label} />;
+                                })()}
+                          </td>
                         </tr>
+
+                        {/* ── Expanded ARB table ── */}
                         {expanded[seqno] && (
-                          <tr className="bg-green-50/60 border-t border-green-100">
-                            <td colSpan={10} className="px-6 py-3">
-                              <div className="overflow-x-auto">
-                              <table className="border-collapse min-w-full">
-                                <thead>
-                                  <tr className="text-gray-400 border-b border-gray-200">
-                                    <th className="pb-1.5 pr-4 text-left whitespace-nowrap">ARB Name</th>
-                                    <th className="pb-1.5 pr-4 text-left whitespace-nowrap">ARB ID</th>
-                                    <th className="pb-1.5 pr-4 text-left whitespace-nowrap">EP/CLOA No.</th>
-                                    <th className="pb-1.5 pr-4 text-right whitespace-nowrap">Area (has.)</th>
-                                    <th className="pb-1.5 pr-4 text-left whitespace-nowrap">CARPable</th>
-                                    <th className="pb-1.5 pr-4 text-left whitespace-nowrap">Eligibility</th>
-                                    <th className="pb-1.5 pr-4 text-left whitespace-nowrap">Alloc. Condoned Amt</th>
-                                    <th className="pb-1.5 pr-4 text-left whitespace-nowrap">Date Encoded</th>
-                                    <th className="pb-1.5 pr-4 text-left whitespace-nowrap">Date Distributed</th>
-                                    <th className="pb-1.5 text-left whitespace-nowrap">Remarks</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {info.arbs.map((arb, j) => (
-                                    <tr key={j} className="border-t border-gray-100">
-                                      <td className="py-1.5 pr-4 text-gray-800 font-medium whitespace-nowrap">{arb.arb_name ?? "—"}</td>
-                                      <td className="py-1.5 pr-4 text-gray-500 font-mono whitespace-nowrap">{arb.arb_id ?? "—"}</td>
-                                      <td className="py-1.5 pr-4 text-gray-500 font-mono whitespace-nowrap">{arb.ep_cloa_no ?? "—"}</td>
-                                      <td className="py-1.5 pr-4 text-right text-gray-600 font-mono whitespace-nowrap">{displayArea(arb.area_allocated)}</td>
-                                      <td className="py-1.5 pr-4 whitespace-nowrap">{arb.carpable ? <span className={`px-1.5 py-0.5 rounded text-[11px] font-semibold ${arb.carpable === "CARPABLE" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"}`}>{arb.carpable}</span> : <span className="text-gray-300">—</span>}</td>
-                                      <td className="py-1.5 pr-4 whitespace-nowrap">
-                                        {arb.eligibility ? (
-                                          <span className={`px-1.5 py-0.5 rounded text-[11px] font-semibold ${arb.eligibility === "Eligible" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"}`}>
-                                            {arb.eligibility}
-                                          </span>
-                                        ) : <span className="text-gray-300">—</span>}
-                                        {arb.eligibility_reason && <p className="text-xs text-gray-400 mt-0.5 max-w-[160px] truncate" title={arb.eligibility_reason}>{arb.eligibility_reason}</p>}
-                                      </td>
-                                      <td className="py-1.5 pr-4 text-gray-600 whitespace-nowrap">{displayCondoned(arb.allocated_condoned_amount)}</td>
-                                      <td className="py-1.5 pr-4 text-gray-500 font-mono whitespace-nowrap">{arb.date_encoded ?? "—"}</td>
-                                      <td className="py-1.5 pr-4 text-gray-500 font-mono whitespace-nowrap">{arb.date_distributed ?? "—"}</td>
-                                      <td className="py-1.5 text-gray-400">{arb.remarks ?? "—"}</td>
+                          <tr className="border-t-0">
+                            <td colSpan={10} className="p-0">
+                              <div className="mx-4 mb-3 rounded-b-lg border border-t-0 border-green-200 overflow-hidden bg-white">
+                                <table className="w-full border-collapse">
+                                  <thead>
+                                    <tr className="bg-green-950/90 text-green-200">
+                                      <th className="px-3 py-1.5 text-left text-[10px] font-semibold uppercase tracking-widest">ARB Name</th>
+                                      <th className="px-3 py-1.5 text-left text-[10px] font-semibold uppercase tracking-widest">ARB ID</th>
+                                      <th className="px-3 py-1.5 text-left text-[10px] font-semibold uppercase tracking-widest">EP/CLOA No.</th>
+                                      <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-widest">Area</th>
+                                      <th className="px-3 py-1.5 text-left text-[10px] font-semibold uppercase tracking-widest">CARPable</th>
+                                      <th className="px-3 py-1.5 text-left text-[10px] font-semibold uppercase tracking-widest">Eligibility</th>
+                                      <th className="px-3 py-1.5 text-right text-[10px] font-semibold uppercase tracking-widest">Alloc. Amount</th>
+                                      <th className="px-3 py-1.5 text-left text-[10px] font-semibold uppercase tracking-widest">Date Encoded</th>
+                                      <th className="px-3 py-1.5 text-left text-[10px] font-semibold uppercase tracking-widest">Date Distributed</th>
+                                      <th className="px-3 py-1.5 text-left text-[10px] font-semibold uppercase tracking-widest">Remarks</th>
                                     </tr>
-                                  ))}
-                                </tbody>
-                              </table>
+                                  </thead>
+                                  <tbody>
+                                    {info.arbs.map((arb, j) => {
+                                      const isNonCarpable = arb.carpable === "NON-CARPABLE";
+                                      const isNotEligible = arb.eligibility === "Not Eligible";
+                                      return (
+                                        <tr key={j} className={`border-t border-gray-100 ${j % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
+                                          <td className="px-3 py-2 text-[12px] font-medium text-gray-800 whitespace-nowrap">{arb.arb_name ?? "—"}</td>
+                                          <td className="px-3 py-2 text-[11px] font-mono text-gray-500 whitespace-nowrap">{arb.arb_id ?? "—"}</td>
+                                          <td className="px-3 py-2 text-[11px] font-mono text-gray-400 whitespace-nowrap">{arb.ep_cloa_no ?? "—"}</td>
+                                          <td className="px-3 py-2 text-right text-[12px] font-mono text-gray-700 whitespace-nowrap">{displayArea(arb.area_allocated)}</td>
+                                          <td className="px-3 py-2 whitespace-nowrap">
+                                            {arb.carpable
+                                              ? <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isNonCarpable ? "bg-red-50 text-red-600 border border-red-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>{arb.carpable}</span>
+                                              : <span className="text-gray-300">—</span>}
+                                          </td>
+                                          <td className="px-3 py-2 whitespace-nowrap">
+                                            {arb.eligibility
+                                              ? <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isNotEligible ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-sky-50 text-sky-700 border border-sky-200"}`}>{arb.eligibility}</span>
+                                              : <span className="text-gray-300">—</span>}
+                                            {arb.eligibility_reason && <span className="ml-1.5 text-[10px] text-gray-400" title={arb.eligibility_reason}>({arb.eligibility_reason.length > 20 ? arb.eligibility_reason.slice(0, 20) + "…" : arb.eligibility_reason})</span>}
+                                          </td>
+                                          <td className="px-3 py-2 text-right text-[11px] font-mono text-gray-600 whitespace-nowrap">{displayCondoned(arb.allocated_condoned_amount)}</td>
+                                          <td className="px-3 py-2 text-[11px] font-mono text-gray-500 whitespace-nowrap">{arb.date_encoded ?? <span className="text-gray-300">—</span>}</td>
+                                          <td className="px-3 py-2 text-[11px] font-mono text-gray-500 whitespace-nowrap">{arb.date_distributed ?? <span className="text-gray-300">—</span>}</td>
+                                          <td className="px-3 py-2 text-[11px] text-gray-400 max-w-[140px] truncate" title={arb.remarks ?? ""}>{arb.remarks || <span className="text-gray-300">—</span>}</td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
                               </div>
                             </td>
                           </tr>
@@ -603,6 +679,49 @@ function UploadFilePanel({ onSaved }: { onSaved: () => void }) {
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-1 mb-4">
+                  <button
+                    onClick={() => setPreviewPage(1)}
+                    disabled={previewPage === 1}
+                    className="px-2 py-1 rounded text-[12px] text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-default"
+                  >«</button>
+                  <button
+                    onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}
+                    disabled={previewPage === 1}
+                    className="px-2 py-1 rounded text-[12px] text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-default"
+                  >‹</button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((p) => p === 1 || p === totalPages || Math.abs(p - previewPage) <= 2)
+                    .reduce<(number | "…")[]>((acc, p, idx, arr) => {
+                      if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("…");
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((p, idx) =>
+                      p === "…"
+                        ? <span key={`e${idx}`} className="px-2 py-1 text-[12px] text-gray-400">…</span>
+                        : <button
+                            key={p}
+                            onClick={() => setPreviewPage(p)}
+                            className={`px-2.5 py-1 rounded text-[12px] font-medium transition-colors ${previewPage === p ? "bg-green-900 text-white" : "text-gray-600 hover:bg-gray-100"}`}
+                          >{p}</button>
+                    )}
+                  <button
+                    onClick={() => setPreviewPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={previewPage === totalPages}
+                    className="px-2 py-1 rounded text-[12px] text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-default"
+                  >›</button>
+                  <button
+                    onClick={() => setPreviewPage(totalPages)}
+                    disabled={previewPage === totalPages}
+                    className="px-2 py-1 rounded text-[12px] text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-default"
+                  >»</button>
+                </div>
+              )}
+              </>);})()}
 
               {/* Replace warning banner */}
               {mode === "replace" && (() => {
@@ -631,10 +750,7 @@ function UploadFilePanel({ onSaved }: { onSaved: () => void }) {
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => {
-                    const hasReplacements = mode === "replace" && Object.values(preview.bySEQNO).some((info) => info.existingCount > 0);
-                    if (hasReplacements) { setShowReplaceModal(true); } else { handleImport(); }
-                  }}
+                  onClick={initiateImport}
                   disabled={loading || preview.valid === 0}
                   className="px-6 py-2.5 bg-green-900 text-white rounded-lg text-sm font-semibold hover:bg-green-800 disabled:opacity-40 transition-colors">
                   {loading ? "Importing..." : `Confirm Import — ${preview.valid} ARB${preview.valid !== 1 ? "s" : ""}`}
@@ -675,6 +791,67 @@ function UploadFilePanel({ onSaved }: { onSaved: () => void }) {
                         onClick={() => { setShowReplaceModal(false); handleImport(); }}
                         className="px-5 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors">
                         Yes, Replace ARBs
+                      </button>
+                    </div>
+                  </div>
+                </div>,
+                document.body
+              )}
+
+              {/* Non-CARPable / Eligible conflict modal */}
+              {showCarpableModal && preview && typeof window !== "undefined" && createPortal(
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-[2px] p-4">
+                  <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-5 h-5 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-gray-900 text-[15px]">Non-CARPable ARBs Marked as Eligible</h3>
+                        <p className="text-[12px] text-gray-500">Please review before proceeding.</p>
+                      </div>
+                    </div>
+                    <p className="text-[13px] text-gray-700 mb-3">
+                      The following <span className="font-semibold">{preview.carpableConflicts.length} ARB{preview.carpableConflicts.length !== 1 ? "s" : ""}</span> are marked as <span className="font-semibold text-red-600">NON-CARPABLE</span> but have Eligibility set to <span className="font-semibold text-emerald-600">Eligible</span>. This is likely a data entry error.
+                    </p>
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg overflow-hidden mb-5">
+                      <table className="w-full text-[12px]">
+                        <thead>
+                          <tr className="bg-yellow-100 text-yellow-800 font-semibold">
+                            <th className="px-3 py-2 text-left">Row</th>
+                            <th className="px-3 py-2 text-left">ARB ID</th>
+                            <th className="px-3 py-2 text-left">ARB Name</th>
+                            <th className="px-3 py-2 text-left">SEQNO</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {preview.carpableConflicts.slice(0, 8).map((c) => (
+                            <tr key={c.arb_id} className="border-t border-yellow-200">
+                              <td className="px-3 py-1.5 text-yellow-700 font-mono">{c.row}</td>
+                              <td className="px-3 py-1.5 font-mono font-semibold text-gray-800">{c.arb_id}</td>
+                              <td className="px-3 py-1.5 text-gray-700 truncate max-w-[120px]">{c.arb_name}</td>
+                              <td className="px-3 py-1.5 font-mono text-green-700">{c.seqno}</td>
+                            </tr>
+                          ))}
+                          {preview.carpableConflicts.length > 8 && (
+                            <tr className="border-t border-yellow-200 bg-yellow-50">
+                              <td colSpan={4} className="px-3 py-1.5 text-[11px] text-yellow-600 text-center">+{preview.carpableConflicts.length - 8} more</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="text-[12px] text-gray-500 mb-4">Do you want to proceed with the import anyway? The Eligibility values will be saved as-is.</p>
+                    <div className="flex gap-3 justify-end">
+                      <button onClick={() => setShowCarpableModal(false)} className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm hover:bg-gray-50">
+                        Cancel
+                      </button>
+                      <button
+                        onClick={proceedAfterCarpableConfirm}
+                        className="px-5 py-2 bg-yellow-500 text-white rounded-lg text-sm font-semibold hover:bg-yellow-600 transition-colors">
+                        Proceed Anyway
                       </button>
                     </div>
                   </div>
@@ -1010,6 +1187,8 @@ function ManualEntryPanel({ onSaved }: { onSaved: () => void }) {
 /* ─── ARB Viewer ─── */
 function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boolean }) {
   const toast = useToast();
+  const { user } = useUser();
+  const isRegional = user?.office_level === "regional";
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [landholdings, setLandholdings] = useState<LHSummary[]>([]);
@@ -1032,12 +1211,18 @@ function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boo
   const [editError, setEditError] = useState("");
   const [detailSeqno, setDetailSeqno] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [provinceFilter, setProvinceFilter] = useState("");
+  const [provinces, setProvinces] = useState<string[]>([]);
   const [addingArbSeqno, setAddingArbSeqno] = useState<string | null>(null);
   const [newArbRow, setNewArbRow] = useState<ArbRow>(emptyRow());
   const [savingNewArb, setSavingNewArb] = useState(false);
   const [newArbError, setNewArbError] = useState("");
+  const [selectedSeqnos, setSelectedSeqnos] = useState<Set<string>>(new Set());
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [deletingBulk, setDeletingBulk] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const limit = 30;
+  const LOCKED_STATUSES = ["For Encoding","Partially Encoded","Fully Encoded","Partially Distributed","Fully Distributed","Not Eligible for Encoding"];
 
   async function handleExport() {
     setExporting(true);
@@ -1045,6 +1230,7 @@ function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boo
     if (search) params.set("search", search);
     if (matchFilter) params.set("match", matchFilter);
     if (amountFilter) params.set("amountMatch", amountFilter);
+    if (provinceFilter) params.set("province", provinceFilter);
     const res = await fetch(`/api/arbs/export?${params}`);
     if (res.ok) {
       const blob = await res.blob();
@@ -1066,6 +1252,7 @@ function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boo
       if (search) params.set("search", search);
       if (matchFilter) params.set("match", matchFilter);
       if (amountFilter) params.set("amountMatch", amountFilter);
+      if (provinceFilter) params.set("province", provinceFilter);
       const res = await fetch(`/api/arbs/list?${params}`);
       const text = await res.text();
       const data = text ? JSON.parse(text) : {};
@@ -1080,9 +1267,16 @@ function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boo
     } finally {
       setLoading(false);
     }
-  }, [page, search, matchFilter, amountFilter, refreshKey]);
+  }, [page, search, matchFilter, amountFilter, provinceFilter, refreshKey]);
 
   useEffect(() => { fetchList(); }, [fetchList]);
+
+  useEffect(() => {
+    if (!isRegional) return;
+    fetch("/api/provinces")
+      .then((r) => r.ok ? r.json() : { provinces: [] })
+      .then((d) => setProvinces(d.provinces ?? []));
+  }, [isRegional]);
 
   // When a new import happens (refreshKey bumps), clear cached detail panels so
   // they re-fetch fresh data the next time the user expands a row.
@@ -1093,7 +1287,7 @@ function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boo
 
   useEffect(() => {
     if (debounce.current) clearTimeout(debounce.current);
-    debounce.current = setTimeout(() => { setSearch(searchInput); setPage(1); }, 350);
+    debounce.current = setTimeout(() => { setSearch(searchInput); setPage(1); setSelectedSeqnos(new Set()); }, 350);
   }, [searchInput]);
 
   async function fetchDetail(seqno: string) {
@@ -1164,6 +1358,29 @@ function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boo
     toast(`All ARBs for ${seqno} deleted.`, "warning");
     setDeletingAll(false);
     setConfirmDeleteAll(null);
+  }
+
+  async function handleBulkDelete() {
+    setDeletingBulk(true);
+    const seqnos = Array.from(selectedSeqnos);
+    for (const seqno of seqnos) {
+      await fetch(`/api/arbs/${encodeURIComponent(seqno)}`, { method: "DELETE" });
+    }
+    setExpanded((prev) => {
+      const n = { ...prev };
+      seqnos.forEach((s) => delete n[s]);
+      return n;
+    });
+    setDetails((prev) => {
+      const n = { ...prev };
+      seqnos.forEach((s) => delete n[s]);
+      return n;
+    });
+    setSelectedSeqnos(new Set());
+    setShowBulkDeleteModal(false);
+    fetchList();
+    toast(`Deleted ARBs for ${seqnos.length} landholding${seqnos.length !== 1 ? "s" : ""}.`, "warning");
+    setDeletingBulk(false);
   }
 
   async function saveEdit() {
@@ -1240,12 +1457,39 @@ function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boo
         />
       );
     })()}
+    {showBulkDeleteModal && typeof window !== "undefined" && createPortal(
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-[2px] p-4" onClick={() => !deletingBulk && setShowBulkDeleteModal(false)}>
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-3 mb-4">
+            <span className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+              <svg className="text-red-600" width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+              </svg>
+            </span>
+            <div>
+              <p className="font-bold text-gray-800 text-[15px]">Confirm Bulk Delete</p>
+              <p className="text-[13px] text-gray-500 mt-0.5">This will delete all ARBs for {selectedSeqnos.size} landholding{selectedSeqnos.size !== 1 ? "s" : ""}. This action cannot be undone.</p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-2">
+            <button onClick={() => setShowBulkDeleteModal(false)} disabled={deletingBulk}
+              className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 transition-colors">
+              Cancel
+            </button>
+            <button onClick={handleBulkDelete} disabled={deletingBulk}
+              className="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-40 transition-colors">
+              {deletingBulk ? "Deleting…" : `Delete ${selectedSeqnos.size} Selected`}
+            </button>
+          </div>
+        </div>
+      </div>
+    , document.body)}
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-100 space-y-3">
         {/* Row 1: title + stats */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-baseline gap-2">
-            <h3 className="font-bold text-gray-800 text-[15px]">ARB Upload & Viewer</h3>
+            <h3 className="font-bold text-gray-800 text-[15px]">ARB Viewer</h3>
             <span className="text-[12px] text-gray-400">{total.toLocaleString()} landholding{total !== 1 ? "s" : ""} with ARBs</span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -1276,7 +1520,7 @@ function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boo
             </span>
             <div className="flex items-center gap-1 bg-sky-50 border border-sky-200 rounded-lg p-1">
               {([["", "All"], ["matched", "✓ Matched"], ["mismatched", "✕ Mismatch"]] as const).map(([val, label]) => (
-                <button key={val} onClick={() => { setMatchFilter(val); setPage(1); }}
+                <button key={val} onClick={() => { setMatchFilter(val); setPage(1); setSelectedSeqnos(new Set()); }}
                   className={`px-3 py-1 rounded-md text-[12px] font-semibold transition-colors ${
                     matchFilter === val
                       ? val === "matched" ? "bg-emerald-600 text-white" : val === "mismatched" ? "bg-red-500 text-white" : "bg-sky-600 text-white shadow-sm"
@@ -1293,7 +1537,7 @@ function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boo
             </span>
             <div className="flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-lg p-1">
               {([["", "All"], ["matched", "✓ Matched"], ["mismatched", "✕ Mismatch"]] as const).map(([val, label]) => (
-                <button key={val} onClick={() => { setAmountFilter(val); setPage(1); }}
+                <button key={val} onClick={() => { setAmountFilter(val); setPage(1); setSelectedSeqnos(new Set()); }}
                   className={`px-3 py-1 rounded-md text-[12px] font-semibold transition-colors ${
                     amountFilter === val
                       ? val === "matched" ? "bg-emerald-600 text-white" : val === "mismatched" ? "bg-red-500 text-white" : "bg-amber-500 text-white shadow-sm"
@@ -1302,6 +1546,25 @@ function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boo
               ))}
             </div>
           </div>
+          {/* Province filter — regional accounts only */}
+          {isRegional && provinces.length > 0 && (
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-violet-600 px-1 flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd"/></svg>
+                Province
+              </span>
+              <select
+                value={provinceFilter}
+                onChange={(e) => { setProvinceFilter(e.target.value); setPage(1); setSelectedSeqnos(new Set()); }}
+                className="border border-violet-200 bg-violet-50 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold text-violet-800 focus:outline-none focus:ring-2 focus:ring-violet-400 self-end"
+              >
+                <option value="">All Provinces</option>
+                {provinces.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <button
             onClick={handleExport}
             disabled={exporting || loading || total === 0}
@@ -1319,6 +1582,24 @@ function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boo
         </div>
       </div>
 
+      {isEditor && selectedSeqnos.size > 0 && (
+        <div className="px-5 py-2.5 bg-red-50 border-t border-red-200 flex items-center justify-between gap-3">
+          <span className="text-[13px] text-red-700 font-semibold">{selectedSeqnos.size} landholding{selectedSeqnos.size !== 1 ? "s" : ""} selected</span>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setSelectedSeqnos(new Set())}
+              className="text-[12px] text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-100 transition-colors">
+              Clear
+            </button>
+            <button onClick={() => setShowBulkDeleteModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[12px] font-semibold rounded-lg transition-colors">
+              <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              Delete Selected
+            </button>
+          </div>
+        </div>
+      )}
       {total === 0 && !loading ? (
         <div className="px-5 py-12 text-center text-gray-400 text-sm">No ARBs uploaded yet.</div>
       ) : (
@@ -1326,6 +1607,28 @@ function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boo
           <table className="w-full">
             <thead className="bg-green-900 text-white">
               <tr>
+                {isEditor && (
+                  <th className="pl-3 pr-1 py-2.5 w-8">
+                    {(() => {
+                      const selectableSeqnos = landholdings.filter((lh) => !LOCKED_STATUSES.includes(lh.status ?? "")).map((lh) => lh.seqno_darro);
+                      const allSelected = selectableSeqnos.length > 0 && selectableSeqnos.every((s) => selectedSeqnos.has(s));
+                      const someSelected = selectableSeqnos.some((s) => selectedSeqnos.has(s));
+                      return (
+                        <input type="checkbox" checked={allSelected} ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                          onChange={() => {
+                            if (allSelected) {
+                              setSelectedSeqnos((prev) => { const n = new Set(prev); selectableSeqnos.forEach((s) => n.delete(s)); return n; });
+                            } else {
+                              setSelectedSeqnos((prev) => { const n = new Set(prev); selectableSeqnos.forEach((s) => n.add(s)); return n; });
+                            }
+                          }}
+                          className="w-3.5 h-3.5 rounded accent-green-400 cursor-pointer"
+                          title="Select all on this page"
+                        />
+                      );
+                    })()}
+                  </th>
+                )}
                 <th className="px-3 py-2.5 text-left">SEQNO_DARRO</th>
                 <th className="px-3 py-2.5 text-left">CLNO</th>
                 <th className="px-3 py-2.5 text-left">Landowner</th>
@@ -1360,6 +1663,27 @@ function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boo
                         ][i % 4]
                       }`}
                       onClick={() => toggleRow(lh.seqno_darro)}>
+                      {isEditor && (() => {
+                        const locked = LOCKED_STATUSES.includes(lh.status ?? "");
+                        return (
+                          <td className="pl-3 pr-1 py-2 w-8" onClick={(e) => e.stopPropagation()}>
+                            <input type="checkbox"
+                              checked={selectedSeqnos.has(lh.seqno_darro)}
+                              disabled={locked}
+                              onChange={() => {
+                                setSelectedSeqnos((prev) => {
+                                  const n = new Set(prev);
+                                  if (n.has(lh.seqno_darro)) n.delete(lh.seqno_darro);
+                                  else n.add(lh.seqno_darro);
+                                  return n;
+                                });
+                              }}
+                              className={`w-3.5 h-3.5 rounded accent-green-600 ${locked ? "opacity-30 cursor-not-allowed" : "cursor-pointer"}`}
+                              title={locked ? "Cannot select — record is locked" : "Select"}
+                            />
+                          </td>
+                        );
+                      })()}
                       <td className="px-3 py-2 whitespace-nowrap">
                         <button
                           type="button"
@@ -1438,7 +1762,7 @@ function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boo
                     </tr>
                     {isOpen && (
                       <tr>
-                        <td colSpan={10} className={`px-0 py-0 border-t border-l-4 ${
+                        <td colSpan={isEditor ? 11 : 10} className={`px-0 py-0 border-t border-l-4 ${
                           [
                             "bg-green-50 border-green-100 border-l-green-700",
                             "bg-blue-50 border-blue-100 border-l-blue-600",

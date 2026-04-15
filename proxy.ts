@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
+import { jwtVerify, SignJWT } from "jose";
 
 const SESSION_COOKIE = "dar_session";
+const SESSION_EXP_COOKIE = "dar_session_exp"; // non-httpOnly, readable by JS
+const SESSION_DURATION_S = 60 * 60; // 1 hour in seconds
 
 /* ── Route permission rules ── */
 const ADMIN_PAGES   = ["/flags", "/audit", "/users"];
@@ -12,12 +14,18 @@ type SessionUser = {
   must_change_password: boolean;
 };
 
-async function getSessionUser(token: string): Promise<SessionUser | null> {
+function getSecret(): Uint8Array {
+  return new TextEncoder().encode(process.env.AUTH_SECRET ?? "");
+}
+
+async function getSessionUser(token: string): Promise<{ user: SessionUser; payload: Record<string, unknown> } | null> {
   try {
     const secret = process.env.AUTH_SECRET;
     if (!secret) return null;
     const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
-    return (payload as { user: SessionUser }).user ?? null;
+    const user = (payload as { user: SessionUser }).user ?? null;
+    if (!user) return null;
+    return { user, payload: payload as Record<string, unknown> };
   } catch {
     return null;
   }
@@ -31,6 +39,27 @@ function noindex(res: NextResponse): NextResponse {
   return res;
 }
 
+function setSessionCookies(res: NextResponse, token: string): void {
+  const expUnix = Math.floor(Date.now() / 1000) + SESSION_DURATION_S;
+
+  res.cookies.set(SESSION_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: SESSION_DURATION_S,
+    path: "/",
+  });
+
+  // Readable by JS so the expiry warning banner can show a countdown.
+  res.cookies.set(SESSION_EXP_COOKIE, String(expUnix), {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: SESSION_DURATION_S,
+    path: "/",
+  });
+}
+
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -40,12 +69,14 @@ export async function proxy(req: NextRequest) {
   }
 
   const token = req.cookies.get(SESSION_COOKIE)?.value;
-  const user = token ? await getSessionUser(token) : null;
+  const session = token ? await getSessionUser(token) : null;
 
   // Not authenticated → redirect to login
-  if (!user) {
+  if (!session) {
     return noindex(NextResponse.redirect(new URL("/login", req.url)));
   }
+
+  const { user } = session;
 
   // Must change password → redirect
   if (user.must_change_password && pathname !== "/change-password") {
@@ -67,7 +98,16 @@ export async function proxy(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
-  return noindex(NextResponse.next());
+  // ── Sliding session: reissue a fresh token on every authenticated request ──
+  const newToken = await new SignJWT({ user: session.payload.user })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(`${SESSION_DURATION_S}s`)
+    .sign(getSecret());
+
+  const res = noindex(NextResponse.next());
+  setSessionCookies(res, newToken);
+  return res;
 }
 
 export const config = {

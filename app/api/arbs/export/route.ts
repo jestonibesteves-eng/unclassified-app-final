@@ -11,9 +11,12 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const search = searchParams.get("search") ?? "";
   const match = searchParams.get("match") ?? "";
+  const provinceParam = searchParams.get("province") ?? "";
 
   const scopedProvince =
-    sessionUser.office_level === "regional" ? null : sessionUser.province ?? null;
+    sessionUser.office_level === "regional"
+      ? (provinceParam || null)
+      : sessionUser.province ?? null;
   const scopedMunicipality =
     sessionUser.office_level === "municipal" ? sessionUser.municipality ?? null : null;
 

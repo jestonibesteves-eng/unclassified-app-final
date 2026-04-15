@@ -29,7 +29,7 @@ export async function register() {
       }
     }
 
-    // ── 2. Ensure WAL mode ────────────────────────────────────────────────────
+    // ── 3. Ensure WAL mode ────────────────────────────────────────────────────
     const Database = (await import("better-sqlite3")).default;
     try {
       const db = new Database(dbPath);
@@ -39,7 +39,7 @@ export async function register() {
       // WAL mode may already be set; non-fatal.
     }
 
-    // ── 3. Schedule daily auto-backup at 2:00 AM ─────────────────────────────
+    // ── 4. Catch up on any missed auto-backup, then schedule daily at 2:00 AM ─
     // Backup logic is inlined here (not imported from lib/backup) so the edge
     // bundler does not attempt to trace Node.js-only modules into the edge build.
     scheduleDailyBackup(dbPath);
@@ -56,6 +56,7 @@ function scheduleDailyBackup(dbPath: string) {
   }
 
   async function runBackup() {
+    if (process.env.NEXT_RUNTIME !== "nodejs") return;
     try {
       const fs       = (await import("fs")).default;
       const path     = (await import("path")).default;
@@ -83,10 +84,44 @@ function scheduleDailyBackup(dbPath: string) {
     }
   }
 
+  // ── Missed-backup catch-up ──────────────────────────────────────────────────
+  // If the server restarted after 2:00 AM and no auto backup exists for today,
+  // run one immediately so a restart never silently skips a day's backup.
+  async function catchUpIfMissed() {
+    if (process.env.NEXT_RUNTIME !== "nodejs") return;
+    try {
+      const now = new Date();
+      // Only catch up if it's already past 2:00 AM today
+      if (now.getHours() < 2) return;
+
+      const fs   = (await import("fs")).default;
+      const path = (await import("path")).default;
+
+      const backupDir = process.env.BACKUP_DIR || path.join(path.dirname(dbPath), "backups");
+      if (!fs.existsSync(backupDir)) return; // no backup dir yet — nothing to catch up
+
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const todayPrefix = `dev_${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_`;
+
+      const hasTodayBackup = fs.readdirSync(backupDir).some(
+        (f) => f.startsWith(todayPrefix) && f.endsWith("_auto.db")
+      );
+
+      if (!hasTodayBackup) {
+        console.log("[backup] No auto-backup found for today — running catch-up backup now.");
+        await runBackup();
+      }
+    } catch (err) {
+      console.error("[backup] Catch-up check failed:", err);
+    }
+  }
+
+  catchUpIfMissed();
+
   const delay = msUntilNextTwoAM();
   const hh = Math.floor(delay / 3600000);
   const mm = Math.floor((delay % 3600000) / 60000);
-  console.log(`[backup] First auto-backup scheduled in ${hh}h ${mm}m (at 2:00 AM)`);
+  console.log(`[backup] Next auto-backup scheduled in ${hh}h ${mm}m (at 2:00 AM)`);
 
   setTimeout(() => {
     runBackup();

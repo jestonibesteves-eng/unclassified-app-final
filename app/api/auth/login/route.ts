@@ -84,12 +84,22 @@ export async function POST(req: NextRequest) {
     must_change_password: user.must_change_password,
   });
 
+  const SESSION_DURATION_S = 60 * 60;
+  const expUnix = Math.floor(Date.now() / 1000) + SESSION_DURATION_S;
+
   const res = NextResponse.json({ ok: true, must_change_password: user.must_change_password });
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60,
+    maxAge: SESSION_DURATION_S,
+    path: "/",
+  });
+  res.cookies.set("dar_session_exp", String(expUnix), {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: SESSION_DURATION_S,
     path: "/",
   });
   return res;

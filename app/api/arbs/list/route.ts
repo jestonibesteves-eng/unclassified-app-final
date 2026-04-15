@@ -13,10 +13,13 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
   const match = searchParams.get("match") ?? ""; // "matched" | "mismatched" | ""
   const amountMatch = searchParams.get("amountMatch") ?? ""; // "matched" | "mismatched" | ""
+  const provinceParam = searchParams.get("province") ?? ""; // regional filter only
   const limit = 30;
 
   const scopedProvince =
-    sessionUser.office_level === "regional" ? null : sessionUser.province ?? null;
+    sessionUser.office_level === "regional"
+      ? (provinceParam || null)   // regional: use selected province filter, or no scope
+      : sessionUser.province ?? null;
   const scopedMunicipality =
     sessionUser.office_level === "municipal" ? sessionUser.municipality ?? null : null;
 
