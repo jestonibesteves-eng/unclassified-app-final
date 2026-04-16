@@ -19,12 +19,23 @@ export default function LoginPage() {
     const username = usernameRef.current?.value ?? "";
     const password = passwordRef.current?.value ?? "";
 
-    try {
-      const res = await fetch("/api/auth/login", {
+    const doLogin = () =>
+      fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
+
+    try {
+      let res = await doLogin();
+
+      // In dev mode Turbopack compiles routes lazily; the first request can
+      // land before compilation finishes and get a 404. Retry once to let the
+      // compiler catch up. Skip in production where routes are pre-compiled.
+      if (res.status === 404 && process.env.NODE_ENV !== "production") {
+        await new Promise((r) => setTimeout(r, 800));
+        res = await doLogin();
+      }
 
       const data = await res.json();
 

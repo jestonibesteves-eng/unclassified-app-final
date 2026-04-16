@@ -39,14 +39,14 @@ export async function POST(req: NextRequest) {
 
   const landholding = await prisma.landholding.findUnique({
     where: { seqno_darro: seqno_darro.trim() },
-    select: { seqno_darro: true, landowner: true, province_edited: true, status: true },
+    select: { seqno_darro: true, landowner: true, province_edited: true, status: true, non_eligibility_reason: true },
   });
 
   if (!landholding) {
     return NextResponse.json({ error: `SEQNO_DARRO "${seqno_darro}" not found in the masterlist.` }, { status: 404 });
   }
 
-  const LOCKED_STATUSES = ["For Encoding", "Partially Encoded", "Fully Encoded", "Partially Distributed", "Fully Distributed", "Not Eligible for Encoding"];
+  const LOCKED_STATUSES = ["For Encoding", "Partially Encoded", "Fully Encoded", "Partially Distributed", "Fully Distributed"];
   if (LOCKED_STATUSES.includes(landholding.status ?? "")) {
     return NextResponse.json({ error: `This landholding is locked (status: "${landholding.status}"). ARB data cannot be appended or replaced at this stage.` }, { status: 403 });
   }
@@ -153,15 +153,21 @@ export async function POST(req: NextRequest) {
       deleteStmt.run(normalizedSeqno);
     }
     for (const a of valid) {
-      const elig = a.eligibility!.trim();
+      const rawElig = a.eligibility!.trim();
+      const forceNotEligible = landholding.status === "Not Eligible for Encoding" && rawElig === "Eligible";
+      const elig = forceNotEligible ? "Not Eligible" : rawElig;
+      const eligReason = forceNotEligible
+        ? (landholding.non_eligibility_reason ?? "Landholding is Not Eligible for Encoding")
+        : (elig === "Not Eligible" ? a.eligibility_reason!.trim() : null);
       const carp = (() => { const v = a.carpable?.toUpperCase().replace(/\s+/g, "") ?? ""; return (v === "CARPABLE" || v === "NON-CARPABLE") ? v : null; })();
+      const datesBlocked = elig === "Not Eligible" || carp === "NON-CARPABLE" || landholding.status === "Not Eligible for Encoding";
       insertStmt.run(
         normalizedSeqno, a.arb_name.trim().toUpperCase(),
         a.arb_id?.trim().toUpperCase() || null, a.ep_cloa_no?.trim().toUpperCase() || null,
         carp, a.area_allocated ?? null, a.allocated_condoned_amount!.trim(),
-        elig, elig === "Not Eligible" ? a.eligibility_reason!.trim() : null,
-        (elig === "Not Eligible" || carp === "NON-CARPABLE") ? null : (a.date_encoded?.trim() || null),
-        (elig === "Not Eligible" || carp === "NON-CARPABLE") ? null : (a.date_distributed?.trim() || null),
+        elig, eligReason,
+        datesBlocked ? null : (a.date_encoded?.trim() || null),
+        datesBlocked ? null : (a.date_distributed?.trim() || null),
         a.remarks?.trim() || null, "Manual"
       );
     }

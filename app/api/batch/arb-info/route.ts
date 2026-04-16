@@ -15,9 +15,16 @@ export type ArbInfoType =
   | "date_distributed"
   | "arb_name"
   | "area_allocated"
-  | "allocated_condoned_amount";
+  | "allocated_condoned_amount"
+  | "carpable"
+  | "eligibility"
+  | "ep_cloa_no"
+  | "remarks";
 
 const LOCKABLE: ArbInfoType[] = ["area_allocated", "allocated_condoned_amount"];
+
+const CARPABLE_VALUES = ["CARPABLE", "NON-CARPABLE"] as const;
+const ELIGIBILITY_VALUES = ["Eligible", "Not Eligible"] as const;
 
 /* ── Input parser ── */
 function parseLines(raw: string, type: ArbInfoType): {
@@ -61,6 +68,29 @@ function parseLines(raw: string, type: ArbInfoType): {
       }
     }
 
+    if (type === "carpable") {
+      const normalized = value.toUpperCase().trim();
+      if (!CARPABLE_VALUES.includes(normalized as typeof CARPABLE_VALUES[number])) {
+        invalid.push({ line, reason: `"${value}" is invalid — must be CARPABLE or NON-CARPABLE` });
+        continue;
+      }
+      valid.push({ seqno, arb_id: arbId, value: normalized });
+      continue;
+    }
+
+    if (type === "eligibility") {
+      const lower = value.trim().toLowerCase();
+      const normalized = lower === "eligible" ? "Eligible"
+        : (lower === "not eligible" || lower === "not-eligible") ? "Not Eligible"
+        : null;
+      if (!normalized) {
+        invalid.push({ line, reason: `"${value}" is invalid — must be Eligible or Not Eligible` });
+        continue;
+      }
+      valid.push({ seqno, arb_id: arbId, value: normalized });
+      continue;
+    }
+
     valid.push({ seqno, arb_id: arbId, value });
   }
 
@@ -92,7 +122,7 @@ export async function PUT(req: NextRequest) {
   const arbKeys = valid.map((r) => r.arb_id);
   const existingArbs = await prisma.arb.findMany({
     where: { arb_id: { in: arbKeys } },
-    select: { id: true, seqno_darro: true, arb_id: true, arb_name: true, carpable: true, eligibility: true, area_allocated: true, allocated_condoned_amount: true, date_encoded: true, date_distributed: true },
+    select: { id: true, seqno_darro: true, arb_id: true, arb_name: true, carpable: true, eligibility: true, area_allocated: true, allocated_condoned_amount: true, date_encoded: true, date_distributed: true, ep_cloa_no: true, remarks: true },
   });
   const arbMap = Object.fromEntries(existingArbs.map((a) => [`${a.seqno_darro}|${a.arb_id}`, a]));
 
@@ -113,7 +143,7 @@ export async function PUT(req: NextRequest) {
 
     const locked =
       (LOCKABLE.includes(type) && LOCKED_STATUSES.includes(lh.status ?? "")) ||
-      (DATE_TYPES.includes(type) && (arb.eligibility === "Not Eligible" || arb.carpable === "NON-CARPABLE"));
+      (DATE_TYPES.includes(type) && (arb.eligibility === "Not Eligible" || arb.carpable === "NON-CARPABLE" || lh.status === "Not Eligible for Encoding"));
 
     const currentValue = (() => {
       switch (type) {
@@ -122,6 +152,10 @@ export async function PUT(req: NextRequest) {
         case "arb_name": return arb.arb_name ?? null;
         case "area_allocated": return arb.area_allocated ?? null;
         case "allocated_condoned_amount": return arb.allocated_condoned_amount ?? null;
+        case "carpable": return arb.carpable ?? null;
+        case "eligibility": return arb.eligibility ?? null;
+        case "ep_cloa_no": return arb.ep_cloa_no ?? null;
+        case "remarks": return arb.remarks ?? null;
       }
     })();
 
@@ -166,7 +200,7 @@ export async function POST(req: NextRequest) {
   const arbKeys = valid.map((r) => r.arb_id);
   const existingArbs = await prisma.arb.findMany({
     where: { arb_id: { in: arbKeys } },
-    select: { id: true, seqno_darro: true, arb_id: true, arb_name: true, carpable: true, eligibility: true, area_allocated: true, allocated_condoned_amount: true, date_encoded: true, date_distributed: true },
+    select: { id: true, seqno_darro: true, arb_id: true, arb_name: true, carpable: true, eligibility: true, area_allocated: true, allocated_condoned_amount: true, date_encoded: true, date_distributed: true, ep_cloa_no: true, remarks: true },
   });
   const arbMap = Object.fromEntries(existingArbs.map((a) => [`${a.seqno_darro}|${a.arb_id}`, a]));
 
@@ -178,6 +212,10 @@ export async function POST(req: NextRequest) {
     arb_name: "arb_name",
     area_allocated: "area_allocated",
     allocated_condoned_amount: "allocated_condoned_amount",
+    carpable: "carpable",
+    eligibility: "eligibility",
+    ep_cloa_no: "ep_cloa_no",
+    remarks: "remarks",
   };
 
   const updatedRecords: { seqno_darro: string; arb_id: string; arb_name: string | null; landowner: string | null }[] = [];
@@ -210,6 +248,10 @@ export async function POST(req: NextRequest) {
           skippedRecords.push({ seqno_darro: r.seqno, arb_id: r.arb_id, reason: "ARB is NON-CARPABLE — dates cannot be set" });
           continue;
         }
+        if (DATE_TYPES.includes(type) && lh.status === "Not Eligible for Encoding") {
+          skippedRecords.push({ seqno_darro: r.seqno, arb_id: r.arb_id, reason: "Landholding is Not Eligible for Encoding — dates cannot be set" });
+          continue;
+        }
 
         const field = dbField[type];
         const oldVal = (() => {
@@ -219,6 +261,10 @@ export async function POST(req: NextRequest) {
             case "arb_name": return arb.arb_name ?? "";
             case "area_allocated": return arb.area_allocated ?? "";
             case "allocated_condoned_amount": return arb.allocated_condoned_amount ?? "";
+            case "carpable": return arb.carpable ?? "";
+            case "eligibility": return arb.eligibility ?? "";
+            case "ep_cloa_no": return arb.ep_cloa_no ?? "";
+            case "remarks": return arb.remarks ?? "";
           }
         })();
 

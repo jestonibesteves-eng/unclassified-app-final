@@ -162,7 +162,7 @@ function emptyRow(): ArbRow {
 /* ─── Upload File Panel ─── */
 type PreviewArb = { seqno_darro: string | null; arb_name: string | null; arb_id: string | null; ep_cloa_no: string | null; carpable: string | null; area_allocated: string | null; allocated_condoned_amount: string | null; eligibility: string | null; eligibility_reason: string | null; date_encoded: string | null; date_distributed: string | null; remarks: string | null };
 type BySEQNO = Record<string, { landowner: string | null; province: string | null; count: number; existingCount: number; arbs: PreviewArb[]; amendarea: number | null; amendarea_validated: number | null; condoned_amount: number | null; net_of_reval_no_neg: number | null }>;
-type PreviewData = { total: number; valid: number; errors: { row: number; reason: string }[]; arbIdConflicts: { row: number; arb_id: string; existing_seqno: string }[]; notFoundSeqnos: string[]; outOfJurisdictionSeqnos: string[]; lockedSeqnos: string[]; carpableConflicts: { row: number; seqno: string; arb_name: string; arb_id: string }[]; bySEQNO: BySEQNO } | null;
+type PreviewData = { total: number; valid: number; errors: { row: number; reason: string }[]; arbIdConflicts: { row: number; arb_id: string; existing_seqno: string }[]; notFoundSeqnos: string[]; outOfJurisdictionSeqnos: string[]; lockedSeqnos: string[]; carpableConflicts: { row: number; seqno: string; arb_name: string; arb_id: string }[]; notEligibleConflictSeqnos?: string[]; bySEQNO: BySEQNO } | null;
 
 function UploadFilePanel({ onSaved }: { onSaved: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -171,7 +171,7 @@ function UploadFilePanel({ onSaved }: { onSaved: () => void }) {
   const [mode, setMode] = useState<"append" | "replace">("append");
   const [preview, setPreview] = useState<PreviewData>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [result, setResult] = useState<{ imported: number; skipped: number } | null>(null);
+  const [result, setResult] = useState<{ imported: number; skipped: number; skipReasons?: { row: number; reason: string }[] } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showReplaceModal, setShowReplaceModal] = useState(false);
@@ -275,6 +275,14 @@ function UploadFilePanel({ onSaved }: { onSaved: () => void }) {
             ✓ Imported <strong>{result.imported.toLocaleString()}</strong> ARB{result.imported !== 1 ? "s" : ""}.
             {result.skipped > 0 && ` ${result.skipped} skipped.`}
           </p>
+          {result.skipReasons && result.skipReasons.length > 0 && (
+            <div className="mt-2 max-h-40 overflow-y-auto rounded border border-green-300 bg-white p-2">
+              <p className="text-[11px] font-semibold text-green-900 mb-1">Skip reasons:</p>
+              {result.skipReasons.map((s, i) => (
+                <p key={i} className="text-[11px] text-red-700 font-mono">Row {s.row}: {s.reason}</p>
+              ))}
+            </div>
+          )}
           <button onClick={reset} className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-700 text-white text-[13px] font-semibold hover:bg-green-600 transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
@@ -514,6 +522,34 @@ function UploadFilePanel({ onSaved }: { onSaved: () => void }) {
                   </div>
                 </div>
               )}
+              {/* Not Eligible for Encoding + Eligible ARB conflict */}
+              {(preview.notEligibleConflictSeqnos?.length ?? 0) > 0 && (
+                <div className="mb-4 rounded-xl border border-amber-300 overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    <p className="text-white font-semibold text-[13px]">
+                      Status conflict on {preview.notEligibleConflictSeqnos!.length} landholding{preview.notEligibleConflictSeqnos!.length !== 1 ? "s" : ""} — action may be required
+                    </p>
+                  </div>
+                  <div className="px-4 py-3 bg-amber-50">
+                    <div className="flex items-start gap-2">
+                      <div>
+                        <p className="text-[12px] font-semibold text-amber-900">Eligible ARBs detected on landholdings tagged as "Not Eligible for Encoding"</p>
+                        <p className="text-[11px] text-amber-800 mt-1 leading-snug">
+                          These landholdings are marked <strong>Not Eligible for Encoding</strong>, which means all their ARBs are expected to be <strong>Not Eligible</strong>. However, some uploaded ARBs have Eligibility = <strong>Eligible</strong>.
+                        </p>
+                        <p className="text-[11px] text-amber-800 mt-1 leading-snug">
+                          If those ARBs are truly eligible, please <strong>undo the "Not Eligible for Encoding" status on the landholding</strong> — the status should remain at a <em>Partial</em> level instead. The ARBs will still be imported, but Date Encoded and Distributed will be discarded for all ARBs under these landholdings.
+                        </p>
+                        <p className="text-[11px] text-amber-700 font-mono mt-1.5">{preview.notEligibleConflictSeqnos!.slice(0, 6).join(", ")}{preview.notEligibleConflictSeqnos!.length > 6 ? ` +${preview.notEligibleConflictSeqnos!.length - 6} more` : ""}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {(() => {
                 const allEntries = Object.entries(preview.bySEQNO);
                 const totalPages = Math.ceil(allEntries.length / PREVIEW_PAGE_SIZE);
@@ -1001,7 +1037,7 @@ function ManualEntryPanel({ onSaved }: { onSaved: () => void }) {
       </div>
 
       {lh && (() => {
-        const LOCKED_STATUSES = ["For Encoding", "Partially Encoded", "Fully Encoded", "Partially Distributed", "Fully Distributed", "Not Eligible for Encoding"];
+        const LOCKED_STATUSES = ["For Encoding", "Partially Encoded", "Fully Encoded", "Partially Distributed", "Fully Distributed"];
         if (LOCKED_STATUSES.includes(lh.status ?? "")) {
           return (
             <div className="mt-3 flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-[13px] text-red-700">
@@ -1012,6 +1048,28 @@ function ManualEntryPanel({ onSaved }: { onSaved: () => void }) {
         }
         return (
         <>
+          {/* Not Eligible for Encoding notice */}
+          {lh.status === "Not Eligible for Encoding" && (
+            <div className="mb-4 rounded-xl border border-amber-300 overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-500">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <p className="text-white font-semibold text-[13px]">Landholding is Not Eligible for Encoding</p>
+              </div>
+              <div className="px-4 py-3 bg-amber-50 space-y-1.5">
+                <p className="text-[12px] text-amber-900 leading-snug">
+                  ARB data can still be entered, but <strong>Date Encoded and Distributed will not be saved</strong> for any ARB under this landholding.
+                </p>
+                {rows.some((r) => r.eligibility === "Eligible") && (
+                  <p className="text-[12px] font-semibold text-amber-900 leading-snug">
+                    One or more ARBs are marked as <strong>Eligible</strong>. If these ARBs are truly eligible, please <strong>undo the "Not Eligible for Encoding" status on this landholding first</strong> — the status should remain at a <em>Partial</em> level instead.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Mode */}
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-3">
@@ -1224,7 +1282,7 @@ function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boo
   const [deletingBulk, setDeletingBulk] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const limit = 30;
-  const LOCKED_STATUSES = ["For Encoding","Partially Encoded","Fully Encoded","Partially Distributed","Fully Distributed","Not Eligible for Encoding"];
+  const LOCKED_STATUSES = ["For Encoding","Partially Encoded","Fully Encoded","Partially Distributed","Fully Distributed"];
 
   async function handleExport() {
     setExporting(true);
@@ -1748,7 +1806,7 @@ function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boo
                           <span className="flex items-center justify-center gap-2">
                             <span>{isOpen ? "▲ Hide" : "▼ View"}</span>
                             {isEditor && (() => {
-                              const locked = ["For Encoding","Partially Encoded","Fully Encoded","Partially Distributed","Fully Distributed","Not Eligible for Encoding"].includes(lh.status ?? "");
+                              const locked = ["For Encoding","Partially Encoded","Fully Encoded","Partially Distributed","Fully Distributed"].includes(lh.status ?? "");
                               return (
                                 <button
                                   onClick={(e) => { e.stopPropagation(); if (!locked) setConfirmDeleteAll(lh.seqno_darro); }}
@@ -1797,7 +1855,7 @@ function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boo
                                   <tbody>
                                     {detail.arbs.map((arb, j) => {
                                       const isEditing = editingArb?.id === arb.id;
-                                      const locked = ["For Encoding","Partially Encoded","Fully Encoded","Partially Distributed","Fully Distributed","Not Eligible for Encoding"].includes(lh.status ?? "");
+                                      const locked = ["For Encoding","Partially Encoded","Fully Encoded","Partially Distributed","Fully Distributed"].includes(lh.status ?? "");
                                       return (
                                       <tr key={arb.id} className={`border-t border-green-100 ${isEditing ? "bg-yellow-50" : j % 2 === 0 ? "bg-white" : "bg-green-50"}`}>
                                         <td className="px-3 py-1.5 text-gray-400">{j + 1}</td>
@@ -1849,12 +1907,12 @@ function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boo
                                           </td>
                                           <td className="px-1 py-1">
                                             <input type="date" value={toDateInput(editingArb.date_encoded)} onChange={(e) => setEditingArb((p) => p && ({ ...p, date_encoded: fromDateInput(e.target.value), date_distributed: e.target.value ? p.date_distributed : "" }))}
-                                              disabled={editingArb.eligibility === "Not Eligible"}
+                                              disabled={editingArb.eligibility === "Not Eligible" || lh.status === "Not Eligible for Encoding"}
                                               className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] font-mono focus:outline-none focus:ring-1 focus:ring-green-600 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" />
                                           </td>
                                           <td className="px-1 py-1">
                                             <input type="date" value={toDateInput(editingArb.date_distributed)} onChange={(e) => setEditingArb((p) => p && ({ ...p, date_distributed: fromDateInput(e.target.value) }))}
-                                              disabled={editingArb.eligibility === "Not Eligible" || !editingArb.date_encoded}
+                                              disabled={editingArb.eligibility === "Not Eligible" || lh.status === "Not Eligible for Encoding" || !editingArb.date_encoded}
                                               title={!editingArb.date_encoded ? "Date Encoded is required first" : undefined}
                                               className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] font-mono focus:outline-none focus:ring-1 focus:ring-green-600 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" />
                                           </td>
@@ -1908,7 +1966,7 @@ function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boo
                                                 </button>
                                               </span>
                                             ) : (() => {
-                                              const locked = ["For Encoding","Partially Encoded","Fully Encoded","Partially Distributed","Fully Distributed","Not Eligible for Encoding"].includes(lh.status ?? "");
+                                              const locked = ["For Encoding","Partially Encoded","Fully Encoded","Partially Distributed","Fully Distributed"].includes(lh.status ?? "");
                                               return (
                                                 <span className="flex items-center justify-center gap-2">
                                                   <button

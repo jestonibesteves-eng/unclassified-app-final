@@ -7,7 +7,7 @@ import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
 const EDITOR_ROLES = ["super_admin", "admin", "editor"];
 const LOCKED_STATUSES = [
   "For Encoding", "Partially Encoded", "Fully Encoded",
-  "Partially Distributed", "Fully Distributed", "Not Eligible for Encoding",
+  "Partially Distributed", "Fully Distributed",
 ];
 
 type RawRow = Record<string, unknown>;
@@ -224,7 +224,7 @@ export async function PUT(req: NextRequest) {
 
   const landholdings = await prisma.landholding.findMany({
     where: { seqno_darro: { in: seqnos } },
-    select: { seqno_darro: true, province_edited: true, status: true },
+    select: { seqno_darro: true, province_edited: true, status: true, non_eligibility_reason: true },
   });
   const lhMap = Object.fromEntries(landholdings.map((r) => [r.seqno_darro, r]));
 
@@ -278,10 +278,10 @@ export async function PUT(req: NextRequest) {
       new_eligibility: r.eligibility ?? null,
       new_eligibility_reason: r.eligibility_reason ?? null,
       new_allocated_condoned_amount: r.allocated_condoned_amount ?? null,
-      // Dates forced null when final eligibility is Not Eligible
-      new_date_encoded: finalEligibility === "Not Eligible" ? null : (r.date_encoded ?? null),
-      new_date_distributed: finalEligibility === "Not Eligible" ? null : (r.date_distributed ?? null),
-      dates_cleared: finalEligibility === "Not Eligible" && (arb.date_encoded || arb.date_distributed),
+      // Dates forced null when final eligibility is Not Eligible or LH is Not Eligible for Encoding
+      new_date_encoded: (finalEligibility === "Not Eligible" || lh.status === "Not Eligible for Encoding") ? null : (r.date_encoded ?? null),
+      new_date_distributed: (finalEligibility === "Not Eligible" || lh.status === "Not Eligible for Encoding") ? null : (r.date_distributed ?? null),
+      dates_cleared: (finalEligibility === "Not Eligible" || lh.status === "Not Eligible for Encoding") && (arb.date_encoded || arb.date_distributed),
       new_remarks: r.remarks ?? null,
     });
   }
@@ -316,7 +316,7 @@ export async function POST(req: NextRequest) {
 
   const landholdings = await prisma.landholding.findMany({
     where: { seqno_darro: { in: seqnos } },
-    select: { seqno_darro: true, province_edited: true, status: true },
+    select: { seqno_darro: true, province_edited: true, status: true, non_eligibility_reason: true },
   });
   const lhMap = Object.fromEntries(landholdings.map((r) => [r.seqno_darro, r]));
 
@@ -355,7 +355,9 @@ export async function POST(req: NextRequest) {
         const lh = lhMap[r.seqno_darro];
         const arb = arbMap[`${r.seqno_darro}|${r.arb_id}`];
         const areaLocked = r.area_allocated !== undefined && LOCKED_STATUSES.includes(lh.status ?? "");
-        const finalEligibility = r.eligibility ?? arb.eligibility;
+        // If LH is Not Eligible for Encoding, treat any "Eligible" update as "Not Eligible"
+        const incomingEligibility = (lh.status === "Not Eligible for Encoding" && r.eligibility === "Eligible") ? "Not Eligible" : r.eligibility;
+        const finalEligibility = incomingEligibility ?? arb.eligibility;
 
         const setClauses: string[] = [];
         const values: unknown[] = [];
@@ -382,11 +384,15 @@ export async function POST(req: NextRequest) {
           auditEntries.push(["carpable", arb.carpable ?? "", r.carpable]);
         }
         if (r.eligibility !== undefined) {
+          const forceNotEligible = lh.status === "Not Eligible for Encoding" && r.eligibility === "Eligible";
+          const writtenEligibility = forceNotEligible ? "Not Eligible" : r.eligibility;
           setClauses.push(`"eligibility" = ?`);
-          values.push(r.eligibility);
-          auditEntries.push(["eligibility", arb.eligibility ?? "", r.eligibility]);
+          values.push(writtenEligibility);
+          auditEntries.push(["eligibility", arb.eligibility ?? "", writtenEligibility]);
 
-          const newReason = r.eligibility === "Not Eligible" ? (r.eligibility_reason ?? null) : null;
+          const newReason = writtenEligibility === "Not Eligible"
+            ? (forceNotEligible ? (lh.non_eligibility_reason ?? "Landholding is Not Eligible for Encoding") : (r.eligibility_reason ?? null))
+            : null;
           setClauses.push(`"eligibility_reason" = ?`);
           values.push(newReason);
           auditEntries.push(["eligibility_reason", arb.eligibility_reason ?? "", newReason ?? ""]);
@@ -397,14 +403,15 @@ export async function POST(req: NextRequest) {
           auditEntries.push(["allocated_condoned_amount", arb.allocated_condoned_amount ?? "", r.allocated_condoned_amount]);
         }
 
-        // Date fields — forced null when final eligibility is Not Eligible
-        if (finalEligibility === "Not Eligible" && r.eligibility !== undefined) {
-          // Eligibility is being changed to Not Eligible — force clear dates
+        // Date fields — forced null when final eligibility is Not Eligible or LH is Not Eligible for Encoding
+        const datesBlocked = finalEligibility === "Not Eligible" || lh.status === "Not Eligible for Encoding";
+        if (datesBlocked && (r.eligibility !== undefined || lh.status === "Not Eligible for Encoding")) {
+          // Force clear dates — eligibility changed to Not Eligible, or LH cannot be encoded
           setClauses.push(`"date_encoded" = ?`, `"date_distributed" = ?`);
           values.push(null, null);
           if (arb.date_encoded) auditEntries.push(["date_encoded", arb.date_encoded, ""]);
           if (arb.date_distributed) auditEntries.push(["date_distributed", arb.date_distributed, ""]);
-        } else if (finalEligibility !== "Not Eligible") {
+        } else if (!datesBlocked) {
           if (r.date_encoded !== undefined) {
             setClauses.push(`"date_encoded" = ?`);
             values.push(r.date_encoded);

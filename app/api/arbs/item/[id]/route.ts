@@ -18,7 +18,7 @@ export async function PATCH(
 
   const arb = await prisma.arb.findUnique({
     where: { id: arbId },
-    include: { landholding: { select: { province_edited: true } } },
+    include: { landholding: { select: { province_edited: true, status: true, non_eligibility_reason: true } } },
   });
   if (!arb) return NextResponse.json({ error: "ARB not found." }, { status: 404 });
 
@@ -72,7 +72,13 @@ export async function PATCH(
   const newArbId = arb_id?.trim().toUpperCase() || null;
   const newEpCloaNo = ep_cloa_no?.trim().toUpperCase() || null;
   const newAreaAllocated = area_allocated?.trim() || null;
-  const datesBlocked = normalizedEligibility === "Not Eligible" || normalizedCarpable === "NON-CARPABLE";
+  // If the LH is Not Eligible for Encoding, force any "Eligible" entry to "Not Eligible"
+  const forceNotEligible = arb.landholding.status === "Not Eligible for Encoding" && normalizedEligibility === "Eligible";
+  const finalEligibility = forceNotEligible ? "Not Eligible" : normalizedEligibility;
+  const finalEligibilityReason = forceNotEligible
+    ? (arb.landholding.non_eligibility_reason ?? "Landholding is Not Eligible for Encoding")
+    : (finalEligibility === "Not Eligible" ? eligibility_reason.trim() : null);
+  const datesBlocked = finalEligibility === "Not Eligible" || normalizedCarpable === "NON-CARPABLE" || arb.landholding.status === "Not Eligible for Encoding";
   const newDateEncoded = datesBlocked ? null : (date_encoded?.trim() || null);
   const newDateDistributed = (datesBlocked || !newDateEncoded) ? null : (date_distributed?.trim() || null);
 
@@ -82,8 +88,7 @@ export async function PATCH(
      date_encoded = ?, date_distributed = ?, remarks = ? WHERE id = ?`
   ).run(
     newArbName, newArbId, newEpCloaNo, normalizedCarpable, newAreaAllocated,
-    allocated_condoned_amount.trim(), normalizedEligibility,
-    normalizedEligibility === "Not Eligible" ? eligibility_reason.trim() : null,
+    allocated_condoned_amount.trim(), finalEligibility, finalEligibilityReason,
     newDateEncoded, newDateDistributed, remarks?.trim() || null,
     arbId
   );

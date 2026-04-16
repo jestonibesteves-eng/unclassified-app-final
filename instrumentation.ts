@@ -58,9 +58,9 @@ function scheduleDailyBackup(dbPath: string) {
   async function runBackup() {
     if (process.env.NEXT_RUNTIME !== "nodejs") return;
     try {
-      const fs       = (await import("fs")).default;
-      const path     = (await import("path")).default;
-      const Database = (await import("better-sqlite3")).default;
+      const fs       = (await import(/* webpackIgnore: true */ "fs")).default;
+      const path     = (await import(/* webpackIgnore: true */ "path")).default;
+      const Database = (await import(/* webpackIgnore: true */ "better-sqlite3")).default;
 
       const backupDir = process.env.BACKUP_DIR || path.join(path.dirname(dbPath), "backups");
       if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
@@ -94,8 +94,8 @@ function scheduleDailyBackup(dbPath: string) {
       // Only catch up if it's already past 2:00 AM today
       if (now.getHours() < 2) return;
 
-      const fs   = (await import("fs")).default;
-      const path = (await import("path")).default;
+      const fs   = (await import(/* webpackIgnore: true */ "fs")).default;
+      const path = (await import(/* webpackIgnore: true */ "path")).default;
 
       const backupDir = process.env.BACKUP_DIR || path.join(path.dirname(dbPath), "backups");
       if (!fs.existsSync(backupDir)) return; // no backup dir yet — nothing to catch up

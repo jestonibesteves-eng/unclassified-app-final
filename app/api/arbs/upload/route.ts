@@ -28,7 +28,7 @@ function toAreaStr(val: unknown): string | null {
 }
 
 // Normalizes any date string or Date object to mm/dd/yyyy.
-// Handles: Date objects, yyyy-mm-dd, mm-dd-yyyy, m/d/yyyy, mm/dd/yyyy.
+// Handles: Date objects, Excel serial numbers, yyyy-mm-dd, mm-dd-yyyy, m/d/yyyy, mm/dd/yyyy.
 function normalizeDate(val: unknown): string | null {
   if (val == null || String(val).trim() === "") return null;
 
@@ -38,6 +38,18 @@ function normalizeDate(val: unknown): string | null {
     const d = String(val.getDate()).padStart(2, "0");
     const y = val.getFullYear();
     return `${m}/${d}/${y}`;
+  }
+
+  // Excel serial date number (e.g. 46004 → 12/13/2025)
+  // ExcelJS sometimes returns raw numeric values for date-formatted cells.
+  if (typeof val === "number" && Number.isFinite(val) && val > 0) {
+    // Excel epoch is Dec 30, 1899; serial 1 = Jan 1, 1900
+    const epoch = new Date(1899, 11, 30);
+    const d = new Date(epoch.getTime() + val * 86400000);
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${mm}/${dd}/${yyyy}`;
   }
 
   const s = String(val).trim();
@@ -274,7 +286,7 @@ export async function PUT(req: NextRequest) {
   const scopedProvince =
     sessionUser.office_level !== "regional" ? sessionUser.province ?? null : null;
 
-  const LOCKED_STATUSES = ["For Encoding", "Partially Encoded", "Fully Encoded", "Partially Distributed", "Fully Distributed", "Not Eligible for Encoding"];
+  const LOCKED_STATUSES = ["For Encoding", "Partially Encoded", "Fully Encoded", "Partially Distributed", "Fully Distributed"];
   const outOfJurisdictionSeqnos: string[] = [];
   const lockedSeqnos: string[] = [];
   const validFinal = validAfterIdCheck.filter((r) => {
@@ -321,6 +333,13 @@ export async function PUT(req: NextRequest) {
     bySEQNO[s].arbs.push(r);
   }
 
+  // SEQNOs where the LH is "Not Eligible for Encoding" but some uploaded ARBs are "Eligible"
+  const notEligibleConflictSeqnos = Object.keys(bySEQNO).filter(
+    (seqno) =>
+      foundMap[seqno]?.status === "Not Eligible for Encoding" &&
+      bySEQNO[seqno].arbs.some((arb) => arb.eligibility === "Eligible")
+  );
+
   return NextResponse.json({
     total: rawRows.length,
     valid: validFinal.length,
@@ -330,6 +349,7 @@ export async function PUT(req: NextRequest) {
     outOfJurisdictionSeqnos,
     lockedSeqnos,
     carpableConflicts,
+    notEligibleConflictSeqnos,
     bySEQNO,
     mode: mode ?? "append",
   });
@@ -394,16 +414,12 @@ export async function POST(req: NextRequest) {
   const buffer = Buffer.from(await file.arrayBuffer());
   const isXlsx = !file.name.toLowerCase().endsWith(".csv");
 
-  // CSV is parsed once and cached; XLSX is streamed fresh on each pass from the same buffer.
-  let csvRows: RawRow[] | null = null;
+  // Parse once and cache for both passes; the buffer is already fully in memory.
+  let cachedRows: RawRow[] | null = null;
 
   async function* rowsFromBuffer(): AsyncGenerator<RawRow> {
-    if (isXlsx) {
-      yield* streamXlsxRows(buffer);
-    } else {
-      if (!csvRows) csvRows = await parseFile(buffer, file!.name);
-      for (const row of csvRows) yield row;
-    }
+    if (!cachedRows) cachedRows = await parseFile(buffer, file!.name);
+    for (const row of cachedRows) yield row;
   }
 
   // Pass 1 (streaming): collect unique seqno_darro values — only strings in memory
@@ -421,7 +437,7 @@ export async function POST(req: NextRequest) {
 
   const found = await prisma.landholding.findMany({
     where: { seqno_darro: { in: seqnos } },
-    select: { seqno_darro: true, province_edited: true },
+    select: { seqno_darro: true, province_edited: true, status: true, non_eligibility_reason: true },
   });
   const foundMap = Object.fromEntries(found.map((r) => [r.seqno_darro, r]));
 
@@ -430,6 +446,7 @@ export async function POST(req: NextRequest) {
 
   let insertedCount = 0;
   let skippedCount = 0;
+  const skipReasons: { row: number; reason: string }[] = [];
 
   try {
     const deleteStmt = rawDb.prepare(`DELETE FROM "Arb" WHERE seqno_darro = ?`);
@@ -457,11 +474,18 @@ export async function POST(req: NextRequest) {
       if (batch.length === 0) return;
       rawDb.transaction(() => {
         for (const r of batch) {
+          const lhStatus = foundMap[r.seqno_darro!]?.status;
+          const forceNotEligible = lhStatus === "Not Eligible for Encoding" && r.eligibility === "Eligible";
+          const finalEligibility = forceNotEligible ? "Not Eligible" : r.eligibility;
+          const finalEligibilityReason = forceNotEligible
+            ? (foundMap[r.seqno_darro!]?.non_eligibility_reason ?? "Landholding is Not Eligible for Encoding")
+            : r.eligibility_reason;
+          const datesBlocked = finalEligibility === "Not Eligible" || lhStatus === "Not Eligible for Encoding";
           insertStmt.run(
             r.seqno_darro!, r.arb_name, r.arb_id, r.ep_cloa_no, r.carpable,
-            r.area_allocated, r.allocated_condoned_amount, r.eligibility, r.eligibility_reason,
-            (r.eligibility === "Not Eligible" || r.carpable === "NON-CARPABLE") ? null : r.date_encoded,
-            (r.eligibility === "Not Eligible" || r.carpable === "NON-CARPABLE") ? null : r.date_distributed,
+            r.area_allocated, r.allocated_condoned_amount, finalEligibility, finalEligibilityReason,
+            datesBlocked ? null : r.date_encoded,
+            datesBlocked ? null : r.date_distributed,
             r.remarks, "System"
           );
         }
@@ -470,14 +494,40 @@ export async function POST(req: NextRequest) {
       batch = [];
     };
 
+    let rowIndex = 1;
     for await (const row of rowsFromBuffer()) {
+      rowIndex++;
       const r = mapRow(row);
-      if (!r.seqno_darro || !r.arb_name || !r.arb_id || !r.carpable || r.area_allocated === null) { skippedCount++; continue; }
-      if (!r.allocated_condoned_amount || !r.eligibility) { skippedCount++; continue; }
-      if (r.eligibility === "Not Eligible" && !r.eligibility_reason) { skippedCount++; continue; }
-      if (seenIds.has(r.arb_id)) { skippedCount++; continue; }
-      if (!foundMap[r.seqno_darro]) { skippedCount++; continue; }
-      if (scopedProvince && foundMap[r.seqno_darro]?.province_edited !== scopedProvince) { skippedCount++; continue; }
+      if (!r.seqno_darro || !r.arb_name || !r.arb_id || !r.carpable || r.area_allocated === null) {
+        skippedCount++;
+        skipReasons.push({ row: rowIndex, reason: `missing field: seqno=${r.seqno_darro} arb_name=${r.arb_name} arb_id=${r.arb_id} carpable=${r.carpable} area=${r.area_allocated}` });
+        continue;
+      }
+      if (!r.allocated_condoned_amount || !r.eligibility) {
+        skippedCount++;
+        skipReasons.push({ row: rowIndex, reason: `missing condoned_amount or eligibility: condoned=${r.allocated_condoned_amount} elig=${r.eligibility}` });
+        continue;
+      }
+      if (r.eligibility === "Not Eligible" && !r.eligibility_reason) {
+        skippedCount++;
+        skipReasons.push({ row: rowIndex, reason: `Not Eligible missing reason` });
+        continue;
+      }
+      if (seenIds.has(r.arb_id)) {
+        skippedCount++;
+        skipReasons.push({ row: rowIndex, reason: `duplicate arb_id in file: ${r.arb_id}` });
+        continue;
+      }
+      if (!foundMap[r.seqno_darro]) {
+        skippedCount++;
+        skipReasons.push({ row: rowIndex, reason: `seqno not found in DB: ${r.seqno_darro}` });
+        continue;
+      }
+      if (scopedProvince && foundMap[r.seqno_darro]?.province_edited !== scopedProvince) {
+        skippedCount++;
+        skipReasons.push({ row: rowIndex, reason: `out of jurisdiction: province=${foundMap[r.seqno_darro]?.province_edited} user_scope=${scopedProvince}` });
+        continue;
+      }
       seenIds.add(r.arb_id);
       affectedSeqnos.add(r.seqno_darro);
       countBySeqno[r.seqno_darro] = (countBySeqno[r.seqno_darro] ?? 0) + 1;
@@ -503,5 +553,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Database error during import. Check server logs." }, { status: 500 });
   }
 
-  return NextResponse.json({ imported: insertedCount, skipped: skippedCount });
+  return NextResponse.json({ imported: insertedCount, skipped: skippedCount, skipReasons });
 }

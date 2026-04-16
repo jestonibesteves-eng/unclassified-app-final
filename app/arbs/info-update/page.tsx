@@ -57,6 +57,38 @@ const TYPES: {
     locked: true,
     lockedNote: 'Locked when the landholding status has reached "For Encoding" or beyond.',
   },
+  {
+    value: "carpable",
+    label: "CARPable",
+    icon: "🌾",
+    hint: 'Format: SEQNO_DARRO → Tab → ARB_ID → Tab → CARPABLE or NON-CARPABLE. Copy three columns from Excel.',
+    placeholder: "R5-UC-00001\t123456789\tCARPABLE\nR5-UC-00002\t987654321\tNON-CARPABLE",
+    locked: false,
+  },
+  {
+    value: "eligibility",
+    label: "Eligibility",
+    icon: "✅",
+    hint: 'Format: SEQNO_DARRO → Tab → ARB_ID → Tab → Eligible or Not Eligible. Copy three columns from Excel.',
+    placeholder: "R5-UC-00001\t123456789\tEligible\nR5-UC-00002\t987654321\tNot Eligible",
+    locked: false,
+  },
+  {
+    value: "ep_cloa_no",
+    label: "Title No.",
+    icon: "📄",
+    hint: 'Format: SEQNO_DARRO → Tab → ARB_ID → Tab → EP/CLOA No. Copy three columns from Excel.',
+    placeholder: "R5-UC-00001\t123456789\tEP-000001\nR5-UC-00002\t987654321\tCLOA-000002",
+    locked: false,
+  },
+  {
+    value: "remarks",
+    label: "Remarks",
+    icon: "💬",
+    hint: 'Format: SEQNO_DARRO → Tab → ARB_ID → Tab → Remarks text. Copy three columns from Excel.',
+    placeholder: "R5-UC-00001\t123456789\tFor follow-up\nR5-UC-00002\t987654321\tVerified",
+    locked: false,
+  },
 ];
 
 const LOCKED_STATUSES = [
