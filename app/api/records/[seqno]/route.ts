@@ -27,7 +27,16 @@ export async function GET(req: NextRequest, { params }: Params) {
       record.municipality && !record.municipality.toLowerCase().includes(sessionUser.municipality.toLowerCase()))
     return NextResponse.json({ error: "Outside your jurisdiction." }, { status: 403 });
 
-  return NextResponse.json(record);
+  // Always recompute status on load so the modal reflects the latest formula
+  // without requiring a manual Save Changes first.
+  await computeAndUpdateStatus(seqno);
+
+  const fresh = await prisma.landholding.findUnique({
+    where: { seqno_darro: seqno },
+    include: { arbs: { orderBy: { id: "asc" } } },
+  });
+
+  return NextResponse.json(fresh);
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
