@@ -193,15 +193,21 @@ export function IssueStrip({ data }: { data: StripData }) {
 
 /* ─── Stat cards grid ─── */
 export function DashboardStatCards({
-  total, totalArea, validatedCount, validatedArea,
+  total, totalArea, validatedCount, validatedArea, validatedCondoned,
+  notEligibleForEncodingCount, notEligibleForEncodingArea, notEligibleForEncodingCondoned,
   distinctCarpableARBCount, serviceCarpableARBCount, nonCarpableARBCount,
   noIssuesCount, useValidated, distinctLOCount, totalCondoned,
   cocromCount, eligibleArbCount, cocromForValidation, cocromForEncoding, cocromEncoded, cocromDistributed,
+  eligibleDistinctCarpableARBCount,
 }: {
   total: number;
   totalArea: number;
   validatedCount: number;
   validatedArea: number;
+  validatedCondoned: number;
+  notEligibleForEncodingCount: number;
+  notEligibleForEncodingArea: number;
+  notEligibleForEncodingCondoned: number;
   distinctCarpableARBCount: number;
   serviceCarpableARBCount: number;
   nonCarpableARBCount: number;
@@ -215,6 +221,7 @@ export function DashboardStatCards({
   cocromForEncoding: number;
   cocromEncoded: number;
   cocromDistributed: number;
+  eligibleDistinctCarpableARBCount: number;
 }) {
   return (
     <div className="grid grid-cols-2 gap-4 mb-6 lg:grid-cols-6">
@@ -222,7 +229,7 @@ export function DashboardStatCards({
         label="TOTAL RECORDS"
         rawValue={total}
         displayValue={total.toLocaleString()}
-        sub={`${validatedCount.toLocaleString()} landholdings validated`}
+        sub={<>{validatedCount.toLocaleString()} landholdings validated <span className="text-red-300">({notEligibleForEncodingCount.toLocaleString()} Not Eligible for Encoding)</span></>}
         color="green"
         index={0}
       />
@@ -243,7 +250,8 @@ export function DashboardStatCards({
         })}
         sub={
           useValidated
-            ? `${validatedArea.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} has. validated`
+            ? <>{validatedArea.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} has. validated <span className="text-red-300">({notEligibleForEncodingArea.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Not Eligible for Encoding)</span></>
+
             : "Based on original AMENDAREA"
         }
         color={useValidated ? "amber" : "blue"}
@@ -256,7 +264,7 @@ export function DashboardStatCards({
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         })}
-        sub="Validated condoned amount"
+        sub={<>₱{validatedCondoned.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} validated <span className="text-red-300">(₱{notEligibleForEncodingCondoned.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Not Eligible for Encoding)</span></>}
         color="teal"
         index={3}
         prefix="₱"
@@ -266,9 +274,9 @@ export function DashboardStatCards({
         rawValue={cocromCount}
         displayValue={cocromCount.toLocaleString()}
         sub={
-          <span className="flex flex-col gap-0.5">
+          <span className="flex flex-col gap-1">
             <span>{eligibleArbCount.toLocaleString()} eligible · {(cocromCount - eligibleArbCount).toLocaleString()} not eligible</span>
-            <span>{cocromForValidation.toLocaleString()} for val. · {cocromForEncoding.toLocaleString()} for enc. · {cocromEncoded.toLocaleString()} enc'd · {cocromDistributed.toLocaleString()} distrib.</span>
+            <span className="border-t border-gray-200 pt-1">{cocromForValidation.toLocaleString()} for val. · {cocromForEncoding.toLocaleString()} for enc. · {cocromEncoded.toLocaleString()} enc'd · {cocromDistributed.toLocaleString()} distrib.</span>
           </span>
         }
         color="orange"
@@ -278,7 +286,12 @@ export function DashboardStatCards({
         label={<>ARB<span className="text-[8px]">s</span> UPLOADED</>}
         rawValue={distinctCarpableARBCount}
         displayValue={distinctCarpableARBCount.toLocaleString()}
-        sub={`${serviceCarpableARBCount.toLocaleString()} service · ${nonCarpableARBCount.toLocaleString()} non-CARPable`}
+        sub={
+          <span className="flex flex-col gap-1">
+            <span>{eligibleDistinctCarpableARBCount.toLocaleString()} eligible ARBs · {(distinctCarpableARBCount - eligibleDistinctCarpableARBCount).toLocaleString()} not eligible ARBs</span>
+            <span className="border-t border-gray-200 pt-1">Service count: {serviceCarpableARBCount.toLocaleString()} CARPable lots · {nonCarpableARBCount.toLocaleString()} Non-CARPable lots</span>
+          </span>
+        }
         color="blue"
         index={5}
       />
