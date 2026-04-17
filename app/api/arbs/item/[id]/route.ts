@@ -78,7 +78,11 @@ export async function PATCH(
   const finalEligibilityReason = forceNotEligible
     ? (arb.landholding.non_eligibility_reason ?? "Landholding is Not Eligible for Encoding")
     : (finalEligibility === "Not Eligible" ? eligibility_reason.trim() : null);
-  const datesBlocked = finalEligibility === "Not Eligible" || normalizedCarpable === "NON-CARPABLE" || arb.landholding.status === "Not Eligible for Encoding";
+  // Dates blocked when: not eligible, landholding is not eligible for encoding, OR
+  // non-CARPable AND not explicitly eligible (rare edge case allows NON-CARPABLE + Eligible)
+  const datesBlocked = finalEligibility === "Not Eligible" ||
+    arb.landholding.status === "Not Eligible for Encoding" ||
+    (normalizedCarpable === "NON-CARPABLE" && finalEligibility !== "Eligible");
   const newDateEncoded = datesBlocked ? null : (date_encoded?.trim() || null);
   const newDateDistributed = (datesBlocked || !newDateEncoded) ? null : (date_distributed?.trim() || null);
 

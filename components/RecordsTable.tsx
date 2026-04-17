@@ -451,32 +451,37 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
     if (!editingArb) return;
     if (!editingArb.carpable) { setArbEditError("CARPable/Non-CARPable is required."); return; }
     setArbEditError(""); setSavingArb(true);
-    const res = await fetch(`/api/arbs/item/${editingArb.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        arb_name: editingArb.arb_name,
-        arb_id: editingArb.arb_id || null,
-        ep_cloa_no: editingArb.ep_cloa_no || null,
-        carpable: editingArb.carpable,
-        area_allocated: editingArb.area_allocated || null,
-        allocated_condoned_amount: editingArb.allocated_condoned_amount,
-        eligibility: editingArb.eligibility,
-        eligibility_reason: editingArb.eligibility_reason,
-        date_encoded: editingArb.date_encoded || null,
-        date_distributed: editingArb.date_distributed || null,
-        remarks: editingArb.remarks || null,
-      }),
-    });
-    const result = await res.json();
-    if (!res.ok) { setArbEditError(result.error ?? "Save failed."); setSavingArb(false); return; }
-    // Refresh detail
-    const detailRes = await fetch(`/api/records/${encodeURIComponent(seqno)}`);
-    const detailData = await detailRes.json();
-    setData(detailData);
-    toast("ARB updated.", "success");
-    setSavingArb(false);
-    setEditingArb(null);
+    try {
+      const res = await fetch(`/api/arbs/item/${editingArb.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          arb_name: editingArb.arb_name,
+          arb_id: editingArb.arb_id || null,
+          ep_cloa_no: editingArb.ep_cloa_no || null,
+          carpable: editingArb.carpable,
+          area_allocated: editingArb.area_allocated || null,
+          allocated_condoned_amount: editingArb.allocated_condoned_amount,
+          eligibility: editingArb.eligibility,
+          eligibility_reason: editingArb.eligibility_reason,
+          date_encoded: editingArb.date_encoded || null,
+          date_distributed: editingArb.date_distributed || null,
+          remarks: editingArb.remarks || null,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) { setArbEditError(result.error ?? "Save failed."); setSavingArb(false); return; }
+      // Refresh detail
+      const detailRes = await fetch(`/api/records/${encodeURIComponent(seqno)}`);
+      const detailData = await detailRes.json();
+      setData(detailData);
+      toast("ARB updated.", "success");
+      setSavingArb(false);
+      setEditingArb(null);
+    } catch (err) {
+      setArbEditError(err instanceof Error ? err.message : "An unexpected error occurred.");
+      setSavingArb(false);
+    }
   }
 
   async function handleArbDelete(arbId: number) {
@@ -1288,7 +1293,7 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
                               <td className="px-2 py-1.5"><input value={editingArb.ep_cloa_no} onChange={(e) => setEditingArb((p) => p && ({ ...p, ep_cloa_no: e.target.value.toUpperCase() }))} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-green-600" /></td>
                               <td className="px-2 py-1.5">{isLocked ? <span className="text-[12px] font-mono text-right block text-gray-800 px-1">{editingArb.area_allocated || "—"}</span> : <input value={editingArb.area_allocated} onChange={(e) => setEditingArb((p) => p && ({ ...p, area_allocated: e.target.value }))} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] text-right focus:outline-none focus:ring-1 focus:ring-green-600" />}</td>
                               <td className="px-2 py-1.5">
-                                <select value={editingArb.carpable} onChange={(e) => setEditingArb((p) => p && ({ ...p, carpable: e.target.value, date_encoded: e.target.value === "NON-CARPABLE" ? "" : p.date_encoded, date_distributed: e.target.value === "NON-CARPABLE" ? "" : p.date_distributed }))} className={`w-full border rounded px-2 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-green-600 bg-white ${!editingArb.carpable ? "border-red-300" : "border-gray-300"}`}>
+                                <select value={editingArb.carpable} onChange={(e) => setEditingArb((p) => { if (!p) return p; const clearDates = e.target.value === "NON-CARPABLE" && p.eligibility !== "Eligible"; return { ...p, carpable: e.target.value, date_encoded: clearDates ? "" : p.date_encoded, date_distributed: clearDates ? "" : p.date_distributed }; })} className={`w-full border rounded px-2 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-green-600 bg-white ${!editingArb.carpable ? "border-red-300" : "border-gray-300"}`}>
                                   <option value="">—</option>
                                   <option value="CARPABLE">CARPABLE</option>
                                   <option value="NON-CARPABLE">NON-CARPABLE</option>
@@ -1305,8 +1310,8 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
                                 )}
                               </td>
                               <td className="px-2 py-1.5"><input value={editingArb.allocated_condoned_amount} onChange={(e) => setEditingArb((p) => p && ({ ...p, allocated_condoned_amount: e.target.value }))} placeholder="e.g. ₱12,345.00 or N/A" className={`w-full border rounded px-2 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-green-600 ${!editingArb.allocated_condoned_amount.trim() ? "border-red-300" : "border-gray-300"}`} /></td>
-                              <td className="px-2 py-1.5"><input type="date" value={toDateInput(editingArb.date_encoded)} onChange={(e) => setEditingArb((p) => p && ({ ...p, date_encoded: fromDateInput(e.target.value), date_distributed: e.target.value ? p.date_distributed : "" }))} disabled={editingArb.eligibility === "Not Eligible" || editingArb.carpable === "NON-CARPABLE"} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] font-mono focus:outline-none focus:ring-1 focus:ring-green-600 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" /></td>
-                              <td className="px-2 py-1.5"><input type="date" value={toDateInput(editingArb.date_distributed)} onChange={(e) => setEditingArb((p) => p && ({ ...p, date_distributed: fromDateInput(e.target.value) }))} disabled={editingArb.eligibility === "Not Eligible" || editingArb.carpable === "NON-CARPABLE" || !editingArb.date_encoded} title={!editingArb.date_encoded ? "Date Encoded is required first" : undefined} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] font-mono focus:outline-none focus:ring-1 focus:ring-green-600 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" /></td>
+                              <td className="px-2 py-1.5"><input type="date" value={toDateInput(editingArb.date_encoded)} onChange={(e) => setEditingArb((p) => p && ({ ...p, date_encoded: fromDateInput(e.target.value), date_distributed: e.target.value ? p.date_distributed : "" }))} disabled={editingArb.eligibility === "Not Eligible" || (editingArb.carpable === "NON-CARPABLE" && editingArb.eligibility !== "Eligible")} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] font-mono focus:outline-none focus:ring-1 focus:ring-green-600 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" /></td>
+                              <td className="px-2 py-1.5"><input type="date" value={toDateInput(editingArb.date_distributed)} onChange={(e) => setEditingArb((p) => p && ({ ...p, date_distributed: fromDateInput(e.target.value) }))} disabled={editingArb.eligibility === "Not Eligible" || (editingArb.carpable === "NON-CARPABLE" && editingArb.eligibility !== "Eligible") || !editingArb.date_encoded} title={!editingArb.date_encoded ? "Date Encoded is required first" : undefined} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] font-mono focus:outline-none focus:ring-1 focus:ring-green-600 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed" /></td>
                               <td className="px-2 py-1.5"><input value={editingArb.remarks} onChange={(e) => setEditingArb((p) => p && ({ ...p, remarks: e.target.value }))} className="w-full border border-gray-300 rounded px-2 py-1 text-[12px] focus:outline-none focus:ring-1 focus:ring-green-600" /></td>
                               <td className="px-3 py-1.5 text-center whitespace-nowrap">
                                 <button onClick={handleArbSave} disabled={savingArb} className="text-[11px] px-2 py-1 bg-green-700 text-white rounded hover:bg-green-600 disabled:opacity-40 mr-1">{savingArb ? "…" : "Save"}</button>

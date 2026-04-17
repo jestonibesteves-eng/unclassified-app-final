@@ -27,7 +27,7 @@ async function resolveStatus(seqno: string): Promise<string | null> {
 
   const arbs = await prisma.arb.findMany({
     where: { seqno_darro: seqno },
-    select: { area_allocated: true, allocated_condoned_amount: true, date_encoded: true, date_distributed: true, eligibility: true },
+    select: { area_allocated: true, allocated_condoned_amount: true, date_encoded: true, date_distributed: true, eligibility: true, carpable: true },
   });
 
   if (arbs.length === 0) {
@@ -46,16 +46,19 @@ async function resolveStatus(seqno: string): Promise<string | null> {
   const bothConfirmed = (lh.amendarea_validated_confirmed ?? false) && (lh.condoned_amount_confirmed ?? false);
   if (!bothConfirmed) return "For Further Validation";
 
-  const eligibleArbs = arbs.filter((a) => a.eligibility === "Eligible");
-  const eligibleTotal = eligibleArbs.length;
+  // Qualifying ARBs: CARPable ones, plus any Non-CARPable that are explicitly Eligible
+  const qualifyingArbs = arbs.filter(
+    (a) => a.carpable === "CARPABLE" || (a.carpable !== "CARPABLE" && a.eligibility === "Eligible")
+  );
+  const qualifyingTotal = qualifyingArbs.length;
 
-  if (eligibleTotal > 0) {
-    const encodedCount = eligibleArbs.filter((a) => a.date_encoded).length;
-    const distributedCount = eligibleArbs.filter((a) => a.date_encoded && a.date_distributed).length;
+  if (qualifyingTotal > 0) {
+    const encodedCount = qualifyingArbs.filter((a) => a.date_encoded).length;
+    const distributedCount = qualifyingArbs.filter((a) => a.date_encoded && a.date_distributed).length;
 
-    if (distributedCount === eligibleTotal) return "Fully Distributed";
+    if (distributedCount === qualifyingTotal) return "Fully Distributed";
     if (distributedCount > 0) return "Partially Distributed";
-    if (encodedCount === eligibleTotal) return "Fully Encoded";
+    if (encodedCount === qualifyingTotal) return "Fully Encoded";
     if (encodedCount > 0) return "Partially Encoded";
   }
 
