@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
+import { computeAndUpdateStatus } from "@/lib/computeStatus";
 
 export async function GET(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
@@ -143,6 +144,10 @@ export async function GET(req: NextRequest) {
     const { amendarea_validated_confirmed, condoned_amount_confirmed, ...rest } = r;
     return { ...rest, arb_area_mismatch, arb_total_area };
   });
+
+  // Recompute statuses for the current page in the background so the list
+  // stays fresh without requiring a manual Save Changes on each record.
+  Promise.all(rawRecords.map((r) => computeAndUpdateStatus(r.seqno_darro))).catch(() => {});
 
   return NextResponse.json({ records, total, page, limit });
 }
