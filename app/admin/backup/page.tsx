@@ -123,6 +123,8 @@ export default function BackupPage() {
   const [restoreTarget, setRestoreTarget] = useState<BackupEntry | null>(null);
   const [staging, setStaging] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [recomputing, setRecomputing] = useState(false);
+  const [recomputeResult, setRecomputeResult] = useState<number | null>(null);
 
   const fetchBackups = useCallback(async () => {
     setLoading(true);
@@ -231,6 +233,22 @@ export default function BackupPage() {
     }
   }
 
+  async function handleRecompute() {
+    setRecomputing(true);
+    setRecomputeResult(null);
+    try {
+      const res = await fetch("/api/admin/recompute-status", { method: "POST" });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setRecomputeResult(data.recomputed);
+      toast(`Recomputed status for ${data.recomputed} landholding(s).`, "success");
+    } catch {
+      toast("Failed to recompute statuses.", "error");
+    } finally {
+      setRecomputing(false);
+    }
+  }
+
   if (user && user.role !== "super_admin") return null;
 
   return (
@@ -292,6 +310,35 @@ export default function BackupPage() {
             </>
           )}
         </button>
+      </div>
+
+      {/* Recompute Status */}
+      <div className="card-bezel">
+        <div className="card-bezel-inner px-4 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1">
+            <p className="text-[13px] font-semibold text-gray-800">Recompute All Landholding Statuses</p>
+            <p className="text-[11px] text-gray-500 mt-0.5">
+              Re-runs the status formula on every landholding that has ARBs. Use this after formula changes to bring all records up to date.
+            </p>
+            {recomputeResult !== null && (
+              <p className="text-[11px] text-green-700 font-medium mt-1">
+                Done — {recomputeResult} landholding{recomputeResult !== 1 ? "s" : ""} recomputed.
+              </p>
+            )}
+          </div>
+          <button
+            onClick={handleRecompute}
+            disabled={recomputing}
+            className="flex-shrink-0 self-start sm:self-auto text-[12px] font-medium px-4 py-2 rounded-lg bg-green-800 text-white hover:bg-green-700 transition-colors disabled:opacity-60 flex items-center gap-2"
+          >
+            {recomputing ? (
+              <>
+                <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                Recomputing…
+              </>
+            ) : "Recompute Now"}
+          </button>
+        </div>
       </div>
 
       {/* Table card */}
