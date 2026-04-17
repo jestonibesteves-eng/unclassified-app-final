@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { cookies } from "next/headers";
-import { prisma, rawDb } from "@/lib/db";
+import { prisma } from "@/lib/db";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
 import {
   ProvinceBarChart,
@@ -41,53 +41,8 @@ async function getStats(provinceFilter: string | string[] | null) {
   // Kept for backward compat with existing spread usages below
   const arbProvinceScope = arbWhere();
 
-  // ── Validated-row query (rawDb — must run before Promise.all) ──────────────
-  // Uses a pre-aggregated JOIN instead of a correlated subquery so SQLite only
-  // scans the Arb table once rather than once per qualifying landholding.
-  const provinceParams: string[] =
-    provinceFilter === null ? [] :
-    Array.isArray(provinceFilter) ? provinceFilter : [provinceFilter];
-  const provinceClause =
-    provinceParams.length === 0 ? "" :
-    provinceParams.length === 1
-      ? "AND l.province_edited = ?"
-      : `AND l.province_edited IN (${provinceParams.map(() => "?").join(",")})`;
-  const validatedSql = `
-    SELECT
-      COUNT(*) AS count,
-      COALESCE(SUM(COALESCE(l.amendarea_validated, l.amendarea)), 0) AS area,
-      COALESCE(SUM(COALESCE(l.condoned_amount, l.net_of_reval_no_neg)), 0) AS condoned,
-      SUM(CASE WHEN l.status = 'Not Eligible for Encoding' THEN 1 ELSE 0 END) AS not_eligible_count,
-      COALESCE(SUM(CASE WHEN l.status = 'Not Eligible for Encoding' THEN COALESCE(l.amendarea_validated, l.amendarea) ELSE 0 END), 0) AS not_eligible_area,
-      COALESCE(SUM(CASE WHEN l.status = 'Not Eligible for Encoding' THEN COALESCE(l.condoned_amount, l.net_of_reval_no_neg) ELSE 0 END), 0) AS not_eligible_condoned
-    FROM "Landholding" l
-    LEFT JOIN (
-      SELECT seqno_darro,
-             ROUND(SUM(CASE WHEN area_allocated IS NOT NULL AND area_allocated NOT LIKE '%*'
-                            THEN CAST(area_allocated AS REAL) ELSE 0 END), 4) AS total_arb_area
-      FROM "Arb"
-      GROUP BY seqno_darro
-    ) arb_totals ON arb_totals.seqno_darro = l.seqno_darro
-    WHERE (
-      l.status = 'Not Eligible for Encoding'
-      OR (
-        l.amendarea_validated_confirmed = 1
-        AND l.condoned_amount_confirmed = 1
-        AND l.amendarea_validated IS NOT NULL
-        AND COALESCE(arb_totals.total_arb_area, 0) = ROUND(l.amendarea_validated, 4)
-      )
-    )
-    ${provinceClause}
-  `;
-  type ValidatedRow = { count: number; area: number; condoned: number; not_eligible_count: number; not_eligible_area: number; not_eligible_condoned: number };
-  let validatedRow: ValidatedRow = { count: 0, area: 0, condoned: 0, not_eligible_count: 0, not_eligible_area: 0, not_eligible_condoned: 0 };
-  try {
-    validatedRow = rawDb.prepare(validatedSql).get(provinceParams) as ValidatedRow ?? validatedRow;
-  } catch (e) {
-    console.error("[getStats] validatedRow SQL error:", e);
-  }
-
   const [
+    validatedRowResult,
     total,
     byProvince,
     byStatus,
@@ -118,6 +73,60 @@ async function getStats(provinceFilter: string | string[] | null) {
     cocromDistChartArbsRaw,
     notEligibleRaw,
   ] = await Promise.all([
+    // ── Validated-row: async Prisma (non-blocking) ─────────────────────────
+    (async (): Promise<{ count: number; area: number; condoned: number; not_eligible_count: number; not_eligible_area: number; not_eligible_condoned: number }> => {
+      const [notEligibleLHs, confirmedLHs] = await Promise.all([
+        prisma.landholding.findMany({
+          where: { ...scope, status: "Not Eligible for Encoding" },
+          select: { seqno_darro: true, amendarea_validated: true, amendarea: true, condoned_amount: true, net_of_reval_no_neg: true },
+        }),
+        prisma.landholding.findMany({
+          where: {
+            ...scope,
+            amendarea_validated_confirmed: true,
+            condoned_amount_confirmed: true,
+            amendarea_validated: { not: null },
+            NOT: { status: "Not Eligible for Encoding" },
+          },
+          select: { seqno_darro: true, amendarea_validated: true, condoned_amount: true, net_of_reval_no_neg: true },
+        }),
+      ]);
+      const arbTotals = new Map<string, number>();
+      if (confirmedLHs.length > 0) {
+        const arbRows = await prisma.arb.findMany({
+          where: { seqno_darro: { in: confirmedLHs.map((l) => l.seqno_darro) } },
+          select: { seqno_darro: true, area_allocated: true },
+        });
+        for (const a of arbRows) {
+          if (!a.area_allocated) continue;
+          const s = String(a.area_allocated).trim().replace(/,/g, "");
+          if (s.endsWith("*")) continue;
+          const n = parseFloat(s);
+          if (!isNaN(n)) arbTotals.set(a.seqno_darro, (arbTotals.get(a.seqno_darro) ?? 0) + n);
+        }
+      }
+      const matchingConfirmedLHs = confirmedLHs.filter((l) => {
+        const arbTotal = arbTotals.get(l.seqno_darro) ?? 0;
+        const validated = Number(l.amendarea_validated!);
+        return parseFloat(arbTotal.toFixed(4)) === parseFloat(validated.toFixed(4));
+      });
+      let count = 0, area = 0, condoned = 0;
+      let not_eligible_count = 0, not_eligible_area = 0, not_eligible_condoned = 0;
+      for (const lh of notEligibleLHs) {
+        count++;
+        area += Number(lh.amendarea_validated ?? lh.amendarea ?? 0);
+        condoned += Number(lh.condoned_amount ?? lh.net_of_reval_no_neg ?? 0);
+        not_eligible_count++;
+        not_eligible_area += Number(lh.amendarea_validated ?? lh.amendarea ?? 0);
+        not_eligible_condoned += Number(lh.condoned_amount ?? lh.net_of_reval_no_neg ?? 0);
+      }
+      for (const lh of matchingConfirmedLHs) {
+        count++;
+        area += Number(lh.amendarea_validated ?? 0);
+        condoned += Number(lh.condoned_amount ?? lh.net_of_reval_no_neg ?? 0);
+      }
+      return { count, area, condoned, not_eligible_count, not_eligible_area, not_eligible_condoned };
+    })(),
     prisma.landholding.count({ where: scope }),
     prisma.landholding.groupBy({
       by: ["province_edited"],
@@ -317,12 +326,12 @@ async function getStats(provinceFilter: string | string[] | null) {
   const totalValidatedArea =
     (validatedDirectSum._sum.amendarea_validated ?? 0) +
     (fallbackSum._sum.amendarea ?? 0);
-  const validatedCount = validatedRow.count;
-  const validatedArea = validatedRow.area;
-  const validatedCondoned = validatedRow.condoned;
-  const notEligibleForEncodingCount = validatedRow.not_eligible_count;
-  const notEligibleForEncodingArea = validatedRow.not_eligible_area;
-  const notEligibleForEncodingCondoned = validatedRow.not_eligible_condoned;
+  const validatedCount = validatedRowResult.count;
+  const validatedArea = validatedRowResult.area;
+  const validatedCondoned = validatedRowResult.condoned;
+  const notEligibleForEncodingCount = validatedRowResult.not_eligible_count;
+  const notEligibleForEncodingArea = validatedRowResult.not_eligible_area;
+  const notEligibleForEncodingCondoned = validatedRowResult.not_eligible_condoned;
   const distinctLOCount = distinctLOGroups.length;
   const distinctCarpableARBCount = distinctCarpableARBGroups.length;
   const eligibleDistinctCarpableARBCount = eligibleDistinctCarpableARBGroups.length;

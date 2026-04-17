@@ -50,21 +50,21 @@ export async function GET(req: NextRequest) {
     ).get() as { n: number }).n;
 
     const valCompleted = (rawDb.prepare(`
-      SELECT COUNT(*) as n FROM "Landholding" l
+      SELECT COUNT(*) as n
+      FROM "Landholding" l
+      LEFT JOIN (
+        SELECT a.seqno_darro,
+               SUM(CASE WHEN ${IS_CLEAN(AREA_CLEAN)} THEN CAST(${AREA_CLEAN} AS REAL) ELSE 0 END) AS total_area
+        FROM "Arb" a
+        WHERE a.carpable = 'CARPABLE'
+        GROUP BY a.seqno_darro
+      ) arb_totals ON arb_totals.seqno_darro = l.seqno_darro
       WHERE (
-        l.amendarea_validated_confirmed = 1
-        AND l.condoned_amount_confirmed = 1
-        AND ABS(
-          COALESCE(l.amendarea_validated, l.amendarea, 0) -
-          COALESCE((
-            SELECT SUM(CASE
-              WHEN ${IS_CLEAN(AREA_CLEAN)} THEN CAST(${AREA_CLEAN} AS REAL)
-              ELSE 0 END)
-            FROM "Arb" a WHERE a.seqno_darro = l.seqno_darro AND a.carpable = 'CARPABLE'
-          ), 0)
-        ) < 0.01
+        (l.amendarea_validated_confirmed = 1
+          AND l.condoned_amount_confirmed = 1
+          AND ABS(COALESCE(l.amendarea_validated, l.amendarea, 0) - COALESCE(arb_totals.total_area, 0)) < 0.01)
+        OR l.status = 'Not Eligible for Encoding'
       )
-      OR l.status = 'Not Eligible for Encoding'
       ${lhWhere2}
     `).get() as { n: number }).n;
 
