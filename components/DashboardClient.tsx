@@ -56,7 +56,7 @@ function StatCard({
   label: React.ReactNode;
   rawValue: number;
   displayValue: string;
-  sub: string;
+  sub: React.ReactNode;
   color: keyof typeof CARD_CFG;
   index: number;
   prefix?: string;
@@ -193,14 +193,15 @@ export function IssueStrip({ data }: { data: StripData }) {
 
 /* ─── Stat cards grid ─── */
 export function DashboardStatCards({
-  total, totalArea, validatedCount,
+  total, totalArea, validatedCount, validatedArea,
   distinctCarpableARBCount, serviceCarpableARBCount, nonCarpableARBCount,
   noIssuesCount, useValidated, distinctLOCount, totalCondoned,
-  cocromCount, cocromForValidation, cocromForEncoding, cocromEncoded, cocromDistributed,
+  cocromCount, eligibleArbCount, cocromForValidation, cocromForEncoding, cocromEncoded, cocromDistributed,
 }: {
   total: number;
   totalArea: number;
   validatedCount: number;
+  validatedArea: number;
   distinctCarpableARBCount: number;
   serviceCarpableARBCount: number;
   nonCarpableARBCount: number;
@@ -209,6 +210,7 @@ export function DashboardStatCards({
   distinctLOCount: number;
   totalCondoned: number;
   cocromCount: number;
+  eligibleArbCount: number;
   cocromForValidation: number;
   cocromForEncoding: number;
   cocromEncoded: number;
@@ -220,7 +222,7 @@ export function DashboardStatCards({
         label="TOTAL RECORDS"
         rawValue={total}
         displayValue={total.toLocaleString()}
-        sub="Landholdings"
+        sub={`${validatedCount.toLocaleString()} landholdings validated`}
         color="green"
         index={0}
       />
@@ -241,7 +243,7 @@ export function DashboardStatCards({
         })}
         sub={
           useValidated
-            ? `${validatedCount.toLocaleString()} records validated`
+            ? `${validatedArea.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} has. validated`
             : "Based on original AMENDAREA"
         }
         color={useValidated ? "amber" : "blue"}
@@ -263,7 +265,12 @@ export function DashboardStatCards({
         label={<>TOTAL NO. OF COCROM<span className="text-[8px]">s</span></>}
         rawValue={cocromCount}
         displayValue={cocromCount.toLocaleString()}
-        sub={`${cocromForValidation.toLocaleString()} for val. · ${cocromForEncoding.toLocaleString()} for enc. · ${cocromEncoded.toLocaleString()} enc'd · ${cocromDistributed.toLocaleString()} distrib.`}
+        sub={
+          <span className="flex flex-col gap-0.5">
+            <span>{eligibleArbCount.toLocaleString()} eligible · {(cocromCount - eligibleArbCount).toLocaleString()} not eligible</span>
+            <span>{cocromForValidation.toLocaleString()} for val. · {cocromForEncoding.toLocaleString()} for enc. · {cocromEncoded.toLocaleString()} enc'd · {cocromDistributed.toLocaleString()} distrib.</span>
+          </span>
+        }
         color="orange"
         index={4}
       />

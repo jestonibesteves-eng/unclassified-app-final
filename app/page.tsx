@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { cookies } from "next/headers";
-import { prisma } from "@/lib/db";
+import { prisma, rawDb } from "@/lib/db";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
 import {
   ProvinceBarChart,
@@ -51,7 +51,7 @@ async function getStats(provinceFilter: string | string[] | null) {
     originalSum,
     validatedDirectSum,
     fallbackSum,
-    validatedCount,
+    validatedRow,
     noIssuesCount,
     zeroAmendareaCount,
     zeroCondonedCount,
@@ -61,6 +61,7 @@ async function getStats(provinceFilter: string | string[] | null) {
     condonedDirectSum,
     condonedFallbackSum,
     cocromCount,
+    eligibleArbCount,
     cocromForValidation,
     cocromForEncoding,
     cocromEncoded,
@@ -102,7 +103,39 @@ async function getStats(provinceFilter: string | string[] | null) {
       where: { ...scope, amendarea_validated: null },
       _sum: { amendarea: true },
     }),
-    prisma.landholding.count({ where: { ...scope, amendarea_validated: { not: null } } }),
+    // A landholding is "validated" when both confirmations are set AND
+    // the total ARB area matches the validated AMENDAREA (to 4 decimal places).
+    Promise.resolve((() => {
+      const provinceParams: string[] =
+        provinceFilter === null ? [] :
+        Array.isArray(provinceFilter) ? provinceFilter : [provinceFilter];
+      const provinceClause =
+        provinceParams.length === 0 ? "" :
+        provinceParams.length === 1
+          ? "AND l.province_edited = ?"
+          : `AND l.province_edited IN (${provinceParams.map(() => "?").join(",")})`;
+      const sql = `
+        SELECT
+          COUNT(*) AS count,
+          COALESCE(SUM(COALESCE(l.amendarea_validated, l.amendarea)), 0) AS area
+        FROM "Landholding" l
+        WHERE (
+          l.status = 'Not Eligible for Encoding'
+          OR (
+            l.amendarea_validated_confirmed = 1
+            AND l.condoned_amount_confirmed = 1
+            AND l.amendarea_validated IS NOT NULL
+            AND ROUND(COALESCE(
+              (SELECT SUM(CASE WHEN a.area_allocated IS NOT NULL AND a.area_allocated NOT LIKE '%*'
+                               THEN CAST(a.area_allocated AS REAL) ELSE 0 END)
+               FROM "Arb" a WHERE a.seqno_darro = l.seqno_darro), 0), 4)
+              = ROUND(l.amendarea_validated, 4)
+          )
+        )
+        ${provinceClause}
+      `;
+      return rawDb.prepare(sql).get(provinceParams) as { count: number; area: number };
+    })()),
     prisma.landholding.count({
       where: {
         ...scope,
@@ -183,15 +216,17 @@ async function getStats(provinceFilter: string | string[] | null) {
       where: { ...scope, condoned_amount: null },
       _sum: { net_of_reval_no_neg: true },
     }),
-    // COCROMs — eligible ARBs that have been encoded (date_encoded is set)
+    // COCROMs — total ARB rows
     prisma.arb.count({
-      where: { ...arbProvinceScope, eligibility: "Eligible", date_encoded: { not: null } },
+      where: { ...arbProvinceScope },
     }),
-    // COCROM breakdown by landholding status (CARPable ARBs only)
-    prisma.arb.count({ where: { ...arbWhere({ status: "For Further Validation" }), carpable: "CARPABLE" } }),
-    prisma.arb.count({ where: { ...arbWhere({ status: "For Encoding" }), carpable: "CARPABLE" } }),
-    prisma.arb.count({ where: { ...arbWhere({ status: { in: ["Fully Encoded", "Partially Encoded"] } }), carpable: "CARPABLE" } }),
-    prisma.arb.count({ where: { ...arbWhere({ status: { in: ["Fully Distributed", "Partially Distributed"] } }), carpable: "CARPABLE" } }),
+    // COCROMs — eligible ARBs
+    prisma.arb.count({ where: { ...arbProvinceScope, eligibility: "Eligible" } }),
+    // COCROM breakdown (eligible ARBs only; enc'd/distrib. use date fields)
+    prisma.arb.count({ where: { ...arbWhere({ status: "For Further Validation" }), eligibility: "Eligible" } }),
+    prisma.arb.count({ where: { ...arbWhere({ status: "For Encoding" }), eligibility: "Eligible" } }),
+    prisma.arb.count({ where: { ...arbProvinceScope, eligibility: "Eligible", date_encoded: { not: null } } }),
+    prisma.arb.count({ where: { ...arbProvinceScope, eligibility: "Eligible", date_distributed: { not: null } } }),
     // Area per status — validated (where amendarea_validated is set)
     prisma.landholding.groupBy({
       by: ["status"],
@@ -266,6 +301,8 @@ async function getStats(provinceFilter: string | string[] | null) {
   const totalValidatedArea =
     (validatedDirectSum._sum.amendarea_validated ?? 0) +
     (fallbackSum._sum.amendarea ?? 0);
+  const validatedCount = validatedRow.count;
+  const validatedArea = validatedRow.area;
   const distinctLOCount = distinctLOGroups.length;
   const distinctCarpableARBCount = distinctCarpableARBGroups.length;
   const totalCondoned =
@@ -405,9 +442,9 @@ async function getStats(provinceFilter: string | string[] | null) {
   return {
     total, byProvince, byStatus, statusAreaMap,
     distinctCarpableARBCount, serviceCarpableARBCount, nonCarpableARBCount,
-    totalOriginalArea, totalValidatedArea, validatedCount,
+    totalOriginalArea, totalValidatedArea, validatedCount, validatedArea,
     noIssuesCount, zeroAmendareaCount, zeroCondonedCount, negativeCondonedCount, crossProvinceCount,
-    distinctLOCount, totalCondoned, cocromCount,
+    distinctLOCount, totalCondoned, cocromCount, eligibleArbCount,
     cocromForValidation, cocromForEncoding, cocromEncoded, cocromDistributed,
     cocromEncodingData, cocromDistributionData, cocromDistNotEligible,
     notEligibleByProvince, notEligibleByReason,
@@ -455,9 +492,9 @@ export default async function Dashboard({
   const {
     total, byProvince, byStatus, statusAreaMap,
     distinctCarpableARBCount, serviceCarpableARBCount, nonCarpableARBCount,
-    totalOriginalArea, totalValidatedArea, validatedCount,
+    totalOriginalArea, totalValidatedArea, validatedCount, validatedArea,
     noIssuesCount, zeroAmendareaCount, zeroCondonedCount, negativeCondonedCount, crossProvinceCount,
-    distinctLOCount, totalCondoned, cocromCount,
+    distinctLOCount, totalCondoned, cocromCount, eligibleArbCount,
     cocromForValidation, cocromForEncoding, cocromEncoded, cocromDistributed,
     cocromEncodingData, cocromDistributionData, cocromDistNotEligible,
     notEligibleByProvince, notEligibleByReason,
@@ -548,11 +585,13 @@ export default async function Dashboard({
         total={total}
         totalArea={shownArea}
         validatedCount={validatedCount}
+        validatedArea={validatedArea}
         noIssuesCount={noIssuesCount}
         useValidated={useValidated}
         distinctLOCount={distinctLOCount}
         totalCondoned={totalCondoned}
         cocromCount={cocromCount}
+        eligibleArbCount={eligibleArbCount}
         cocromForValidation={cocromForValidation}
         cocromForEncoding={cocromForEncoding}
         cocromEncoded={cocromEncoded}
