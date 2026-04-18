@@ -199,7 +199,7 @@ export default async function Dashboard({
 
       {/* ── Charts Row 1 ── */}
       <div className="grid grid-cols-1 gap-6 mb-6 lg:grid-cols-2">
-        <ChartCard title="Records by Province">
+        <ChartCard title="Records per Province (Total Scope)">
           <ProvinceBarChart data={provinceData} />
         </ChartCard>
         <ChartCard title="Records by Status">
