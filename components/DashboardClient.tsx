@@ -238,6 +238,7 @@ export function DashboardStatCards({
           <button
             onClick={() => setTableOpen(true)}
             title="View as province breakdown table"
+            aria-label="View as province breakdown table"
             className="w-7 h-7 flex items-center justify-center rounded-md bg-white border border-emerald-200 shadow-sm hover:bg-emerald-50 transition-colors"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
