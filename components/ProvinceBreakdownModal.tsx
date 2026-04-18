@@ -115,6 +115,13 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
 
   useEffect(() => {
     if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open, onClose]);
+
+  useEffect(() => {
+    if (!open) return;
     const key = (selectedProvinces ?? []).slice().sort().join(",") + "|" + (publicToken ?? "");
     if (fetchedKey.current === key) return;
     fetchedKey.current = key;
