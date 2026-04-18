@@ -107,20 +107,26 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
   const [total, setTotal] = useState<ProvinceTableRow | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fetched = useRef(false);
+  const fetchedKey = useRef<string | null>(null);
   const captureRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open || fetched.current) return;
-    fetched.current = true;
+    if (!open) return;
+    const key = (selectedProvinces ?? []).slice().sort().join(",") + "|" + (publicToken ?? "");
+    if (fetchedKey.current === key) return;
+    fetchedKey.current = key;
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams();
     if (selectedProvinces && selectedProvinces.length > 0) {
       params.set("provinces", selectedProvinces.join(","));
     }
     if (publicToken) params.set("token", publicToken);
     fetch(`/api/dashboard/province-table?${params.toString()}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((data) => {
         setRows(data.rows ?? []);
         setTotal(data.total ?? null);
@@ -142,7 +148,7 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
     ].join(",");
     const dataRows = [...rows, ...(total ? [total] : [])].map((r) =>
       [
-        `"${r.province}"`,
+        `"${r.province.replace(/"/g, '""')}"`,
         r.records_scope, r.records_validated, pct(r.records_validated, r.records_scope),
         r.lo_scope, r.lo_validated, pct(r.lo_validated, r.lo_scope),
         r.area_scope.toFixed(2), r.area_validated.toFixed(2), pct(r.area_validated, r.area_scope),
@@ -150,7 +156,7 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
       ].join(",")
     );
     const csv = [header, ...dataRows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -161,26 +167,35 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
 
   async function exportImage() {
     if (!captureRef.current) return;
-    const html2canvas = (await import("html2canvas")).default;
-    const canvas = await html2canvas(captureRef.current, { scale: 2, useCORS: true });
-    const url = canvas.toDataURL("image/png");
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `province-breakdown-${new Date().toISOString().slice(0, 10)}.png`;
-    a.click();
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const canvas = await html2canvas(captureRef.current, { scale: 2, useCORS: true });
+      const url = canvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `province-breakdown-${new Date().toISOString().slice(0, 10)}.png`;
+      a.click();
+    } catch {
+      setError("Failed to export image.");
+    }
   }
 
   if (!open) return null;
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="province-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+      tabIndex={-1}
     >
       <div className="max-w-5xl w-full rounded-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="bg-green-900 px-5 py-3 flex items-center justify-between flex-shrink-0">
-          <h2 className="text-[10px] font-bold text-green-300 uppercase tracking-[0.13em]">
+          <h2 id="province-modal-title" className="text-[10px] font-bold text-green-300 uppercase tracking-[0.13em]">
             Province Breakdown — Per Landholding Data
           </h2>
           <button
