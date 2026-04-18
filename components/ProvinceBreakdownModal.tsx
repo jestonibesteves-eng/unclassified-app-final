@@ -111,6 +111,7 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
   const [exportError, setExportError] = useState<string | null>(null);
   const fetchedKey = useRef<string | null>(null);
   const captureRef = useRef<HTMLDivElement>(null);
+  const exportTitleRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -172,12 +173,15 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
     setExportError(null);
     try {
       const { toPng } = await import("html-to-image");
+      if (exportTitleRef.current) exportTitleRef.current.classList.remove("hidden");
       const url = await toPng(captureRef.current, { pixelRatio: 2 });
+      if (exportTitleRef.current) exportTitleRef.current.classList.add("hidden");
       const a = document.createElement("a");
       a.href = url;
       a.download = `province-breakdown-${new Date().toISOString().slice(0, 10)}.png`;
       a.click();
     } catch (err) {
+      if (exportTitleRef.current) exportTitleRef.current.classList.add("hidden");
       console.error("[exportImage]", err);
       setExportError("Failed to export image. Try Export CSV instead.");
     }
@@ -224,6 +228,11 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
           )}
           {!loading && !error && (
             <div ref={captureRef}>
+              <div ref={exportTitleRef} className="bg-green-900 px-5 py-3 hidden">
+                <span className="text-[10px] font-bold text-green-300 uppercase tracking-[0.13em]">
+                  Province Breakdown — Per Landholding Data
+                </span>
+              </div>
               <table className="w-full border-collapse text-left" style={{ minWidth: 720 }}>
                 <thead>
                   {/* Group header row */}
