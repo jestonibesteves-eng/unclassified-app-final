@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ProvinceTableRow } from "@/app/api/dashboard/province-table/route";
 
 type Props = {
@@ -182,7 +183,7 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -323,6 +324,7 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
