@@ -23,8 +23,24 @@ export async function GET(req: NextRequest) {
   const scopedMunicipality =
     sessionUser.office_level === "municipal" ? sessionUser.municipality ?? null : null;
 
+  // Get seqnos that have ARBs — avoids Prisma JOIN-based OFFSET pagination bug with `arbs: { some: {} }`
+  const seqnoFilterParts: Prisma.Sql[] = [];
+  if (scopedProvince) seqnoFilterParts.push(Prisma.sql`l.province_edited = ${scopedProvince}`);
+  if (scopedMunicipality) seqnoFilterParts.push(Prisma.sql`l.municipality LIKE ${"%" + scopedMunicipality + "%"}`);
+  if (search) seqnoFilterParts.push(Prisma.sql`(l.seqno_darro LIKE ${"%" + search + "%"} OR l.landowner LIKE ${"%" + search + "%"} OR l.clno LIKE ${"%" + search + "%"})`);
+  const seqnoFilterWhere = seqnoFilterParts.length > 0
+    ? Prisma.sql`WHERE ${Prisma.join(seqnoFilterParts, " AND ")}`
+    : Prisma.sql``;
+  const arbSeqnoRows = await prisma.$queryRaw<{ seqno_darro: string }[]>`
+    SELECT DISTINCT a.seqno_darro
+    FROM Arb a
+    JOIN Landholding l ON l.seqno_darro = a.seqno_darro
+    ${seqnoFilterWhere}
+  `;
+  const arbSeqnos = arbSeqnoRows.map((r) => r.seqno_darro);
+
   const where: Prisma.LandholdingWhereInput = {
-    arbs: { some: {} },
+    seqno_darro: { in: arbSeqnos },
     ...(scopedProvince ? { province_edited: scopedProvince } : {}),
     ...(scopedMunicipality ? { municipality: { contains: scopedMunicipality } } : {}),
     ...(search
