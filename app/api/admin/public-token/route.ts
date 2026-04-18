@@ -39,6 +39,3 @@ export async function POST(req: NextRequest) {
   });
   return NextResponse.json({ token: newToken });
 }
-
-// Exported for use in the public page token validation
-export { validatePublicToken } from "@/lib/public-token";
