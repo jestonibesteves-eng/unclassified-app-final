@@ -41,7 +41,4 @@ export async function POST(req: NextRequest) {
 }
 
 // Exported for use in the public page token validation
-export async function validatePublicToken(candidate: string): Promise<boolean> {
-  const setting = await prisma.setting.findUnique({ where: { key: TOKEN_KEY } });
-  return !!setting && setting.value === candidate;
-}
+export { validatePublicToken } from "@/lib/public-token";

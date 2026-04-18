@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
-import { validatePublicToken } from "@/app/api/admin/public-token/route";
+import { validatePublicToken } from "@/lib/public-token";
 
 export type ProvinceTableRow = {
   province: string;
