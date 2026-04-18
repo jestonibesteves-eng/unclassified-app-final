@@ -75,6 +75,14 @@ function IconBackup() {
     </svg>
   );
 }
+function IconActivity() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="1 9 3.5 5.5 5.5 7.5 8 3.5 10.5 6.5 13 2" />
+      <line x1="1" y1="12" x2="13" y2="12" />
+    </svg>
+  );
+}
 function IconClose() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -131,8 +139,9 @@ const ALL_NAV_GROUPS: NavGroup[] = [
     label: "Admin",
     minRole: "admin",
     items: [
-      { href: "/users",          label: "User Management", Icon: IconUsers                         },
-      { href: "/admin/backup",   label: "Backup",          Icon: IconBackup, superAdminOnly: true },
+      { href: "/users",                  label: "User Management", Icon: IconUsers                           },
+      { href: "/admin/activity",         label: "DARPO Activity",  Icon: IconActivity, superAdminOnly: true },
+      { href: "/admin/backup",           label: "Backup",          Icon: IconBackup,   superAdminOnly: true },
     ],
   },
 ];
@@ -238,7 +247,7 @@ export default function Sidebar() {
                 Data Management System
               </p>
               <p className="text-[9px] text-green-500/40 leading-none mt-1 font-mono tracking-tight">
-                {process.env.NEXT_PUBLIC_GIT_VERSION}
+                v{process.env.NEXT_PUBLIC_GIT_VERSION}
               </p>
             </div>
 
