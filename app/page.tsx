@@ -5,8 +5,6 @@ import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
 import {
   ProvinceBarChart,
   StatusWithAreaChart,
-  CocromEncodingChart,
-  CocromDistributionChart,
   NotEligibleReasonsChart,
   type CocromEncodingData,
   type CocromSourceRow,
@@ -14,6 +12,7 @@ import {
   type CocromDistNotEligible,
   type NotEligibleReasonRow,
 } from "@/components/DashboardCharts";
+import { CocromChartsRow } from "@/components/CocromChartsRow";
 import DashboardAreaToggle from "@/components/DashboardAreaToggle";
 import DashboardProvinceFilter from "@/components/DashboardProvinceFilter";
 import DashboardExportButtons from "@/components/DashboardExportButtons";
@@ -209,26 +208,19 @@ export default async function Dashboard({
       </div>
 
       {/* ── Charts Row 2 ── */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <ChartCard title={'Status of Encoding (landholding under "For Encoding" status and above only)'}>
-          <CocromEncodingChart
-            data={cocromEncodingData}
-            sourceLandholdings={cocromSourceLandholdings}
-          />
-        </ChartCard>
-        <ChartCard title={'Status of Distribution (Landholdings w/ Status "Partially and Fully Distributed" only)'}>
-          <CocromDistributionChart
-            data={cocromDistributionData}
-            sourceLandholdings={cocromDistSourceLandholdings}
-            notEligible={cocromDistNotEligible}
-            totals={{
-              cocrom: cocromCount,
-              arbs:   distinctCarpableARBCount,
-              area:   shownArea,
-            }}
-          />
-        </ChartCard>
-      </div>
+      <CocromChartsRow
+        encodingData={cocromEncodingData}
+        encodingSourceLandholdings={cocromSourceLandholdings}
+        distributionData={cocromDistributionData}
+        distributionSourceLandholdings={cocromDistSourceLandholdings}
+        distributionNotEligible={cocromDistNotEligible}
+        distributionTotals={{
+          cocrom: cocromCount,
+          arbs:   distinctCarpableARBCount,
+          area:   shownArea,
+          amount: totalCondoned,
+        }}
+      />
 
       {/* ── COCROM Distribution Progress ── */}
       <DashboardProgress />

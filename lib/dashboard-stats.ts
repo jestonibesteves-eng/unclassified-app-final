@@ -298,12 +298,13 @@ export async function getStats(provinceFilter: string | string[] | null) {
         },
       },
       select: {
-        arb_name:       true,
-        area_allocated: true,
-        eligibility:    true,
-        carpable:       true,
-        date_encoded:   true,
-        landholding:    { select: { status: true } },
+        arb_name:                  true,
+        area_allocated:            true,
+        allocated_condoned_amount: true,
+        eligibility:               true,
+        carpable:                  true,
+        date_encoded:              true,
+        landholding:               { select: { status: true } },
       },
     }),
     // COCROM distribution chart — all ARBs from Partially/Fully Distributed landholdings
@@ -315,12 +316,13 @@ export async function getStats(provinceFilter: string | string[] | null) {
         },
       },
       select: {
-        arb_name:         true,
-        area_allocated:   true,
-        eligibility:      true,
-        carpable:         true,
-        date_distributed: true,
-        landholding:      { select: { province_edited: true } },
+        arb_name:                  true,
+        area_allocated:            true,
+        allocated_condoned_amount: true,
+        eligibility:               true,
+        carpable:                  true,
+        date_distributed:          true,
+        landholding:               { select: { province_edited: true } },
       },
     }),
     // Not Eligible for Encoding — by province and by reason
@@ -373,12 +375,12 @@ export async function getStats(provinceFilter: string | string[] | null) {
     return isNaN(n) ? 0 : n;
   };
 
-  type SegAcc = { count: number; arbs: Set<string>; area: number };
+  type SegAcc = { count: number; arbs: Set<string>; area: number; amount: number };
   const encAcc: Record<"encoded" | "forEncoding" | "arbNotEligible" | "nonArbNotEligible", SegAcc> = {
-    encoded:           { count: 0, arbs: new Set(), area: 0 },
-    forEncoding:       { count: 0, arbs: new Set(), area: 0 },
-    arbNotEligible:    { count: 0, arbs: new Set(), area: 0 },
-    nonArbNotEligible: { count: 0, arbs: new Set(), area: 0 },
+    encoded:           { count: 0, arbs: new Set(), area: 0, amount: 0 },
+    forEncoding:       { count: 0, arbs: new Set(), area: 0, amount: 0 },
+    arbNotEligible:    { count: 0, arbs: new Set(), area: 0, amount: 0 },
+    nonArbNotEligible: { count: 0, arbs: new Set(), area: 0, amount: 0 },
   };
 
   for (const arb of cocromChartArbsRaw) {
@@ -393,7 +395,8 @@ export async function getStats(provinceFilter: string | string[] | null) {
       ) continue;
       encAcc.forEncoding.count++;
       if (arb.arb_name) encAcc.forEncoding.arbs.add(arb.arb_name);
-      encAcc.forEncoding.area += parseAllocatedArea(arb.area_allocated);
+      encAcc.forEncoding.area   += parseAllocatedArea(arb.area_allocated);
+      encAcc.forEncoding.amount += parseAllocatedArea(arb.allocated_condoned_amount);
       continue;
     }
 
@@ -410,34 +413,37 @@ export async function getStats(provinceFilter: string | string[] | null) {
     }
     encAcc[seg].count++;
     if (arb.arb_name) encAcc[seg].arbs.add(arb.arb_name);
-    encAcc[seg].area += parseAllocatedArea(arb.area_allocated);
+    encAcc[seg].area   += parseAllocatedArea(arb.area_allocated);
+    encAcc[seg].amount += parseAllocatedArea(arb.allocated_condoned_amount);
   }
 
   const cocromEncodingData: CocromEncodingData = {
-    encoded:           { count: encAcc.encoded.count,           arbs: encAcc.encoded.arbs.size,           area: encAcc.encoded.area           },
-    forEncoding:       { count: encAcc.forEncoding.count,       arbs: encAcc.forEncoding.arbs.size,       area: encAcc.forEncoding.area       },
-    arbNotEligible:    { count: encAcc.arbNotEligible.count,    arbs: encAcc.arbNotEligible.arbs.size,    area: encAcc.arbNotEligible.area    },
-    nonArbNotEligible: { count: encAcc.nonArbNotEligible.count, arbs: encAcc.nonArbNotEligible.arbs.size, area: encAcc.nonArbNotEligible.area },
+    encoded:           { count: encAcc.encoded.count,           arbs: encAcc.encoded.arbs.size,           area: encAcc.encoded.area,           amount: encAcc.encoded.amount           },
+    forEncoding:       { count: encAcc.forEncoding.count,       arbs: encAcc.forEncoding.arbs.size,       area: encAcc.forEncoding.area,       amount: encAcc.forEncoding.amount       },
+    arbNotEligible:    { count: encAcc.arbNotEligible.count,    arbs: encAcc.arbNotEligible.arbs.size,    area: encAcc.arbNotEligible.area,    amount: encAcc.arbNotEligible.amount    },
+    nonArbNotEligible: { count: encAcc.nonArbNotEligible.count, arbs: encAcc.nonArbNotEligible.arbs.size, area: encAcc.nonArbNotEligible.area, amount: encAcc.nonArbNotEligible.amount },
   };
 
   // ── COCROM distribution chart aggregation (per province + not-eligible summary) ────
-  const distProvMap = new Map<string, { count: number; arbs: Set<string>; area: number }>();
+  const distProvMap = new Map<string, { count: number; arbs: Set<string>; area: number; amount: number }>();
   const distNotElig = {
-    arbNotEligible:    { count: 0, arbs: new Set<string>(), area: 0 },
-    nonArbNotEligible: { count: 0, arbs: new Set<string>(), area: 0 },
+    arbNotEligible:    { count: 0, arbs: new Set<string>(), area: 0, amount: 0 },
+    nonArbNotEligible: { count: 0, arbs: new Set<string>(), area: 0, amount: 0 },
   };
 
   for (const arb of cocromDistChartArbsRaw) {
-    const area = parseAllocatedArea(arb.area_allocated);
+    const area   = parseAllocatedArea(arb.area_allocated);
+    const amount = parseAllocatedArea(arb.allocated_condoned_amount);
 
     // Distributed ARBs → per-province bar chart
     if (arb.date_distributed !== null) {
       const prov = arb.landholding.province_edited ?? "Unknown";
-      if (!distProvMap.has(prov)) distProvMap.set(prov, { count: 0, arbs: new Set(), area: 0 });
+      if (!distProvMap.has(prov)) distProvMap.set(prov, { count: 0, arbs: new Set(), area: 0, amount: 0 });
       const acc = distProvMap.get(prov)!;
       acc.count++;
       if (arb.arb_name) acc.arbs.add(arb.arb_name);
-      acc.area += area;
+      acc.area   += area;
+      acc.amount += amount;
       continue;
     }
 
@@ -445,11 +451,13 @@ export async function getStats(provinceFilter: string | string[] | null) {
     if (arb.carpable !== "CARPABLE") {
       distNotElig.nonArbNotEligible.count++;
       if (arb.arb_name) distNotElig.nonArbNotEligible.arbs.add(arb.arb_name);
-      distNotElig.nonArbNotEligible.area += area;
+      distNotElig.nonArbNotEligible.area   += area;
+      distNotElig.nonArbNotEligible.amount += amount;
     } else if (arb.eligibility !== "Eligible") {
       distNotElig.arbNotEligible.count++;
       if (arb.arb_name) distNotElig.arbNotEligible.arbs.add(arb.arb_name);
-      distNotElig.arbNotEligible.area += area;
+      distNotElig.arbNotEligible.area   += area;
+      distNotElig.arbNotEligible.amount += amount;
     }
     // eligible + CARPable but not yet distributed → not included in sidenote
   }
@@ -457,15 +465,16 @@ export async function getStats(provinceFilter: string | string[] | null) {
   const cocromDistributionData: CocromDistributionRow[] = Array.from(distProvMap.entries())
     .map(([province, acc]) => ({
       province,
-      count: acc.count,
-      arbs:  acc.arbs.size,
-      area:  acc.area,
+      count:  acc.count,
+      arbs:   acc.arbs.size,
+      area:   acc.area,
+      amount: acc.amount,
     }))
     .sort((a, b) => b.count - a.count);
 
   const cocromDistNotEligible: CocromDistNotEligible = {
-    arbNotEligible:    { count: distNotElig.arbNotEligible.count,    arbs: distNotElig.arbNotEligible.arbs.size,    area: distNotElig.arbNotEligible.area    },
-    nonArbNotEligible: { count: distNotElig.nonArbNotEligible.count, arbs: distNotElig.nonArbNotEligible.arbs.size, area: distNotElig.nonArbNotEligible.area },
+    arbNotEligible:    { count: distNotElig.arbNotEligible.count,    arbs: distNotElig.arbNotEligible.arbs.size,    area: distNotElig.arbNotEligible.area,    amount: distNotElig.arbNotEligible.amount    },
+    nonArbNotEligible: { count: distNotElig.nonArbNotEligible.count, arbs: distNotElig.nonArbNotEligible.arbs.size, area: distNotElig.nonArbNotEligible.area, amount: distNotElig.nonArbNotEligible.amount },
   };
 
   // ── Not Eligible for Encoding aggregation ────────────────────────────────

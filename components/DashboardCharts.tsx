@@ -372,7 +372,9 @@ export function SourcePieChart({ data }: { data: KV[] }) {
 
 /* ─── COCROM Encoding Status donut chart ─── */
 
-type CocromSeg = { count: number; arbs: number; area: number };
+export type CocromChartMode = "cocrom" | "arbs" | "area" | "amount";
+
+type CocromSeg = { count: number; arbs: number; area: number; amount: number };
 
 export type CocromSourceRow = { status: string; count: number; area: number };
 
@@ -393,24 +395,32 @@ const COCROM_ENC_SEGS = [
 export function CocromEncodingChart({
   data,
   sourceLandholdings,
+  mode: externalMode,
+  onModeChange,
 }: {
   data: CocromEncodingData;
   sourceLandholdings: CocromSourceRow[];
+  mode?: CocromChartMode;
+  onModeChange?: (m: CocromChartMode) => void;
 }) {
-  const [mode, setMode] = useState<"cocrom" | "arbs" | "area">("cocrom");
+  const [internalMode, setInternalMode] = useState<CocromChartMode>("cocrom");
+  const mode = externalMode ?? internalMode;
+  const setMode = onModeChange ?? setInternalMode;
   const [hovering, setHovering] = useState(false);
 
   const getValue = (seg: CocromSeg) =>
-    mode === "cocrom" ? seg.count : mode === "arbs" ? seg.arbs : seg.area;
+    mode === "cocrom" ? seg.count : mode === "arbs" ? seg.arbs : mode === "area" ? seg.area : seg.amount;
 
   const fmtCenter = (n: number) =>
-    mode === "area"
+    mode === "area" || mode === "amount"
       ? n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       : n.toLocaleString();
 
   const fmtLegend = (n: number) =>
     mode === "area"
       ? n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " ha."
+      : mode === "amount"
+      ? n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       : n.toLocaleString();
 
   const chartData = COCROM_ENC_SEGS
@@ -430,9 +440,10 @@ export function CocromEncodingChart({
       <div className="flex flex-wrap justify-end gap-y-1 mb-3">
         <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden text-[11px] font-semibold">
           {([
-            { k: "cocrom" as const, l: "COCROMs"    },
+            { k: "cocrom" as const, l: "COCROMs"      },
             { k: "arbs"   as const, l: "ARBs (dist.)" },
-            { k: "area"   as const, l: "Area"        },
+            { k: "area"   as const, l: "Area"          },
+            { k: "amount" as const, l: "Amount"        },
           ]).map(({ k, l }, i) => (
             <button
               key={k}
@@ -517,7 +528,7 @@ export function CocromEncodingChart({
                 <p className="text-[9px] font-semibold text-gray-400 tracking-wide mt-0.5">ha.</p>
               )}
               <p className="text-[9px] text-gray-400 uppercase tracking-widest mt-1">
-                {mode === "cocrom" ? "COCROMs" : mode === "arbs" ? "ARBs" : "Total Area"}
+                {mode === "cocrom" ? "COCROMs" : mode === "arbs" ? "ARBs" : mode === "area" ? "Total Area" : "Condoned Amt"}
               </p>
             </div>
           </div>
@@ -608,6 +619,7 @@ export type CocromDistributionRow = {
   count: number;
   arbs: number;
   area: number;
+  amount: number;
 };
 
 export type CocromDistNotEligible = {
@@ -625,19 +637,25 @@ export function CocromDistributionChart({
   sourceLandholdings,
   notEligible,
   totals,
+  mode: externalMode,
+  onModeChange,
 }: {
   data: CocromDistributionRow[];
   sourceLandholdings: CocromSourceRow[];
   notEligible: CocromDistNotEligible;
-  totals: { cocrom: number; arbs: number; area: number };
+  totals: { cocrom: number; arbs: number; area: number; amount: number };
+  mode?: CocromChartMode;
+  onModeChange?: (m: CocromChartMode) => void;
 }) {
-  const [mode, setMode] = useState<"cocrom" | "arbs" | "area">("cocrom");
+  const [internalMode, setInternalMode] = useState<CocromChartMode>("cocrom");
+  const mode = externalMode ?? internalMode;
+  const setMode = onModeChange ?? setInternalMode;
 
   const getVal = (row: CocromDistributionRow) =>
-    mode === "cocrom" ? row.count : mode === "arbs" ? row.arbs : row.area;
+    mode === "cocrom" ? row.count : mode === "arbs" ? row.arbs : mode === "area" ? row.area : row.amount;
 
   const grandTotal =
-    mode === "cocrom" ? totals.cocrom : mode === "arbs" ? totals.arbs : totals.area;
+    mode === "cocrom" ? totals.cocrom : mode === "arbs" ? totals.arbs : mode === "area" ? totals.area : totals.amount;
 
   const chartData = [...data]
     .sort((a, b) => getVal(b) - getVal(a))
@@ -650,6 +668,8 @@ export function CocromDistributionChart({
   const fmtTooltip = (val: number) =>
     mode === "area"
       ? val.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " ha."
+      : mode === "amount"
+      ? val.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       : val.toLocaleString();
 
   const totalDistributed = data.reduce((s, r) => s + getVal(r), 0);
@@ -668,9 +688,10 @@ export function CocromDistributionChart({
         </p>
         <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden text-[11px] font-semibold">
           {([
-            { k: "cocrom" as const, l: "COCROMs"        },
+            { k: "cocrom" as const, l: "COCROMs"         },
             { k: "arbs"   as const, l: "ARBs (distinct)" },
-            { k: "area"   as const, l: "Area"            },
+            { k: "area"   as const, l: "Area"             },
+            { k: "amount" as const, l: "Amount"           },
           ]).map(({ k, l }, i) => (
             <button
               key={k}
@@ -729,7 +750,7 @@ export function CocromDistributionChart({
                     <p className="font-semibold text-gray-300 mb-1">{label}</p>
                     <p>
                       <span className="text-gray-400">
-                        {mode === "cocrom" ? "COCROMs: " : mode === "arbs" ? "ARBs: " : "Area: "}
+                        {mode === "cocrom" ? "COCROMs: " : mode === "arbs" ? "ARBs: " : mode === "area" ? "Area: " : "Amount: "}
                       </span>
                       <span className="font-bold">{fmtTooltip(val)}</span>
                     </p>
@@ -810,15 +831,16 @@ export function CocromDistributionChart({
               n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
             const getSegVal = (seg: CocromSeg) =>
-              mode === "cocrom" ? seg.count : mode === "arbs" ? seg.arbs : seg.area;
+              mode === "cocrom" ? seg.count : mode === "arbs" ? seg.arbs : mode === "area" ? seg.area : seg.amount;
 
             const fmtSegVal = (seg: CocromSeg) => {
               const v = getSegVal(seg);
-              if (mode === "area") return `${fmtArea(v)} ha.`;
+              if (mode === "area")   return `${fmtArea(v)} ha.`;
+              if (mode === "amount") return fmtArea(v);
               return v.toLocaleString();
             };
 
-            const unitLabel = mode === "cocrom" ? "COCROMs" : mode === "arbs" ? "ARBs" : "ha.";
+            const unitLabel = mode === "cocrom" ? "COCROMs" : mode === "arbs" ? "ARBs" : mode === "area" ? "ha." : "Condoned";
 
             const arbNE      = notEligible.arbNotEligible;
             const nonArb     = notEligible.nonArbNotEligible;
