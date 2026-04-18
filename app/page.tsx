@@ -641,11 +641,11 @@ export default async function Dashboard({
             <span className="font-mono">As of {new Date().toLocaleString("en-PH", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Manila" })}</span>
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <DashboardExportButtons />
+        <div className="flex flex-col items-end gap-2">
           <Suspense>
             <DashboardAreaToggle current={areaMode} />
           </Suspense>
+          <DashboardExportButtons />
         </div>
       </div>
 
