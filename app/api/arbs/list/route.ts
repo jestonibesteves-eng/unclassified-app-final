@@ -23,23 +23,8 @@ export async function GET(req: NextRequest) {
   const scopedMunicipality =
     sessionUser.office_level === "municipal" ? sessionUser.municipality ?? null : null;
 
-  // Pre-fetch seqnos with ARBs to avoid Prisma JOIN-based OFFSET pagination bug.
-  // `arbs: { some: {} }` without skip/take is safe — the bug only affects paginated queries.
-  const seqnoRows = await prisma.landholding.findMany({
-    where: {
-      arbs: { some: {} },
-      ...(scopedProvince ? { province_edited: scopedProvince } : {}),
-      ...(scopedMunicipality ? { municipality: { contains: scopedMunicipality } } : {}),
-      ...(search
-        ? { OR: [{ seqno_darro: { contains: search } }, { landowner: { contains: search } }, { clno: { contains: search } }] }
-        : {}),
-    },
-    select: { seqno_darro: true },
-  });
-  const arbSeqnos = seqnoRows.map((r) => r.seqno_darro);
-
   const where: Prisma.LandholdingWhereInput = {
-    seqno_darro: { in: arbSeqnos },
+    arbs: { some: {} },
     ...(scopedProvince ? { province_edited: scopedProvince } : {}),
     ...(scopedMunicipality ? { municipality: { contains: scopedMunicipality } } : {}),
     ...(search
