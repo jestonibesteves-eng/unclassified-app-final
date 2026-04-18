@@ -10,6 +10,7 @@ type Props = {
   onClose: () => void;
   selectedProvinces?: string[];
   publicToken?: string;
+  hideExport?: boolean;
 };
 
 function pct(val: number, scope: number) {
@@ -103,7 +104,7 @@ function DataBarAmount({
   );
 }
 
-export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publicToken }: Props) {
+export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publicToken, hideExport }: Props) {
   const [rows, setRows] = useState<ProvinceTableRow[]>([]);
   const [total, setTotal] = useState<ProvinceTableRow | null>(null);
   const [loading, setLoading] = useState(false);
@@ -142,8 +143,9 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
         setTotal(data.total ?? null);
         setLoading(false);
       })
-      .catch(() => {
-        setError("Failed to load province data.");
+      .catch((err) => {
+        console.error("[ProvinceBreakdownModal]", err);
+        setError(`Failed to load province data. (${err?.message ?? "unknown error"})`);
         setLoading(false);
       });
   }, [open, selectedProvinces, publicToken]);
@@ -341,7 +343,7 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
               <span className="text-[9px] text-red-500">{exportError}</span>
             )}
           </div>
-          <div className="flex gap-2">
+          {!hideExport && <div className="flex gap-2">
             <button
               onClick={exportCsv}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-[9px] font-semibold text-gray-600 hover:bg-gray-50 tracking-wide"
@@ -360,7 +362,7 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
               </svg>
               Export as Image
             </button>
-          </div>
+          </div>}
         </div>
       </div>
     </div>,

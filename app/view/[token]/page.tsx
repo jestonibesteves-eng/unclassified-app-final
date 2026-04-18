@@ -207,6 +207,7 @@ export default async function PublicDashboardPage({
           landholdingsWithArbs={landholdingsWithArbs}
           selectedProvinces={selectedProvinces}
           publicToken={token}
+          hideExport
         />
 
         {/* Charts Row 1 */}

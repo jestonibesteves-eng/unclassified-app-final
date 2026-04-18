@@ -200,7 +200,7 @@ export function DashboardStatCards({
   noIssuesCount, useValidated, distinctLOCount, totalCondoned,
   cocromCount, eligibleArbCount, cocromForValidation, cocromForEncoding, cocromEncoded, cocromDistributed,
   eligibleDistinctCarpableARBCount, landholdingsWithArbs,
-  selectedProvinces, publicToken,
+  selectedProvinces, publicToken, hideExport,
 }: {
   total: number;
   totalArea: number;
@@ -227,6 +227,7 @@ export function DashboardStatCards({
   landholdingsWithArbs: number;
   selectedProvinces?: string[];
   publicToken?: string;
+  hideExport?: boolean;
 }) {
   const [tableOpen, setTableOpen] = useState(false);
   return (
@@ -255,6 +256,7 @@ export function DashboardStatCards({
           onClose={() => setTableOpen(false)}
           selectedProvinces={selectedProvinces}
           publicToken={publicToken}
+          hideExport={hideExport}
         />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
