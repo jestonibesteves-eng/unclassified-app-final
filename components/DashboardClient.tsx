@@ -198,7 +198,7 @@ export function DashboardStatCards({
   distinctCarpableARBCount, serviceCarpableARBCount, nonCarpableARBCount,
   noIssuesCount, useValidated, distinctLOCount, totalCondoned,
   cocromCount, eligibleArbCount, cocromForValidation, cocromForEncoding, cocromEncoded, cocromDistributed,
-  eligibleDistinctCarpableARBCount,
+  eligibleDistinctCarpableARBCount, landholdingsWithArbs,
 }: {
   total: number;
   totalArea: number;
@@ -222,79 +222,94 @@ export function DashboardStatCards({
   cocromEncoded: number;
   cocromDistributed: number;
   eligibleDistinctCarpableARBCount: number;
+  landholdingsWithArbs: number;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-4 mb-6 lg:grid-cols-6">
-      <StatCard
-        label="TOTAL RECORDS"
-        rawValue={total}
-        displayValue={total.toLocaleString()}
-        sub={<>{validatedCount.toLocaleString()} landholdings validated <span className="text-red-300">({notEligibleForEncodingCount.toLocaleString()} Not Eligible for Encoding)</span></>}
-        color="green"
-        index={0}
-      />
-      <StatCard
-        label={<>TOTAL NO. OF LO<span className="text-[8px]">s</span></>}
-        rawValue={distinctLOCount}
-        displayValue={distinctLOCount.toLocaleString()}
-        sub="Distinct landowners"
-        color="purple"
-        index={1}
-      />
-      <StatCard
-        label={useValidated ? "TOTAL AREA · VALIDATED" : "TOTAL AREA · ORIGINAL"}
-        rawValue={Math.floor(totalArea)}
-        displayValue={totalArea.toLocaleString("en-PH", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}
-        sub={
-          useValidated
-            ? <>{validatedArea.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} has. validated <span className="text-red-300">({notEligibleForEncodingArea.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Not Eligible for Encoding)</span></>
+    <div className="mb-6 flex flex-col lg:flex-row gap-4">
+      {/* ── Per Landholding Data ── */}
+      <div className="flex-[4] min-w-0 bg-emerald-100 rounded-xl p-3">
+        <p className="text-[10px] uppercase tracking-[0.13em] font-semibold text-emerald-700 mb-2">Per Landholding Data</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            label="TOTAL RECORDS"
+            rawValue={total}
+            displayValue={total.toLocaleString()}
+            sub={<>{validatedCount.toLocaleString()} landholdings validated <span className="text-red-300">({notEligibleForEncodingCount.toLocaleString()} Not Eligible for Encoding)</span></>}
+            color="green"
+            index={0}
+          />
+          <StatCard
+            label={<>TOTAL NO. OF LO<span className="text-[8px]">s</span></>}
+            rawValue={distinctLOCount}
+            displayValue={distinctLOCount.toLocaleString()}
+            sub="Distinct landowners"
+            color="purple"
+            index={1}
+          />
+          <StatCard
+            label={useValidated ? "TOTAL AREA · VALIDATED" : "TOTAL AREA · ORIGINAL"}
+            rawValue={Math.floor(totalArea)}
+            displayValue={totalArea.toLocaleString("en-PH", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+            sub={
+              useValidated
+                ? <>{validatedArea.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} has. validated <span className="text-red-300">({notEligibleForEncodingArea.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Not Eligible for Encoding)</span></>
+                : "Based on original AMENDAREA"
+            }
+            color={useValidated ? "amber" : "blue"}
+            index={2}
+          />
+          <StatCard
+            label="TOTAL AMOUNT CONDONED"
+            rawValue={Math.floor(totalCondoned)}
+            displayValue={"₱" + totalCondoned.toLocaleString("en-PH", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+            sub={<>₱{validatedCondoned.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} validated <span className="text-red-300">(₱{notEligibleForEncodingCondoned.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Not Eligible for Encoding)</span></>}
+            color="teal"
+            index={3}
+            prefix="₱"
+          />
+        </div>
+      </div>
 
-            : "Based on original AMENDAREA"
-        }
-        color={useValidated ? "amber" : "blue"}
-        index={2}
-      />
-      <StatCard
-        label="TOTAL AMOUNT CONDONED"
-        rawValue={Math.floor(totalCondoned)}
-        displayValue={"₱" + totalCondoned.toLocaleString("en-PH", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}
-        sub={<>₱{validatedCondoned.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} validated <span className="text-red-300">(₱{notEligibleForEncodingCondoned.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Not Eligible for Encoding)</span></>}
-        color="teal"
-        index={3}
-        prefix="₱"
-      />
-      <StatCard
-        label={<>TOTAL NO. OF COCROM<span className="text-[8px]">s</span></>}
-        rawValue={cocromCount}
-        displayValue={cocromCount.toLocaleString()}
-        sub={
-          <span className="flex flex-col gap-1">
-            <span>{eligibleArbCount.toLocaleString()} eligible · {(cocromCount - eligibleArbCount).toLocaleString()} not eligible</span>
-            <span className="border-t border-gray-200 pt-1">{cocromForValidation.toLocaleString()} for val. · {cocromForEncoding.toLocaleString()} for enc. · {cocromEncoded.toLocaleString()} enc'd · {cocromDistributed.toLocaleString()} distrib.</span>
-          </span>
-        }
-        color="orange"
-        index={4}
-      />
-      <StatCard
-        label={<>ARB<span className="text-[8px]">s</span> UPLOADED</>}
-        rawValue={distinctCarpableARBCount}
-        displayValue={distinctCarpableARBCount.toLocaleString()}
-        sub={
-          <span className="flex flex-col gap-1">
-            <span>{eligibleDistinctCarpableARBCount.toLocaleString()} eligible ARBs · {(distinctCarpableARBCount - eligibleDistinctCarpableARBCount).toLocaleString()} not eligible ARBs</span>
-            <span className="border-t border-gray-200 pt-1">Service count: {serviceCarpableARBCount.toLocaleString()} CARPable lots · {nonCarpableARBCount.toLocaleString()} Non-CARPable lots</span>
-          </span>
-        }
-        color="blue"
-        index={5}
-      />
+      {/* ── Per ARB Data ── */}
+      <div className="flex-[2] min-w-0 bg-orange-100 rounded-xl p-3">
+        <p className="text-[10px] uppercase tracking-[0.13em] font-semibold text-orange-700 mb-2">
+          Per ARB Data <span className="normal-case font-normal text-orange-500">({landholdingsWithArbs.toLocaleString()} LHs with ARBs encoded)</span>
+        </p>
+        <div className="grid grid-cols-2 gap-4">
+          <StatCard
+            label={<>TOTAL NO. OF COCROM<span className="text-[8px]">s</span></>}
+            rawValue={cocromCount}
+            displayValue={cocromCount.toLocaleString()}
+            sub={
+              <span className="flex flex-col gap-1">
+                <span>{eligibleArbCount.toLocaleString()} eligible · {(cocromCount - eligibleArbCount).toLocaleString()} not eligible</span>
+                <span className="border-t border-gray-200 pt-1">{cocromForValidation.toLocaleString()} for val. · {cocromForEncoding.toLocaleString()} for enc. · {cocromEncoded.toLocaleString()} enc'd · {cocromDistributed.toLocaleString()} distrib.</span>
+              </span>
+            }
+            color="orange"
+            index={4}
+          />
+          <StatCard
+            label={<>ARB<span className="text-[8px]">s</span> UPLOADED</>}
+            rawValue={distinctCarpableARBCount}
+            displayValue={distinctCarpableARBCount.toLocaleString()}
+            sub={
+              <span className="flex flex-col gap-1">
+                <span>{eligibleDistinctCarpableARBCount.toLocaleString()} eligible ARBs · {(distinctCarpableARBCount - eligibleDistinctCarpableARBCount).toLocaleString()} not eligible ARBs</span>
+                <span className="border-t border-gray-200 pt-1">Service count: {serviceCarpableARBCount.toLocaleString()} CARPable lots · {nonCarpableARBCount.toLocaleString()} Non-CARPable lots</span>
+              </span>
+            }
+            color="blue"
+            index={5}
+          />
+        </div>
+      </div>
     </div>
   );
 }

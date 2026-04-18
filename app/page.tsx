@@ -67,6 +67,7 @@ async function getStats(provinceFilter: string | string[] | null) {
     cocromEncoded,
     cocromDistributed,
     eligibleDistinctCarpableARBGroups,
+    landholdingsWithArbs,
     byStatusValidatedArea,
     byStatusFallbackArea,
     cocromChartArbsRaw,
@@ -283,6 +284,10 @@ async function getStats(provinceFilter: string | string[] | null) {
     prisma.arb.groupBy({
       by: ["arb_name"],
       where: { ...arbProvinceScope, carpable: "CARPABLE", eligibility: "Eligible", arb_name: { not: null } },
+    }),
+    // Landholdings that have at least one ARB record uploaded (any status, any eligibility)
+    prisma.landholding.count({
+      where: { ...scope, arbs: { some: {} } },
     }),
     // Area per status — validated (where amendarea_validated is set)
     prisma.landholding.groupBy({
@@ -510,7 +515,7 @@ async function getStats(provinceFilter: string | string[] | null) {
     noIssuesCount, zeroAmendareaCount, zeroCondonedCount, negativeCondonedCount, crossProvinceCount,
     distinctLOCount, totalCondoned, cocromCount, eligibleArbCount,
     cocromForValidation, cocromForEncoding, cocromEncoded, cocromDistributed,
-    eligibleDistinctCarpableARBCount,
+    eligibleDistinctCarpableARBCount, landholdingsWithArbs,
     cocromEncodingData, cocromDistributionData, cocromDistNotEligible,
     notEligibleByProvince, notEligibleByReason,
   };
@@ -562,7 +567,7 @@ export default async function Dashboard({
     noIssuesCount, zeroAmendareaCount, zeroCondonedCount, negativeCondonedCount, crossProvinceCount,
     distinctLOCount, totalCondoned, cocromCount, eligibleArbCount,
     cocromForValidation, cocromForEncoding, cocromEncoded, cocromDistributed,
-    eligibleDistinctCarpableARBCount,
+    eligibleDistinctCarpableARBCount, landholdingsWithArbs,
     cocromEncodingData, cocromDistributionData, cocromDistNotEligible,
     notEligibleByProvince, notEligibleByReason,
   } = await getStats(provinceFilter);
@@ -671,6 +676,7 @@ export default async function Dashboard({
         distinctCarpableARBCount={distinctCarpableARBCount}
         serviceCarpableARBCount={serviceCarpableARBCount}
         nonCarpableARBCount={nonCarpableARBCount}
+        landholdingsWithArbs={landholdingsWithArbs}
       />
 
       {/* ── Issue Breakdown Strip ── */}
