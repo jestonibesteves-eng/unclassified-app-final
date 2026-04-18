@@ -8,6 +8,8 @@ export type ProvinceTableRow = {
   records_scope: number;
   records_validated: number;
   records_not_eligible: number;
+  area_not_eligible: number;
+  amount_not_eligible: number;
   lo_scope: number;
   lo_validated: number;
   area_scope: number;
@@ -113,6 +115,8 @@ export async function GET(req: NextRequest) {
       records_scope: number;
       records_validated: number;
       records_not_eligible: number;
+      area_not_eligible: number;
+      amount_not_eligible: number;
       lo_scope: Set<string>;
       lo_validated: Set<string>;
       area_scope: number;
@@ -129,6 +133,7 @@ export async function GET(req: NextRequest) {
       if (!provMap.has(prov)) {
         provMap.set(prov, {
           records_scope: 0, records_validated: 0, records_not_eligible: 0,
+          area_not_eligible: 0, amount_not_eligible: 0,
           lo_scope: new Set(), lo_validated: new Set(),
           area_scope: 0, area_validated: 0,
           amount_scope: 0, amount_validated: 0,
@@ -151,10 +156,14 @@ export async function GET(req: NextRequest) {
     for (const lh of notEligibleLHs) {
       const prov = lh.province_edited ?? "Unknown";
       const acc = getAcc(prov);
+      const neArea = Number(lh.amendarea_validated ?? lh.amendarea ?? 0);
+      const neAmount = Number(lh.condoned_amount ?? lh.net_of_reval_no_neg ?? 0);
       acc.records_validated++;
       acc.records_not_eligible++;
-      acc.area_validated += Number(lh.amendarea_validated ?? lh.amendarea ?? 0);
-      acc.amount_validated += Number(lh.condoned_amount ?? lh.net_of_reval_no_neg ?? 0);
+      acc.area_not_eligible += neArea;
+      acc.amount_not_eligible += neAmount;
+      acc.area_validated += neArea;
+      acc.amount_validated += neAmount;
       if (lh.landowner) { acc.lo_validated.add(lh.landowner); allLoValidated.add(lh.landowner); }
     }
 
@@ -177,6 +186,8 @@ export async function GET(req: NextRequest) {
         records_scope: acc.records_scope,
         records_validated: acc.records_validated,
         records_not_eligible: acc.records_not_eligible,
+        area_not_eligible: acc.area_not_eligible,
+        amount_not_eligible: acc.amount_not_eligible,
         lo_scope: acc.lo_scope.size,
         lo_validated: acc.lo_validated.size,
         area_scope: acc.area_scope,
@@ -191,6 +202,8 @@ export async function GET(req: NextRequest) {
         records_scope: t.records_scope + r.records_scope,
         records_validated: t.records_validated + r.records_validated,
         records_not_eligible: t.records_not_eligible + r.records_not_eligible,
+        area_not_eligible: t.area_not_eligible + r.area_not_eligible,
+        amount_not_eligible: t.amount_not_eligible + r.amount_not_eligible,
         lo_scope: 0,
         lo_validated: 0,
         area_scope: t.area_scope + r.area_scope,
@@ -201,6 +214,7 @@ export async function GET(req: NextRequest) {
       {
         province: "R-V TOTAL",
         records_scope: 0, records_validated: 0, records_not_eligible: 0,
+        area_not_eligible: 0, amount_not_eligible: 0,
         lo_scope: 0, lo_validated: 0,
         area_scope: 0, area_validated: 0,
         amount_scope: 0, amount_validated: 0,
