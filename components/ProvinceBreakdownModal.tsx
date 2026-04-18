@@ -334,7 +334,7 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
                   <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                 </svg>
-                Out of the {total.records_validated.toLocaleString()} validated LHs, there {total.records_not_eligible === 1 ? "is" : "are"} {total.records_not_eligible.toLocaleString()} LH{total.records_not_eligible === 1 ? "" : "s"} not eligible for encoding ({total.area_not_eligible.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} has. • ₱{total.amount_not_eligible.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                Out of the {total.records_validated.toLocaleString()} validated LHs, there {total.records_not_eligible === 1 ? "is" : "are"} {total.records_not_eligible.toLocaleString()} LH{total.records_not_eligible === 1 ? "" : "s"} not eligible for encoding ({(total.area_not_eligible ?? 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} has. • ₱{(total.amount_not_eligible ?? 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
               </span>
             )}
             {exportError && (
