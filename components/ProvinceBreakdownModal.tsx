@@ -171,9 +171,8 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
     if (!captureRef.current) return;
     setExportError(null);
     try {
-      const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(captureRef.current, { scale: 2, useCORS: true });
-      const url = canvas.toDataURL("image/png");
+      const { toPng } = await import("html-to-image");
+      const url = await toPng(captureRef.current, { pixelRatio: 2 });
       const a = document.createElement("a");
       a.href = url;
       a.download = `province-breakdown-${new Date().toISOString().slice(0, 10)}.png`;
