@@ -182,6 +182,7 @@ export default async function Dashboard({
         serviceCarpableARBCount={serviceCarpableARBCount}
         nonCarpableARBCount={nonCarpableARBCount}
         landholdingsWithArbs={landholdingsWithArbs}
+        selectedProvinces={selectedProvinces}
       />
 
       {/* ── Issue Breakdown Strip ── */}

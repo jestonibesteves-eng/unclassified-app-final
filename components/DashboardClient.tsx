@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ProvinceBreakdownModal } from "@/components/ProvinceBreakdownModal";
 
 /* ─── Count-up hook ─── */
 function useCountUp(target: number, duration = 900) {
@@ -199,6 +200,7 @@ export function DashboardStatCards({
   noIssuesCount, useValidated, distinctLOCount, totalCondoned,
   cocromCount, eligibleArbCount, cocromForValidation, cocromForEncoding, cocromEncoded, cocromDistributed,
   eligibleDistinctCarpableARBCount, landholdingsWithArbs,
+  selectedProvinces, publicToken,
 }: {
   total: number;
   totalArea: number;
@@ -223,12 +225,36 @@ export function DashboardStatCards({
   cocromDistributed: number;
   eligibleDistinctCarpableARBCount: number;
   landholdingsWithArbs: number;
+  selectedProvinces?: string[];
+  publicToken?: string;
 }) {
+  const [tableOpen, setTableOpen] = useState(false);
   return (
     <div className="mb-6 flex flex-col lg:flex-row gap-4">
       {/* ── Per Landholding Data ── */}
       <div className="flex-[4] min-w-0 bg-emerald-100 rounded-xl p-3">
-        <p className="text-[10px] uppercase tracking-[0.13em] font-semibold text-emerald-700 mb-2">Per Landholding Data</p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[10px] uppercase tracking-[0.13em] font-semibold text-emerald-700">Per Landholding Data</p>
+          <button
+            onClick={() => setTableOpen(true)}
+            title="View as province breakdown table"
+            className="w-7 h-7 flex items-center justify-center rounded-md bg-white border border-emerald-200 shadow-sm hover:bg-emerald-50 transition-colors"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <line x1="3" y1="9" x2="21" y2="9"/>
+              <line x1="3" y1="15" x2="21" y2="15"/>
+              <line x1="9" y1="3" x2="9" y2="21"/>
+              <line x1="15" y1="3" x2="15" y2="21"/>
+            </svg>
+          </button>
+        </div>
+        <ProvinceBreakdownModal
+          open={tableOpen}
+          onClose={() => setTableOpen(false)}
+          selectedProvinces={selectedProvinces}
+          publicToken={publicToken}
+        />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             label="TOTAL RECORDS"

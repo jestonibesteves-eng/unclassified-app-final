@@ -205,6 +205,8 @@ export default async function PublicDashboardPage({
           serviceCarpableARBCount={serviceCarpableARBCount}
           nonCarpableARBCount={nonCarpableARBCount}
           landholdingsWithArbs={landholdingsWithArbs}
+          selectedProvinces={selectedProvinces}
+          publicToken={token}
         />
 
         {/* Charts Row 1 */}
