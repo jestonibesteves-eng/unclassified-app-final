@@ -238,10 +238,10 @@ async function getStats(provinceFilter: string | string[] | null) {
       where: { ...scope, condoned_amount: null },
       _sum: { net_of_reval_no_neg: true },
     }),
-    // COCROMs — total ARB rows
-    prisma.arb.count({ where: { ...arbProvinceScope } }),
-    // COCROMs — eligible ARBs
-    prisma.arb.count({ where: { ...arbProvinceScope, eligibility: "Eligible" } }),
+    // COCROMs — total ARB rows (excludes "Not Eligible for Encoding" LHs)
+    prisma.arb.count({ where: { ...arbWhere({ status: { not: "Not Eligible for Encoding" } }) } }),
+    // COCROMs — eligible ARBs (excludes "Not Eligible for Encoding" LHs)
+    prisma.arb.count({ where: { ...arbWhere({ status: { not: "Not Eligible for Encoding" } }), eligibility: "Eligible" } }),
     // COCROM breakdown (eligible ARBs only; enc'd/distrib. use date fields)
     prisma.arb.count({ where: { ...arbWhere({ status: "For Further Validation" }), eligibility: "Eligible" } }),
     prisma.arb.count({ where: { ...arbWhere({ status: "For Encoding" }), eligibility: "Eligible" } }),
