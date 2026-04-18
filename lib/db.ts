@@ -26,12 +26,16 @@ function createPrismaClient() {
 function runMigrations(db: Database.Database) {
   try {
     const cols = db.prepare(`PRAGMA table_info("AuditLog")`).all() as Array<{ name: string }>;
-    // Only attempt ALTER TABLE if the table exists and the column is missing
     if (cols.length > 0 && !cols.find((c) => c.name === "source")) {
       db.prepare(`ALTER TABLE "AuditLog" ADD COLUMN "source" TEXT`).run();
     }
   } catch {
     // Migration errors must not crash the server — column may already exist or table not ready yet
+  }
+  try {
+    db.prepare(`CREATE TABLE IF NOT EXISTS "Setting" ("key" TEXT NOT NULL PRIMARY KEY, "value" TEXT NOT NULL)`).run();
+  } catch {
+    // Table already exists or DB not ready
   }
 }
 
