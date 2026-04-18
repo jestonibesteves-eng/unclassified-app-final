@@ -243,10 +243,42 @@ async function getStats(provinceFilter: string | string[] | null) {
     // COCROMs — eligible ARBs (excludes "Not Eligible for Encoding" LHs)
     prisma.arb.count({ where: { ...arbWhere({ status: { not: "Not Eligible for Encoding" } }), eligibility: "Eligible" } }),
     // COCROM breakdown (eligible ARBs only; enc'd/distrib. use date fields)
-    prisma.arb.count({ where: { ...arbWhere({ status: "For Further Validation" }), eligibility: "Eligible" } }),
-    prisma.arb.count({ where: { ...arbWhere({ status: "For Encoding" }), eligibility: "Eligible" } }),
-    prisma.arb.count({ where: { ...arbProvinceScope, eligibility: "Eligible", date_encoded: { not: null }, date_distributed: null } }),
-    prisma.arb.count({ where: { ...arbProvinceScope, eligibility: "Eligible", date_distributed: { not: null } } }),
+    // For Validation: LH ∈ {For Initial Validation, For Further Validation}
+    prisma.arb.count({
+      where: {
+        ...arbWhere({ status: { in: ["For Initial Validation", "For Further Validation"] } }),
+        eligibility: "Eligible",
+      },
+    }),
+    // For Encoding: LH=For Encoding  OR  Partially/Fully Encoded with DE=∅  OR  Partially Distributed with DE=∅ AND DD=∅
+    prisma.arb.count({
+      where: {
+        eligibility: "Eligible",
+        OR: [
+          arbWhere({ status: "For Encoding" }),
+          { ...arbWhere({ status: { in: ["Partially Encoded", "Fully Encoded"] } }), date_encoded: null },
+          { ...arbWhere({ status: "Partially Distributed" }), date_encoded: null, date_distributed: null },
+        ],
+      },
+    }),
+    // Encoded: Partially/Fully Encoded with DE≠∅  OR  Partially/Fully Distributed with DE≠∅ AND DD=∅
+    prisma.arb.count({
+      where: {
+        eligibility: "Eligible",
+        OR: [
+          { ...arbWhere({ status: { in: ["Partially Encoded", "Fully Encoded"] } }), date_encoded: { not: null } },
+          { ...arbWhere({ status: { in: ["Partially Distributed", "Fully Distributed"] } }), date_encoded: { not: null }, date_distributed: null },
+        ],
+      },
+    }),
+    // Distributed: Partially/Fully Distributed with DD≠∅
+    prisma.arb.count({
+      where: {
+        ...arbWhere({ status: { in: ["Partially Distributed", "Fully Distributed"] } }),
+        eligibility: "Eligible",
+        date_distributed: { not: null },
+      },
+    }),
     // Distinct eligible CARPable ARB names (for ARBs UPLOADED breakdown)
     prisma.arb.groupBy({
       by: ["arb_name"],
