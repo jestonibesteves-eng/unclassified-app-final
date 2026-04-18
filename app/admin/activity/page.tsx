@@ -128,11 +128,11 @@ export default function DARPOActivityPage() {
     if (!exportRef.current) return;
     setExporting("image");
     try {
-      const { default: html2canvas } = await import("html2canvas");
-      const canvas = await html2canvas(exportRef.current, { scale: 2, useCORS: true, backgroundColor: "#f9fafb" });
+      const { toPng } = await import("html-to-image");
+      const dataUrl = await toPng(exportRef.current, { pixelRatio: 2, backgroundColor: "#f9fafb" });
       const link = document.createElement("a");
       link.download = `darpo-activity-${days}d-${new Date().toISOString().slice(0, 10)}.png`;
-      link.href = canvas.toDataURL("image/png");
+      link.href = dataUrl;
       link.click();
     } finally {
       setExporting(null);
@@ -143,12 +143,16 @@ export default function DARPOActivityPage() {
     if (!exportRef.current) return;
     setExporting("pdf");
     try {
-      const { default: html2canvas } = await import("html2canvas");
+      const { toPng } = await import("html-to-image");
       const { default: jsPDF } = await import("jspdf");
-      const canvas = await html2canvas(exportRef.current, { scale: 2, useCORS: true, backgroundColor: "#f9fafb" });
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [canvas.width / 2, canvas.height / 2] });
-      pdf.addImage(imgData, "PNG", 0, 0, canvas.width / 2, canvas.height / 2);
+      const dataUrl = await toPng(exportRef.current, { pixelRatio: 2, backgroundColor: "#f9fafb" });
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise((res) => { img.onload = res; });
+      const w = img.width / 2;
+      const h = img.height / 2;
+      const pdf = new jsPDF({ orientation: w > h ? "landscape" : "portrait", unit: "px", format: [w, h] });
+      pdf.addImage(dataUrl, "PNG", 0, 0, w, h);
       pdf.save(`darpo-activity-${days}d-${new Date().toISOString().slice(0, 10)}.pdf`);
     } finally {
       setExporting(null);
