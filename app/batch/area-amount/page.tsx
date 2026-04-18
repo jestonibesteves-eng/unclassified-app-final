@@ -342,7 +342,7 @@ export default function AreaAmountPage() {
   });
 
   return (
-    <div className="max-w-4xl page-enter">
+    <div className="max-w-6xl page-enter">
       {/* Header */}
       <div className="mb-6">
         <h2 className="text-[1.6rem] font-bold text-gray-900 leading-tight">Area & Amount Confirmation</h2>
