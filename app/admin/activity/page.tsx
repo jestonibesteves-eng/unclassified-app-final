@@ -124,12 +124,22 @@ export default function DARPOActivityPage() {
   const [exporting, setExporting] = useState<"image" | "pdf" | null>(null);
   const exportRef = useRef<HTMLDivElement>(null);
 
+  async function captureExport() {
+    if (!exportRef.current) throw new Error("No ref");
+    const { toPng } = await import("html-to-image");
+    const el = exportRef.current;
+    const fullWidth  = el.scrollWidth;
+    const fullHeight = el.scrollHeight;
+    // Call twice — first render sometimes misses webfonts
+    await toPng(el, { pixelRatio: 2, backgroundColor: "#f9fafb", width: fullWidth, height: fullHeight });
+    return toPng(el, { pixelRatio: 2, backgroundColor: "#f9fafb", width: fullWidth, height: fullHeight });
+  }
+
   async function handleExportImage() {
     if (!exportRef.current) return;
     setExporting("image");
     try {
-      const { toPng } = await import("html-to-image");
-      const dataUrl = await toPng(exportRef.current, { pixelRatio: 2, backgroundColor: "#f9fafb" });
+      const dataUrl = await captureExport();
       const link = document.createElement("a");
       link.download = `darpo-activity-${days}d-${new Date().toISOString().slice(0, 10)}.png`;
       link.href = dataUrl;
@@ -143,9 +153,8 @@ export default function DARPOActivityPage() {
     if (!exportRef.current) return;
     setExporting("pdf");
     try {
-      const { toPng } = await import("html-to-image");
       const { default: jsPDF } = await import("jspdf");
-      const dataUrl = await toPng(exportRef.current, { pixelRatio: 2, backgroundColor: "#f9fafb" });
+      const dataUrl = await captureExport();
       const img = new Image();
       img.src = dataUrl;
       await new Promise((res) => { img.onload = res; });
@@ -184,6 +193,7 @@ export default function DARPOActivityPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <div ref={exportRef}>
       {/* ── Page header ── */}
       <div className="bg-white border-b border-gray-200 px-6 py-5">
         <div className="max-w-6xl mx-auto">
@@ -258,7 +268,7 @@ export default function DARPOActivityPage() {
       </div>
 
       {/* ── Cards grid ── */}
-      <div ref={exportRef} className="max-w-6xl mx-auto px-6 py-6">
+      <div className="max-w-6xl mx-auto px-6 py-6">
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {[...Array(7)].map((_, i) => <SkeletonCard key={i} />)}
@@ -397,6 +407,7 @@ export default function DARPOActivityPage() {
             <p className="text-[13px]">No DARPO activity recorded in this period.</p>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
