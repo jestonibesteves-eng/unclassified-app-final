@@ -742,7 +742,7 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
         </div>
 
         {/* ── Body ── */}
-        <div className="flex-1 overflow-y-auto bg-gray-50/50 min-h-[520px]">
+        <div className="flex-1 overflow-y-auto bg-gray-50/50">
           {loading && (
             <div className="flex items-center justify-center py-16">
               <div className="w-6 h-6 rounded-full border-2 border-green-800 border-t-transparent animate-spin" />
@@ -1258,7 +1258,7 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
                 </div>
               ) : (
                 <>
-                  <div className="rounded-xl border border-gray-200 shadow-sm max-h-[520px] overflow-auto">
+                  <div className="rounded-xl border border-gray-200 shadow-sm overflow-x-auto overflow-y-auto" style={{ maxHeight: "520px" }}>
                   {arbEditError && <p className="px-4 py-2 text-sm text-red-600 bg-red-50 border-b border-red-200">{arbEditError}</p>}
                   <table className="w-full text-[13px]">
                     <thead className="bg-green-900 text-white sticky top-0 z-10">
