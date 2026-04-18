@@ -1258,10 +1258,10 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
                 </div>
               ) : (
                 <>
-                  <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+                  <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm" style={{ maxHeight: "520px", overflowY: "auto" }}>
                   {arbEditError && <p className="px-4 py-2 text-sm text-red-600 bg-red-50 border-b border-red-200">{arbEditError}</p>}
                   <table className="w-full text-[13px]">
-                    <thead className="bg-green-900 text-white">
+                    <thead className="bg-green-900 text-white sticky top-0 z-10">
                       <tr>
                         <th className="px-3 py-3 text-left font-semibold text-[11px] uppercase tracking-wide">#</th>
                         <th className="px-3 py-3 text-left font-semibold text-[11px] uppercase tracking-wide">ARB Name</th>
