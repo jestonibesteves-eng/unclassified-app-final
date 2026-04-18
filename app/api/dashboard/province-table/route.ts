@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
-
-const TOKEN_KEY = "public_dashboard_token";
+import { validatePublicToken } from "@/app/api/admin/public-token/route";
 
 export type ProvinceTableRow = {
   province: string;
@@ -19,23 +17,19 @@ export type ProvinceTableRow = {
 
 export async function GET(req: NextRequest) {
   // Auth: valid session OR valid public token
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get(SESSION_COOKIE)?.value;
+  const sessionToken = req.cookies.get(SESSION_COOKIE)?.value;
   const sessionUser = sessionToken ? await verifySessionToken(sessionToken) : null;
 
   const { searchParams } = req.nextUrl;
   const publicToken = searchParams.get("token");
 
   if (!sessionUser) {
-    if (!publicToken) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const setting = await prisma.setting.findUnique({ where: { key: TOKEN_KEY } });
-    if (!setting || setting.value !== publicToken) {
+    if (!publicToken || !(await validatePublicToken(publicToken))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
   }
 
+  try {
   const provincesParam = searchParams.get("provinces");
   const provinceList = provincesParam
     ? provincesParam.split(",").map((s) => s.trim()).filter(Boolean)
@@ -142,4 +136,8 @@ export async function GET(req: NextRequest) {
   total.lo_validated = allLoValidated.size;
 
   return NextResponse.json({ rows, total });
+  } catch (err) {
+    console.error("[/api/dashboard/province-table]", err);
+    return NextResponse.json({ error: "Failed to load province data." }, { status: 500 });
+  }
 }
