@@ -79,7 +79,7 @@ export default function DashboardExportButtons() {
         onClick={handlePDF}
         disabled={!!exporting}
         title="Export dashboard as PDF"
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
       >
         <IconDownload />
         <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
