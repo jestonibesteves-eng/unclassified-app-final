@@ -209,9 +209,14 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
       <div className="max-w-5xl w-full rounded-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="bg-green-900 px-5 py-3 flex items-center justify-between flex-shrink-0">
-          <h2 id="province-modal-title" className="text-[10px] font-bold text-green-300 uppercase tracking-[0.13em]">
-            Province Breakdown — Per Landholding Data
-          </h2>
+          <div>
+            <h2 id="province-modal-title" className="text-[10px] font-bold text-green-300 uppercase tracking-[0.13em]">
+              Province Breakdown — Per Landholding Data
+            </h2>
+            <p className="text-[9px] text-green-500 font-mono mt-0.5">
+              As of {new Date().toLocaleString("en-PH", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Manila" })}
+            </p>
+          </div>
           <button
             onClick={onClose}
             className="text-green-400 hover:text-green-200 text-xl leading-none"
@@ -236,9 +241,12 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
           {!loading && !error && (
             <div ref={captureRef}>
               <div ref={exportTitleRef} className="bg-green-900 px-5 py-3 hidden">
-                <span className="text-[10px] font-bold text-green-300 uppercase tracking-[0.13em]">
+                <p className="text-[10px] font-bold text-green-300 uppercase tracking-[0.13em]">
                   Province Breakdown — Per Landholding Data
-                </span>
+                </p>
+                <p className="text-[9px] text-green-500 font-mono mt-0.5">
+                  As of {new Date().toLocaleString("en-PH", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Manila" })}
+                </p>
               </div>
               <table className="w-full border-collapse text-left" style={{ minWidth: 720 }}>
                 <thead>
