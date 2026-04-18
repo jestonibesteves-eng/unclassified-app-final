@@ -9,11 +9,27 @@ export default function DashboardExportButtons() {
     const el = document.getElementById("dashboard-content");
     if (!el) throw new Error("Dashboard content not found");
     const { toPng } = await import("html-to-image");
+    const pixelRatio = 2;
+    const pad = 40; // CSS px of whitespace on each edge
     const fullWidth  = el.scrollWidth;
     const fullHeight = el.scrollHeight;
     // Double-render to ensure fonts/icons are loaded
-    await toPng(el, { pixelRatio: 2, backgroundColor: "#f9fafb", width: fullWidth, height: fullHeight });
-    return toPng(el, { pixelRatio: 2, backgroundColor: "#f9fafb", width: fullWidth, height: fullHeight });
+    await toPng(el, { pixelRatio, backgroundColor: "#f9fafb", width: fullWidth, height: fullHeight });
+    const raw = await toPng(el, { pixelRatio, backgroundColor: "#f9fafb", width: fullWidth, height: fullHeight });
+
+    // Draw onto a padded canvas
+    const img = new Image();
+    img.src = raw;
+    await new Promise<void>((res) => { img.onload = () => res(); });
+    const canvas = document.createElement("canvas");
+    const scaledPad = pad * pixelRatio;
+    canvas.width  = img.width  + scaledPad * 2;
+    canvas.height = img.height + scaledPad * 2;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#f9fafb";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, scaledPad, scaledPad);
+    return canvas.toDataURL("image/png");
   }
 
   async function handleImage() {
