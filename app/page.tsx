@@ -49,6 +49,11 @@ export default async function Dashboard({
       ? provinceScope
       : selectedProvinces.length > 0 ? selectedProvinces : null;
 
+  // Effective province list for the modal — includes the scoped province for non-regional users
+  const effectiveProvinces: string[] = provinceScope
+    ? [provinceScope]
+    : selectedProvinces;
+
   // Fetch all provinces for the filter UI (regional only)
   const allProvinces = isRegional
     ? (await prisma.landholding.groupBy({
@@ -182,7 +187,7 @@ export default async function Dashboard({
         serviceCarpableARBCount={serviceCarpableARBCount}
         nonCarpableARBCount={nonCarpableARBCount}
         landholdingsWithArbs={landholdingsWithArbs}
-        selectedProvinces={selectedProvinces}
+        selectedProvinces={effectiveProvinces}
       />
 
       {/* ── Issue Breakdown Strip ── */}
