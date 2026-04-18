@@ -1,6 +1,16 @@
 import type { NextConfig } from "next";
+import { execSync } from "child_process";
 
 const isDev = process.env.NODE_ENV !== "production";
+
+function getGitVersion(): string {
+  try {
+    // Use tag + commit distance if tags exist, otherwise just short SHA
+    return execSync("git describe --tags --always", { encoding: "utf8" }).trim();
+  } catch {
+    return "unknown";
+  }
+}
 
 const securityHeaders = [
   // Prevent browsers from MIME-sniffing a response away from the declared content-type
@@ -33,6 +43,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_GIT_VERSION: getGitVersion(),
+  },
   allowedDevOrigins: ["192.168.1.101"],
   async headers() {
     return [

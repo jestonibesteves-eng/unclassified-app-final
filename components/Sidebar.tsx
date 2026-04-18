@@ -237,6 +237,9 @@ export default function Sidebar() {
               <p className="text-[10px] text-green-500/60 leading-none mt-0.5">
                 Data Management System
               </p>
+              <p className="text-[9px] text-green-500/40 leading-none mt-1 font-mono tracking-tight">
+                {process.env.NEXT_PUBLIC_GIT_VERSION}
+              </p>
             </div>
 
             {/* Mobile close button */}

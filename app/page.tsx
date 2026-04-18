@@ -637,7 +637,7 @@ export default async function Dashboard({
                 : "Region V Unclassified ARRs — Reconciled List"
             }
             &nbsp;·&nbsp;
-            <span className="font-mono">As of {new Date().toLocaleString("en-PH", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+            <span className="font-mono">As of {new Date().toLocaleString("en-PH", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Manila" })}</span>
           </p>
         </div>
         <Suspense>
