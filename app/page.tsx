@@ -16,6 +16,7 @@ import {
 } from "@/components/DashboardCharts";
 import DashboardAreaToggle from "@/components/DashboardAreaToggle";
 import DashboardProvinceFilter from "@/components/DashboardProvinceFilter";
+import DashboardExportButtons from "@/components/DashboardExportButtons";
 import { DashboardStatCards, IssueStrip } from "@/components/DashboardClient";
 import DashboardProgress from "@/components/DashboardProgress";
 
@@ -618,7 +619,7 @@ export default async function Dashboard({
   }));
 
   return (
-    <div className="page-enter">
+    <div className="page-enter" id="dashboard-content">
       {/* ── Header ── */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -640,9 +641,12 @@ export default async function Dashboard({
             <span className="font-mono">As of {new Date().toLocaleString("en-PH", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Manila" })}</span>
           </p>
         </div>
-        <Suspense>
-          <DashboardAreaToggle current={areaMode} />
-        </Suspense>
+        <div className="flex items-center gap-2 flex-wrap">
+          <DashboardExportButtons />
+          <Suspense>
+            <DashboardAreaToggle current={areaMode} />
+          </Suspense>
+        </div>
       </div>
 
       {/* ── Province filter (regional only) ── */}
