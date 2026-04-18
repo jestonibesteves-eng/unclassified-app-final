@@ -4,13 +4,16 @@ import { usePathname } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import MobileHeader from "@/components/MobileHeader";
 
-const AUTH_PATHS = ["/login", "/change-password"];
+const NO_SHELL_EXACT = ["/login", "/change-password"];
+const NO_SHELL_PREFIX = ["/view/"];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAuth = AUTH_PATHS.some((p) => pathname === p);
+  const isNoShell =
+    NO_SHELL_EXACT.some((p) => pathname === p) ||
+    NO_SHELL_PREFIX.some((p) => pathname.startsWith(p));
 
-  if (isAuth) {
+  if (isNoShell) {
     return <>{children}</>;
   }
 
