@@ -1834,9 +1834,9 @@ function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boo
                             <p className="px-5 py-4 text-sm text-gray-400">Loading ARBs...</p>
                           ) : (
                             <div className="px-5 py-4">
-                              <div className="overflow-x-auto rounded-lg border border-green-200">
+                              <div className="overflow-x-auto overflow-y-auto rounded-lg border border-green-200" style={{ maxHeight: "480px" }}>
                                 <table className="w-full text-[13px]">
-                                  <thead className="bg-green-800 text-white">
+                                  <thead className="bg-green-800 text-white sticky top-0 z-10">
                                     <tr>
                                       <th className="px-3 py-2 text-left">#</th>
                                       <th className="px-3 py-2 text-left">ARB Name</th>
