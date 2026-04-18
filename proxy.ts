@@ -68,6 +68,11 @@ export async function proxy(req: NextRequest) {
     return noindex(NextResponse.next());
   }
 
+  // Allow dashboard API routes with a public token — the route handler validates it
+  if (pathname.startsWith("/api/dashboard/") && req.nextUrl.searchParams.has("token")) {
+    return noindex(NextResponse.next());
+  }
+
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const session = token ? await getSessionUser(token) : null;
 
