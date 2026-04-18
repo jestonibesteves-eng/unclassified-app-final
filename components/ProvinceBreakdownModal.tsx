@@ -108,6 +108,7 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
   const [total, setTotal] = useState<ProvinceTableRow | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
   const fetchedKey = useRef<string | null>(null);
   const captureRef = useRef<HTMLDivElement>(null);
 
@@ -168,6 +169,7 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
 
   async function exportImage() {
     if (!captureRef.current) return;
+    setExportError(null);
     try {
       const html2canvas = (await import("html2canvas")).default;
       const canvas = await html2canvas(captureRef.current, { scale: 2, useCORS: true });
@@ -176,8 +178,9 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
       a.href = url;
       a.download = `province-breakdown-${new Date().toISOString().slice(0, 10)}.png`;
       a.click();
-    } catch {
-      setError("Failed to export image.");
+    } catch (err) {
+      console.error("[exportImage]", err);
+      setExportError("Failed to export image. Try Export CSV instead.");
     }
   }
 
@@ -301,7 +304,12 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
 
         {/* Footer */}
         <div className="flex-shrink-0 bg-emerald-50 border-t border-emerald-100 px-5 py-2.5 flex items-center justify-between">
-          <span className="text-[9px] text-gray-400">▪ Data bars show % of scope validated</span>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[9px] text-gray-400">▪ Data bars show % of scope validated</span>
+            {exportError && (
+              <span className="text-[9px] text-red-500">{exportError}</span>
+            )}
+          </div>
           <div className="flex gap-2">
             <button
               onClick={exportCsv}

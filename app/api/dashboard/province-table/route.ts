@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
     where: scope,
     select: {
       province_edited: true,
-      lo: true,
+      landowner: true,
       amendarea: true,
       amendarea_validated: true,
       net_of_reval_no_neg: true,
@@ -88,13 +88,13 @@ export async function GET(req: NextRequest) {
     acc.records_scope++;
     acc.area_scope += lh.amendarea ?? 0;
     acc.amount_scope += lh.net_of_reval_no_neg ?? 0;
-    if (lh.lo) { acc.lo_scope.add(lh.lo); allLoScope.add(lh.lo); }
+    if (lh.landowner) { acc.lo_scope.add(lh.landowner); allLoScope.add(lh.landowner); }
 
     if (validated) {
       acc.records_validated++;
       acc.area_validated += lh.amendarea_validated ?? lh.amendarea ?? 0;
       acc.amount_validated += lh.condoned_amount ?? lh.net_of_reval_no_neg ?? 0;
-      if (lh.lo) { acc.lo_validated.add(lh.lo); allLoValidated.add(lh.lo); }
+      if (lh.landowner) { acc.lo_validated.add(lh.landowner); allLoValidated.add(lh.landowner); }
     }
   }
 
