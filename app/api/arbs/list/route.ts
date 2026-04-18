@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma, rawDb } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
 
@@ -23,8 +23,22 @@ export async function GET(req: NextRequest) {
   const scopedMunicipality =
     sessionUser.office_level === "municipal" ? sessionUser.municipality ?? null : null;
 
+  // Use rawDb (better-sqlite3) to get distinct seqnos with ARBs.
+  // Avoids the Prisma+adapter JOIN-based pagination bug where `arbs: { some: {} }`
+  // with skip/take causes OFFSET to count joined ARB rows instead of Landholding rows.
+  const arbSeqnos = (() => {
+    let sql = `SELECT DISTINCT a.seqno_darro FROM "Arb" a JOIN "Landholding" l ON l.seqno_darro = a.seqno_darro`;
+    const conds: string[] = [];
+    const params: unknown[] = [];
+    if (scopedProvince)     { conds.push(`l.province_edited = ?`);                                         params.push(scopedProvince); }
+    if (scopedMunicipality) { conds.push(`l.municipality LIKE ?`);                                         params.push(`%${scopedMunicipality}%`); }
+    if (search)             { conds.push(`(l.seqno_darro LIKE ? OR l.landowner LIKE ? OR l.clno LIKE ?)`); params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
+    if (conds.length)       sql += ` WHERE ${conds.join(" AND ")}`;
+    return (rawDb.prepare(sql).all(...params) as { seqno_darro: string }[]).map((r) => r.seqno_darro);
+  })();
+
   const where: Prisma.LandholdingWhereInput = {
-    arbs: { some: {} },
+    seqno_darro: { in: arbSeqnos },
     ...(scopedProvince ? { province_edited: scopedProvince } : {}),
     ...(scopedMunicipality ? { municipality: { contains: scopedMunicipality } } : {}),
     ...(search
