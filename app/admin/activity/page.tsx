@@ -205,7 +205,7 @@ export default function DARPOActivityPage() {
                 Provincial office system usage · aggregated by province · no individual identifiers
               </p>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-col items-end gap-2">
               <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
                 {DAYS_OPTIONS.map((opt) => (
                   <button
@@ -221,6 +221,7 @@ export default function DARPOActivityPage() {
               </div>
 
               {/* Export buttons */}
+              <div className="flex items-center gap-1.5">
               <span className="text-[10px] text-gray-400 font-medium">Export:</span>
               <button
                 onClick={handleExportImage}
@@ -256,6 +257,7 @@ export default function DARPOActivityPage() {
                 </svg>
                 {exporting === "pdf" ? "Exporting…" : "PDF"}
               </button>
+              </div>
             </div>
           </div>
 
