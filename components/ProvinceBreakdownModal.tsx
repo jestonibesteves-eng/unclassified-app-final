@@ -329,6 +329,11 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
         <div className="flex-shrink-0 bg-emerald-50 border-t border-emerald-100 px-5 py-2.5 flex items-center justify-between">
           <div className="flex flex-col gap-0.5">
             <span className="text-[9px] text-gray-400">▪ Data bars show % of scope validated</span>
+            {total && total.records_not_eligible > 0 && (
+              <span className="text-[9px] text-red-400">
+                ▪ Of {total.records_validated.toLocaleString()} validated, {total.records_not_eligible.toLocaleString()} {total.records_not_eligible === 1 ? "is" : "are"} Not Eligible for Encoding
+              </span>
+            )}
             {exportError && (
               <span className="text-[9px] text-red-500">{exportError}</span>
             )}
