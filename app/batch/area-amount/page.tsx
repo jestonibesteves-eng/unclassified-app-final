@@ -45,6 +45,9 @@ type UnconfirmedRow = {
   area_confirmed: boolean;
   amount_value: number | null;
   amount_confirmed: boolean;
+  arb_area: number | null;
+  arb_amount: number | null;
+  arb_count: number;
 };
 
 type IneligibleRow = {
@@ -69,6 +72,15 @@ function fmt4(n: number | null | undefined) {
 function fmt2(n: number | null | undefined) {
   if (n == null) return "—";
   return Number(n).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function areaEq(lh: number | null, arb: number | null): boolean {
+  if (lh == null || arb == null) return false;
+  return Math.abs(lh - arb) < 0.00005;
+}
+function amountEq(lh: number | null, arb: number | null): boolean {
+  if (lh == null || arb == null) return false;
+  return Math.abs(lh - arb) < 0.005;
 }
 
 const MODES: { value: ConfirmMode; label: string; desc: string }[] = [
@@ -185,9 +197,25 @@ export default function AreaAmountPage() {
     );
   });
 
+  function getArbSortPriority(r: UnconfirmedRow): number {
+    if (r.arb_count === 0) return 10;
+    if (mode === "confirm_both") {
+      const aMatch = areaEq(r.area_value, r.arb_area);
+      const mMatch = amountEq(r.amount_value, r.arb_amount);
+      if (aMatch && mMatch) return 1;
+      if (aMatch) return 2;
+      if (mMatch) return 3;
+      return 4;
+    }
+    if (mode === "confirm_area")   return areaEq(r.area_value, r.arb_area)     ? 1 : 2;
+    if (mode === "confirm_amount") return amountEq(r.amount_value, r.arb_amount) ? 1 : 2;
+    return 5;
+  }
+  const sortedList = [...filteredList].sort((a, b) => getArbSortPriority(a) - getArbSortPriority(b));
+
   const totalPages = Math.max(1, Math.ceil(filteredList.length / LIST_PAGE_SIZE));
   const safePage = Math.min(listPage, totalPages);
-  const pagedList = filteredList.slice((safePage - 1) * LIST_PAGE_SIZE, safePage * LIST_PAGE_SIZE);
+  const pagedList = sortedList.slice((safePage - 1) * LIST_PAGE_SIZE, safePage * LIST_PAGE_SIZE);
 
   const filteredIneligible = ineligibleRecords.filter((r) => {
     if (excludeNotEligible && r.status === "Not Eligible for Encoding") return false;
@@ -848,8 +876,14 @@ export default function AreaAmountPage() {
                             {confirmArea && (
                               <th className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">Val. AMENDAREA (ha)</th>
                             )}
+                            {confirmArea && (
+                              <th className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">ARB Area (ha)</th>
+                            )}
                             {confirmAmount && (
                               <th className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">Val. Condoned Amt</th>
+                            )}
+                            {confirmAmount && (
+                              <th className="px-3 py-2.5 text-right font-semibold whitespace-nowrap">ARB Amount</th>
                             )}
                           </tr>
                         </thead>
@@ -895,12 +929,54 @@ export default function AreaAmountPage() {
                                     }
                                   </td>
                                 )}
+                                {confirmArea && (
+                                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                                    {r.arb_count === 0 ? (
+                                      <span className="text-gray-300 text-[11px]">—</span>
+                                    ) : (
+                                      <span className="inline-flex items-center justify-end gap-1">
+                                        {areaEq(r.area_value, r.arb_area) ? (
+                                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700">=</span>
+                                        ) : (
+                                          <span className="relative group cursor-help">
+                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">≠</span>
+                                            <span className="absolute bottom-full right-0 mb-1.5 bg-gray-900 text-white text-[11px] rounded-lg px-2.5 py-1.5 opacity-0 group-hover:opacity-100 pointer-events-none z-20 whitespace-nowrap shadow-lg">
+                                              Variance: {fmt4(Math.abs((r.area_value ?? 0) - (r.arb_area ?? 0)))} ha
+                                            </span>
+                                          </span>
+                                        )}
+                                        <span className="font-mono text-gray-700 font-semibold">{fmt4(r.arb_area)}</span>
+                                      </span>
+                                    )}
+                                  </td>
+                                )}
                                 {confirmAmount && (
                                   <td className="px-3 py-2 text-right whitespace-nowrap">
                                     {r.amount_confirmed
                                       ? <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-100 text-blue-700">✓ {fmt2(r.amount_value)}</span>
                                       : <span className="font-mono text-green-800 font-semibold">{fmt2(r.amount_value)}</span>
                                     }
+                                  </td>
+                                )}
+                                {confirmAmount && (
+                                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                                    {r.arb_count === 0 ? (
+                                      <span className="text-gray-300 text-[11px]">—</span>
+                                    ) : (
+                                      <span className="inline-flex items-center justify-end gap-1">
+                                        {amountEq(r.amount_value, r.arb_amount) ? (
+                                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700">=</span>
+                                        ) : (
+                                          <span className="relative group cursor-help">
+                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">≠</span>
+                                            <span className="absolute bottom-full right-0 mb-1.5 bg-gray-900 text-white text-[11px] rounded-lg px-2.5 py-1.5 opacity-0 group-hover:opacity-100 pointer-events-none z-20 whitespace-nowrap shadow-lg">
+                                              Variance: {fmt2(Math.abs((r.amount_value ?? 0) - (r.arb_amount ?? 0)))}
+                                            </span>
+                                          </span>
+                                        )}
+                                        <span className="font-mono text-gray-700 font-semibold">{fmt2(r.arb_amount)}</span>
+                                      </span>
+                                    )}
                                   </td>
                                 )}
                               </tr>
@@ -993,37 +1069,85 @@ export default function AreaAmountPage() {
 
       {/* Confirmation modal — list selection */}
       {showListConfirm && typeof window !== "undefined" && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
-            <div className="flex items-start gap-3 mb-4">
-              <span className="flex-shrink-0 w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-green-700" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-              </span>
-              <div>
-                <h3 className="text-[15px] font-bold text-gray-900 leading-tight mb-1">
-                  Confirm {listSelected.size} Record{listSelected.size !== 1 ? "s" : ""}?
-                </h3>
-                <p className="text-[13px] text-gray-500 leading-snug">
-                  This will mark{" "}
-                  {mode === "confirm_area"   ? "the Validated AMENDAREA" :
-                   mode === "confirm_amount" ? "the Validated Condoned Amount" :
-                   "both the Validated AMENDAREA and Condoned Amount"}{" "}
-                  as confirmed for <strong className="text-gray-700">{listSelected.size} selected record{listSelected.size !== 1 ? "s" : ""}</strong>. This action is logged.
-                </p>
+        (() => {
+          const selRecs = listRecords.filter((r) => listSelected.has(r.seqno_darro));
+          const noArbRecs = selRecs.filter((r) => r.arb_count === 0);
+          const varAreaRecs = confirmArea  ? selRecs.filter((r) => r.arb_count > 0 && !areaEq(r.area_value, r.arb_area))   : [];
+          const varAmtRecs  = confirmAmount ? selRecs.filter((r) => r.arb_count > 0 && !amountEq(r.amount_value, r.arb_amount)) : [];
+          const varSeqnos = [...new Set([...varAreaRecs, ...varAmtRecs].map((r) => r.seqno_darro))];
+          const hasWarnings = noArbRecs.length > 0 || varSeqnos.length > 0;
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-start gap-3 mb-4">
+                  <span className="flex-shrink-0 w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-green-700" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </span>
+                  <div>
+                    <h3 className="text-[15px] font-bold text-gray-900 leading-tight mb-1">
+                      Confirm {listSelected.size} Record{listSelected.size !== 1 ? "s" : ""}?
+                    </h3>
+                    <p className="text-[13px] text-gray-500 leading-snug">
+                      This will mark{" "}
+                      {mode === "confirm_area"   ? "the Validated AMENDAREA" :
+                       mode === "confirm_amount" ? "the Validated Condoned Amount" :
+                       "both the Validated AMENDAREA and Condoned Amount"}{" "}
+                      as confirmed for <strong className="text-gray-700">{listSelected.size} selected record{listSelected.size !== 1 ? "s" : ""}</strong>. This action is logged.
+                    </p>
+                  </div>
+                </div>
+
+                {noArbRecs.length > 0 && (
+                  <div className="mb-3 p-3 bg-amber-50 border border-amber-300 rounded-lg text-[12px] text-amber-800">
+                    <p className="font-semibold mb-1.5">⚠ {noArbRecs.length} record{noArbRecs.length !== 1 ? "s have" : " has"} no ARBs encoded yet:</p>
+                    <ul className="space-y-0.5 max-h-24 overflow-y-auto font-mono text-[11px]">
+                      {noArbRecs.map((r) => (
+                        <li key={r.seqno_darro}>{r.seqno_darro} <span className="font-sans text-amber-600">— {r.landowner ?? "—"}</span></li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {varSeqnos.length > 0 && (
+                  <div className="mb-3 p-3 bg-red-50 border border-red-300 rounded-lg text-[12px] text-red-800">
+                    <p className="font-semibold mb-1.5">⚠ Variances detected in {varSeqnos.length} record{varSeqnos.length !== 1 ? "s" : ""}:</p>
+                    <ul className="space-y-1.5 max-h-40 overflow-y-auto">
+                      {varSeqnos.map((seqno) => {
+                        const r = listRecords.find((x) => x.seqno_darro === seqno)!;
+                        const aVar = confirmArea  && r.arb_count > 0 && !areaEq(r.area_value, r.arb_area);
+                        const mVar = confirmAmount && r.arb_count > 0 && !amountEq(r.amount_value, r.arb_amount);
+                        return (
+                          <li key={seqno} className="font-mono text-[11px]">
+                            {seqno}
+                            <span className="font-sans text-red-600 ml-1">
+                              {aVar && <>Area: LH={fmt4(r.area_value)} vs ARB={fmt4(r.arb_area)} (Δ{fmt4(Math.abs((r.area_value ?? 0) - (r.arb_area ?? 0)))} ha)</>}
+                              {aVar && mVar && <>, </>}
+                              {mVar && <>Amt: LH={fmt2(r.amount_value)} vs ARB={fmt2(r.arb_amount)} (Δ{fmt2(Math.abs((r.amount_value ?? 0) - (r.arb_amount ?? 0)))})</>}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => setShowListConfirm(false)} className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-[13px] hover:bg-gray-50">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => void doConfirmSelected()}
+                    className={`px-4 py-2 ${hasWarnings ? "bg-amber-600 hover:bg-amber-700" : "bg-green-800 hover:bg-green-900"} text-white rounded-lg text-[13px] font-semibold`}
+                  >
+                    {hasWarnings ? "Confirm Anyway" : "Yes, Confirm"}
+                  </button>
+                </div>
               </div>
             </div>
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setShowListConfirm(false)} className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-[13px] hover:bg-gray-50">
-                Cancel
-              </button>
-              <button onClick={() => void doConfirmSelected()} className="px-4 py-2 bg-green-800 hover:bg-green-900 text-white rounded-lg text-[13px] font-semibold">
-                Yes, Confirm
-              </button>
-            </div>
-          </div>
-        </div>,
+          );
+        })(),
         document.body
       )}
       {/* Individual LH modal — opened from ineligible list */}

@@ -166,6 +166,12 @@ function parseSeqnoLines(raw: string): { valid: string[]; invalid: ParseError[] 
   return { valid, invalid };
 }
 
+function parseArbStr(s: string | null | undefined): number {
+  if (!s) return 0;
+  const n = parseFloat(s.replace(/,/g, "").replace(/\*/g, "").trim());
+  return isNaN(n) ? 0 : n;
+}
+
 /* ── PUT — Preview ── */
 export async function PUT(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
@@ -755,6 +761,19 @@ export async function GET(req: NextRequest) {
       orderBy: { seqno_darro: "asc" },
     });
 
+    const lhSeqnos = records.map((r) => r.seqno_darro);
+    const arbs = await prisma.arb.findMany({
+      where: { seqno_darro: { in: lhSeqnos } },
+      select: { seqno_darro: true, area_allocated: true, allocated_condoned_amount: true },
+    });
+    const arbMap: Record<string, { area: number; amount: number; count: number }> = {};
+    for (const a of arbs) {
+      if (!arbMap[a.seqno_darro]) arbMap[a.seqno_darro] = { area: 0, amount: 0, count: 0 };
+      arbMap[a.seqno_darro].area += parseArbStr(a.area_allocated);
+      arbMap[a.seqno_darro].amount += parseArbStr(a.allocated_condoned_amount);
+      arbMap[a.seqno_darro].count++;
+    }
+
     const rows = records.map((r) => ({
       seqno_darro: r.seqno_darro,
       landowner: r.landowner,
@@ -765,6 +784,9 @@ export async function GET(req: NextRequest) {
       area_confirmed: r.amendarea_validated_confirmed,
       amount_value: r.condoned_amount ?? r.net_of_reval_no_neg,
       amount_confirmed: r.condoned_amount_confirmed,
+      arb_area: (arbMap[r.seqno_darro]?.count ?? 0) > 0 ? arbMap[r.seqno_darro].area : null,
+      arb_amount: (arbMap[r.seqno_darro]?.count ?? 0) > 0 ? arbMap[r.seqno_darro].amount : null,
+      arb_count: arbMap[r.seqno_darro]?.count ?? 0,
     }));
 
     return NextResponse.json({ records: rows });
