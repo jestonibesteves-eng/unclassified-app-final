@@ -129,13 +129,13 @@ export async function getStats(provinceFilter: string | string[] | null) {
       by: ["arb_name"],
       where: { ...arbProvinceScope, carpable: "CARPABLE", arb_name: { not: null } },
     }),
-    // Service count — total CARPable ARBs
+    // Service count — total CARPable ARBs (excluding "Not Eligible for Encoding" LHs)
     prisma.arb.count({
-      where: { ...arbProvinceScope, carpable: "CARPABLE" },
+      where: { ...arbWhere({ status: { not: "Not Eligible for Encoding" } }), carpable: "CARPABLE" },
     }),
-    // Non-CARPable lots
+    // Non-CARPable lots (excluding "Not Eligible for Encoding" LHs)
     prisma.arb.count({
-      where: { ...arbProvinceScope, carpable: "NON-CARPABLE" },
+      where: { ...arbWhere({ status: { not: "Not Eligible for Encoding" } }), carpable: "NON-CARPABLE" },
     }),
     prisma.landholding.aggregate({ where: scope, _sum: { amendarea: true } }),
     prisma.landholding.aggregate({
