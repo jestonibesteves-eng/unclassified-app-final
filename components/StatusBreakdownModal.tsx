@@ -155,7 +155,7 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
         </div>
 
         {/* Table body */}
-        <div className="flex-1 overflow-auto bg-white w-fit max-w-[95vw]">
+        <div className="flex-1 overflow-auto bg-white">
           {loading && (
             <div className="flex items-center justify-center py-16 text-sm text-gray-400">Loading…</div>
           )}
@@ -163,7 +163,7 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
             <div className="flex items-center justify-center py-16 text-sm text-red-500">{error}</div>
           )}
           {!loading && !error && (
-            <div ref={captureRef} style={{ width: "fit-content" }}>
+            <div ref={captureRef} style={{ width: "fit-content", margin: "0 auto" }}>
               {/* Hidden title bar — revealed only during PNG export */}
               <div ref={exportTitleRef} className="bg-green-900 px-5 py-3 hidden">
                 <p className="text-[10px] font-bold text-green-300 uppercase tracking-[0.13em]">

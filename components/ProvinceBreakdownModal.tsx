@@ -245,7 +245,7 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
         </div>
 
         {/* Table body */}
-        <div className="flex-1 overflow-auto bg-white w-fit max-w-[95vw]">
+        <div className="flex-1 overflow-auto bg-white">
           {loading && (
             <div className="flex items-center justify-center py-16 text-sm text-gray-400">
               Loading…
@@ -257,7 +257,7 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
             </div>
           )}
           {!loading && !error && (
-            <div ref={captureRef} style={{ width: "fit-content" }}>
+            <div ref={captureRef} style={{ width: "fit-content", margin: "0 auto" }}>
               <div ref={exportTitleRef} className="bg-green-900 px-5 py-3 hidden">
                 <p className="text-[10px] font-bold text-green-300 uppercase tracking-[0.13em]">
                   Province Breakdown — Per Landholding Data
