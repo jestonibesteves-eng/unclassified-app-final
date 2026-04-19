@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
-import { uploadBackupToDrive, type DriveUploadResult } from "@/lib/google-drive";
+import { uploadBackupToB2, type B2UploadResult } from "@/lib/backblaze";
 
 // Resolved at call-time so env vars set after module load are respected.
 
@@ -34,31 +34,31 @@ export type BackupEntry = {
   sizeBytes: number;
   createdAt: string;
   label: "auto" | "manual" | "unknown";
-  driveUpload?: { driveFileId: string; uploadedAt: string } | { error: string; failedAt: string };
+  b2Upload?: { b2FileKey: string; uploadedAt: string } | { error: string; failedAt: string };
 };
 
-function writeDriveSidecar(
+function writeB2Sidecar(
   filename: string,
-  result: { driveFileId: string; uploadedAt: string } | { error: string; failedAt: string }
+  result: { b2FileKey: string; uploadedAt: string } | { error: string; failedAt: string }
 ): void {
   try {
-    const sidecarPath = path.join(getBackupDir(), `${filename}.gdrive`);
+    const sidecarPath = path.join(getBackupDir(), `${filename}.b2`);
     fs.writeFileSync(sidecarPath, JSON.stringify(result));
   } catch (err) {
-    console.warn("[backup] Failed to write Drive sidecar:", err);
+    console.warn("[backup] Failed to write B2 sidecar:", err);
   }
 }
 
-function readDriveSidecar(
-  filename: string
-): BackupEntry["driveUpload"] {
-  const sidecarPath = path.join(getBackupDir(), `${filename}.gdrive`);
+function readB2Sidecar(filename: string): BackupEntry["b2Upload"] {
+  const sidecarPath = path.join(getBackupDir(), `${filename}.b2`);
   if (!fs.existsSync(sidecarPath)) return undefined;
   try {
     const parsed = JSON.parse(fs.readFileSync(sidecarPath, "utf-8"));
     if (parsed && typeof parsed === "object") {
-      if ("driveFileId" in parsed && "uploadedAt" in parsed) return parsed as { driveFileId: string; uploadedAt: string };
-      if ("error" in parsed && "failedAt" in parsed) return parsed as { error: string; failedAt: string };
+      if ("b2FileKey" in parsed && "uploadedAt" in parsed)
+        return parsed as { b2FileKey: string; uploadedAt: string };
+      if ("error" in parsed && "failedAt" in parsed)
+        return parsed as { error: string; failedAt: string };
     }
     return undefined;
   } catch {
@@ -68,7 +68,7 @@ function readDriveSidecar(
 
 export async function createBackup(label: "auto" | "manual" = "manual"): Promise<{
   filename: string;
-  driveUpload: DriveUploadResult;
+  b2Upload: B2UploadResult;
 }> {
   ensureBackupDir();
   const now = new Date();
@@ -84,12 +84,12 @@ export async function createBackup(label: "auto" | "manual" = "manual"): Promise
     db.close();
   }
 
-  const driveUpload = await uploadBackupToDrive(dest, filename);
-  if (driveUpload !== null) {
-    writeDriveSidecar(filename, driveUpload);
+  const b2Upload = await uploadBackupToB2(dest, filename);
+  if (b2Upload !== null) {
+    writeB2Sidecar(filename, b2Upload);
   }
 
-  return { filename, driveUpload };
+  return { filename, b2Upload };
 }
 
 export function listBackups(): BackupEntry[] {
@@ -108,8 +108,8 @@ export function listBackups(): BackupEntry[] {
         createdAt: stat.mtime.toISOString(),
         label,
       };
-      const driveUpload = readDriveSidecar(filename);
-      if (driveUpload !== undefined) entry.driveUpload = driveUpload;
+      const b2Upload = readB2Sidecar(filename);
+      if (b2Upload !== undefined) entry.b2Upload = b2Upload;
       return entry;
     })
     .sort((a, b) => b.filename.localeCompare(a.filename));
@@ -121,7 +121,7 @@ export function deleteBackup(filename: string): void {
   const fullPath = path.join(getBackupDir(), filename);
   if (!fs.existsSync(fullPath)) throw new Error("Backup not found.");
   fs.unlinkSync(fullPath);
-  const sidecarPath = path.join(getBackupDir(), `${filename}.gdrive`);
+  const sidecarPath = path.join(getBackupDir(), `${filename}.b2`);
   if (fs.existsSync(sidecarPath)) fs.unlinkSync(sidecarPath);
 }
 
