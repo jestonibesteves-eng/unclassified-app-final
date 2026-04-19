@@ -134,7 +134,7 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
       onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
       tabIndex={-1}
     >
-      <div className="max-w-6xl w-full rounded-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      <div className="max-w-6xl w-fit min-w-[min(95vw,600px)] rounded-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="bg-green-900 px-5 py-3 flex items-center justify-between flex-shrink-0">
           <div>

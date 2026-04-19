@@ -224,7 +224,7 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
       onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
       tabIndex={-1}
     >
-      <div className="max-w-5xl w-full rounded-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      <div className="max-w-5xl w-fit min-w-[min(95vw,600px)] rounded-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="bg-green-900 px-5 py-3 flex items-center justify-between flex-shrink-0">
           <div>
@@ -266,7 +266,7 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
                   As of {new Date().toLocaleString("en-PH", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Manila" })}
                 </p>
               </div>
-              <table className="w-full border-collapse text-left" style={{ minWidth: 720 }}>
+              <table className="border-collapse text-left" style={{ minWidth: 720 }}>
                 <thead>
                   {/* Group header row */}
                   <tr className="bg-emerald-50">
