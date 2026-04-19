@@ -35,11 +35,11 @@ export async function uploadBackupToDrive(
             path.isAbsolute(keyRaw) ? keyRaw : path.resolve(process.cwd(), keyRaw),
             "utf-8"
           );
-      // Some hosting panels convert \n escape sequences inside the private_key value
-      // to actual newlines, breaking JSON.parse. Re-escape them before parsing.
-      raw = raw.replace(
-        /(-----BEGIN [A-Z ]+-----)([\s\S]*?)(-----END [A-Z ]+-----)/g,
-        (_, begin, middle, end) => begin + middle.replace(/\r?\n/g, "\\n") + end
+      // Some hosting panels convert \n escape sequences in env var values to actual
+      // newlines, breaking JSON.parse. Fix by escaping literal newlines inside every
+      // JSON string value (handles the PEM body AND the trailing \n after -----END-----).
+      raw = raw.replace(/"(?:[^"\\]|\\.)*"/g, (match) =>
+        match.replace(/\n/g, "\\n").replace(/\r/g, "\\r")
       );
       credentials = JSON.parse(raw);
     } catch {

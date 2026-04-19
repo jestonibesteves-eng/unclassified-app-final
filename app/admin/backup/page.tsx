@@ -348,7 +348,8 @@ export default function BackupPage() {
 
       {/* Table card */}
       <div className="card-bezel">
-        <div className="card-bezel-inner overflow-x-auto">
+        <div className="card-bezel-inner">
+          <div className="overflow-x-auto">
           <table className="w-full text-[12px] min-w-[900px]">
             <thead>
               <tr className="bg-green-900 text-white text-left">
@@ -494,6 +495,7 @@ export default function BackupPage() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
         {!loading && backups.length > 0 && (
           <div className="px-4 py-2 border-t border-gray-100 text-[11px] text-gray-400">
