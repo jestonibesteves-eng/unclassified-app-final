@@ -72,16 +72,18 @@ function scheduleDailyBackup(dbPath: string) {
       console.log(`[backup] Daily backup created: ${filename}`);
 
       const driveResult = await uploadBackupToDrive(dest, filename);
-      if (driveResult === null) {
-        // Drive not configured — nothing to do.
-      } else if ("driveFileId" in driveResult) {
+      if (driveResult !== null) {
         const sidecarPath = path.join(backupDir, `${filename}.gdrive`);
-        fs.writeFileSync(sidecarPath, JSON.stringify(driveResult));
-        console.log(`[backup] Uploaded to Google Drive: ${driveResult.driveFileId}`);
-      } else {
-        const sidecarPath = path.join(backupDir, `${filename}.gdrive`);
-        fs.writeFileSync(sidecarPath, JSON.stringify(driveResult));
-        console.error(`[backup] Google Drive upload failed: ${driveResult.error}`);
+        try {
+          fs.writeFileSync(sidecarPath, JSON.stringify(driveResult));
+        } catch (err) {
+          console.warn("[backup] Failed to write Drive sidecar:", err);
+        }
+        if ("driveFileId" in driveResult) {
+          console.log(`[backup] Uploaded to Google Drive: ${driveResult.driveFileId}`);
+        } else {
+          console.error(`[backup] Google Drive upload failed: ${driveResult.error}`);
+        }
       }
     } catch (err) {
       console.error("[backup] Daily backup failed:", err);
