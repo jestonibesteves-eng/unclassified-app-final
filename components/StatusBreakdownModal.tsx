@@ -113,6 +113,7 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
       aria-labelledby="status-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
       tabIndex={-1}
     >
       <div className="max-w-6xl w-full rounded-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
@@ -158,8 +159,7 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
                   })}
                 </p>
               </div>
-              <div className="overflow-x-auto">
-                <table className="border-collapse text-left" style={{ minWidth: 600 }}>
+              <table className="border-collapse text-left" style={{ minWidth: 600 }}>
                   <thead className="sticky top-0 z-20">
                     {/* Province group header row */}
                     <tr className="bg-emerald-50">
@@ -217,10 +217,10 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
                           return (
                             <React.Fragment key={p}>
                               <td className="px-2 py-1.5 text-right text-[10px] text-gray-700 font-mono">
-                                {cell?.count ? cell.count.toLocaleString() : "—"}
+                                {cell?.count != null ? cell.count.toLocaleString() : "—"}
                               </td>
                               <td className="px-2 py-1.5 text-right text-[10px] text-gray-600 font-mono border-r border-emerald-100">
-                                {cell?.area ? cell.area.toFixed(4) : "—"}
+                                {cell?.area != null ? cell.area.toFixed(4) : "—"}
                               </td>
                             </React.Fragment>
                           );
@@ -244,10 +244,10 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
                           return (
                             <React.Fragment key={p}>
                               <td className="px-2 py-2 text-right text-[10px] font-bold text-gray-800 font-mono">
-                                {cell?.count ? cell.count.toLocaleString() : "—"}
+                                {cell?.count != null ? cell.count.toLocaleString() : "—"}
                               </td>
                               <td className="px-2 py-2 text-right text-[10px] font-bold text-gray-800 font-mono border-r border-emerald-200">
-                                {cell?.area ? cell.area.toFixed(4) : "—"}
+                                {cell?.area != null ? cell.area.toFixed(4) : "—"}
                               </td>
                             </React.Fragment>
                           );
@@ -261,8 +261,7 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
                       </tr>
                     )}
                   </tbody>
-                </table>
-              </div>
+              </table>
             </div>
           )}
         </div>
