@@ -156,9 +156,13 @@ export default function DashboardLoading() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {[0, 1, 2].map((i) => (
             <div key={i} className="card-bezel">
-              <div className="card-bezel-inner p-4 flex flex-col gap-3">
-                <div className="h-2.5 w-24 rounded bg-gray-200 animate-pulse" />
-                <div className="h-24 w-full rounded-lg bg-gray-200 animate-pulse" />
+              <div className="card-bezel-inner">
+                <div className="bg-green-900 px-5 py-2.5 rounded-t-[17px]">
+                  <div className="h-2 w-20 rounded bg-green-700 animate-pulse" />
+                </div>
+                <div className="p-4 flex flex-col gap-3">
+                  <div className="h-24 w-full rounded-lg bg-gray-200 animate-pulse" />
+                </div>
               </div>
             </div>
           ))}
