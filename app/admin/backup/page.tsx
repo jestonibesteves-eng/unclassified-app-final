@@ -349,7 +349,7 @@ export default function BackupPage() {
       {/* Table card */}
       <div className="card-bezel">
         <div className="card-bezel-inner overflow-x-auto">
-          <table className="w-full text-[12px] min-w-[600px]">
+          <table className="w-full text-[12px] min-w-[900px]">
             <thead>
               <tr className="bg-green-900 text-white text-left">
                 <th className="px-4 py-2.5 font-semibold tracking-wide">Filename</th>
