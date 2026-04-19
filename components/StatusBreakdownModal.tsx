@@ -208,18 +208,18 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
                     <tr className="bg-emerald-50">
                       {provinces.map((p) => (
                         <React.Fragment key={p}>
-                          <th className="px-2 pb-1.5 text-[8px] font-normal text-gray-500 border-b-2 border-emerald-300 text-right" style={{ minWidth: 52 }}>
+                          <th className="px-2 pb-1.5 text-[8px] font-normal text-gray-500 border-b-2 border-emerald-300 text-center" style={{ minWidth: 52 }}>
                             LHs
                           </th>
-                          <th className="px-2 pb-1.5 text-[8px] font-normal text-gray-500 border-b-2 border-r border-emerald-200 text-right" style={{ minWidth: 80 }}>
+                          <th className="px-2 pb-1.5 text-[8px] font-normal text-gray-500 border-b-2 border-r border-emerald-200 text-center" style={{ minWidth: 80 }}>
                             Area (has.)
                           </th>
                         </React.Fragment>
                       ))}
-                      <th className="px-2 pb-1.5 text-[8px] font-semibold text-green-800 border-b-2 border-emerald-300 text-right bg-emerald-100" style={{ minWidth: 52 }}>
+                      <th className="px-2 pb-1.5 text-[8px] font-semibold text-green-800 border-b-2 border-emerald-300 text-center bg-emerald-100" style={{ minWidth: 52 }}>
                         LHs
                       </th>
-                      <th className="px-2 pb-1.5 text-[8px] font-semibold text-green-800 border-b-2 border-emerald-300 text-right bg-emerald-100" style={{ minWidth: 88 }}>
+                      <th className="px-2 pb-1.5 text-[8px] font-semibold text-green-800 border-b-2 border-emerald-300 text-center bg-emerald-100" style={{ minWidth: 88 }}>
                         Area (has.)
                       </th>
                     </tr>
