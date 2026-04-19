@@ -206,7 +206,7 @@ const STATUS_COLORS_MAP: Record<string, string> = {
 
 type StatusKV = { name: string; value: number; area: number };
 
-export function StatusWithAreaChart({ data }: { data: StatusKV[] }) {
+export function StatusWithAreaChart({ data, action }: { data: StatusKV[]; action?: React.ReactNode }) {
   const [mode, setMode] = useState<"records" | "area">("records");
   const sorted = [...data].sort((a, b) =>
     mode === "records" ? b.value - a.value : b.area - a.area,
@@ -217,7 +217,7 @@ export function StatusWithAreaChart({ data }: { data: StatusKV[] }) {
   return (
     <div>
       {/* Toggle */}
-      <div className="flex justify-end mb-3">
+      <div className="flex justify-end items-center gap-2 mb-3">
         <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden text-[11px] font-semibold">
           <button
             onClick={() => setMode("records")}
@@ -232,6 +232,7 @@ export function StatusWithAreaChart({ data }: { data: StatusKV[] }) {
             Validated Area
           </button>
         </div>
+        {action}
       </div>
 
       <ResponsiveContainer width="100%" height={240}>

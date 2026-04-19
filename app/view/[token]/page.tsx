@@ -216,11 +216,8 @@ export default async function PublicDashboardPage({
           <ChartCard title="Records per Province (Total Scope)">
             <ProvinceBarChart data={provinceData} />
           </ChartCard>
-          <ChartCard
-            title="Records by Status"
-            action={<StatusBreakdownButton publicToken={token} hideExport selectedProvinces={selectedProvinces} />}
-          >
-            <StatusWithAreaChart data={statusData} />
+          <ChartCard title="Records by Status">
+            <StatusWithAreaChart data={statusData} action={<StatusBreakdownButton publicToken={token} hideExport selectedProvinces={selectedProvinces} />} />
           </ChartCard>
         </div>
 

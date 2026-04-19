@@ -71,9 +71,9 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
     const dataRows = allRows.map((r) => {
       const cells = provinces.flatMap((p) => [
         r.byProvince[p]?.count ?? 0,
-        (r.byProvince[p]?.area ?? 0).toFixed(4),
+        (r.byProvince[p]?.area ?? 0).toFixed(2),
       ]);
-      return [`"${r.status.replace(/"/g, '""')}"`, ...cells, r.total.count, r.total.area.toFixed(4)].join(",");
+      return [`"${r.status.replace(/"/g, '""')}"`, ...cells, r.total.count, r.total.area.toFixed(2)].join(",");
     });
     const csv = [header, ...dataRows].join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -220,7 +220,7 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
                                 {cell?.count != null ? cell.count.toLocaleString() : "—"}
                               </td>
                               <td className="px-2 py-1.5 text-right text-[10px] text-gray-600 font-mono border-r border-emerald-100">
-                                {cell?.area != null ? cell.area.toFixed(4) : "—"}
+                                {cell?.area != null ? cell.area.toFixed(2) : "—"}
                               </td>
                             </React.Fragment>
                           );
@@ -229,7 +229,7 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
                           {r.total.count.toLocaleString()}
                         </td>
                         <td className="px-2 py-1.5 text-right text-[10px] font-semibold text-gray-800 font-mono bg-emerald-50">
-                          {r.total.area.toFixed(4)}
+                          {r.total.area.toFixed(2)}
                         </td>
                       </tr>
                     ))}
@@ -247,7 +247,7 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
                                 {cell?.count != null ? cell.count.toLocaleString() : "—"}
                               </td>
                               <td className="px-2 py-2 text-right text-[10px] font-bold text-gray-800 font-mono border-r border-emerald-200">
-                                {cell?.area != null ? cell.area.toFixed(4) : "—"}
+                                {cell?.area != null ? cell.area.toFixed(2) : "—"}
                               </td>
                             </React.Fragment>
                           );
@@ -256,7 +256,7 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
                           {grandTotal.total.count.toLocaleString()}
                         </td>
                         <td className="px-2 py-2 text-right text-[10px] font-bold text-emerald-800 font-mono bg-emerald-100">
-                          {grandTotal.total.area.toFixed(4)}
+                          {grandTotal.total.area.toFixed(2)}
                         </td>
                       </tr>
                     )}

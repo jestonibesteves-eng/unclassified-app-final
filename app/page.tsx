@@ -209,11 +209,8 @@ export default async function Dashboard({
         <ChartCard title="Records per Province (Total Scope)">
           <ProvinceBarChart data={provinceData} />
         </ChartCard>
-        <ChartCard
-          title="Records by Status"
-          action={<StatusBreakdownButton selectedProvinces={effectiveProvinces} />}
-        >
-          <StatusWithAreaChart data={statusData} />
+        <ChartCard title="Records by Status">
+          <StatusWithAreaChart data={statusData} action={<StatusBreakdownButton selectedProvinces={effectiveProvinces} />} />
         </ChartCard>
       </div>
 
