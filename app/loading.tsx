@@ -87,8 +87,8 @@ export default function DashboardLoading() {
         {/* Records per Province */}
         <div className="card-bezel">
           <div className="card-bezel-inner">
-            <div className="bg-gray-300 px-4 py-2.5">
-              <div className="h-2.5 w-44 rounded bg-gray-400 animate-pulse" />
+            <div className="bg-green-900 px-4 py-2.5">
+              <div className="h-2.5 w-44 rounded bg-green-700 animate-pulse" />
             </div>
             <div className="p-4 flex flex-col gap-2.5">
               {[85, 60, 75, 45, 90, 55].map((w, i) => (
@@ -105,11 +105,11 @@ export default function DashboardLoading() {
         {/* Records by Status */}
         <div className="card-bezel">
           <div className="card-bezel-inner">
-            <div className="bg-gray-300 px-4 py-2.5 flex items-center justify-between">
-              <div className="h-2.5 w-36 rounded bg-gray-400 animate-pulse" />
+            <div className="bg-green-900 px-4 py-2.5 flex items-center justify-between">
+              <div className="h-2.5 w-36 rounded bg-green-700 animate-pulse" />
               <div className="flex items-center gap-2">
-                <div className="h-6 w-20 rounded-md bg-gray-400 animate-pulse" />
-                <div className="h-6 w-6 rounded-md bg-gray-400 animate-pulse" />
+                <div className="h-6 w-20 rounded-md bg-green-700 animate-pulse" />
+                <div className="h-6 w-6 rounded-md bg-green-700 animate-pulse" />
               </div>
             </div>
             <div className="p-4 flex flex-col gap-2.5">
@@ -128,8 +128,8 @@ export default function DashboardLoading() {
       {/* ── COCROM Charts Row ── */}
       <div className="card-bezel mb-6">
         <div className="card-bezel-inner">
-          <div className="bg-gray-300 px-4 py-2.5">
-            <div className="h-2.5 w-52 rounded bg-gray-400 animate-pulse" />
+          <div className="bg-green-900 px-4 py-2.5">
+            <div className="h-2.5 w-52 rounded bg-green-700 animate-pulse" />
           </div>
           <div className="p-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="h-32 rounded-lg bg-gray-200 animate-pulse" />
@@ -139,26 +139,29 @@ export default function DashboardLoading() {
       </div>
 
       {/* ── Accomplishment Tracker ── */}
-      <div className="card-bezel mb-6">
-        <div className="card-bezel-inner">
-          <div className="bg-gray-300 px-4 py-2.5 flex items-center justify-between">
-            <div className="h-2.5 w-44 rounded bg-gray-400 animate-pulse" />
-            <div className="flex gap-1">
-              <div className="h-6 w-14 rounded-md bg-gray-400 animate-pulse" />
-              <div className="h-6 w-16 rounded-md bg-gray-400 animate-pulse" />
-              <div className="h-6 w-20 rounded-md bg-gray-400 animate-pulse" />
-            </div>
+      <div className="mt-8 mb-6">
+        {/* Header — NO card-bezel here */}
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-2">
+            <div className="h-3 w-44 rounded bg-gray-300 animate-pulse" />
+            <div className="h-2.5 w-64 rounded bg-gray-200 animate-pulse" />
           </div>
-          <div className="p-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="card-bezel">
-                <div className="card-bezel-inner p-4 flex flex-col gap-3">
-                  <div className="h-2.5 w-24 rounded bg-gray-200 animate-pulse" />
-                  <div className="h-24 w-full rounded-lg bg-gray-200 animate-pulse" />
-                </div>
+          <div className="flex gap-1 p-1 bg-gray-100 rounded-lg self-start">
+            <div className="h-7 w-14 rounded-md bg-gray-200 animate-pulse" />
+            <div className="h-7 w-16 rounded-md bg-gray-200 animate-pulse" />
+            <div className="h-7 w-20 rounded-md bg-gray-200 animate-pulse" />
+          </div>
+        </div>
+        {/* 3 sub-cards in grid — each has card-bezel */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="card-bezel">
+              <div className="card-bezel-inner p-4 flex flex-col gap-3">
+                <div className="h-2.5 w-24 rounded bg-gray-200 animate-pulse" />
+                <div className="h-24 w-full rounded-lg bg-gray-200 animate-pulse" />
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -166,8 +169,8 @@ export default function DashboardLoading() {
       <div className="mt-6">
         <div className="card-bezel">
           <div className="card-bezel-inner">
-            <div className="bg-gray-300 px-4 py-2.5">
-              <div className="h-2.5 w-64 rounded bg-gray-400 animate-pulse" />
+            <div className="bg-green-900 px-4 py-2.5">
+              <div className="h-2.5 w-64 rounded bg-green-700 animate-pulse" />
             </div>
             <div className="p-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
               <div className="flex flex-col gap-3">
