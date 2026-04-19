@@ -28,13 +28,17 @@ export async function uploadBackupToDrive(
 
   try {
     let credentials: object;
-    if (keyRaw.trim().startsWith("{")) {
-      credentials = JSON.parse(keyRaw);
-    } else {
-      const absPath = path.isAbsolute(keyRaw)
-        ? keyRaw
-        : path.resolve(process.cwd(), keyRaw);
-      credentials = JSON.parse(fs.readFileSync(absPath, "utf-8"));
+    try {
+      if (keyRaw.trim().startsWith("{")) {
+        credentials = JSON.parse(keyRaw);
+      } else {
+        const absPath = path.isAbsolute(keyRaw)
+          ? keyRaw
+          : path.resolve(process.cwd(), keyRaw);
+        credentials = JSON.parse(fs.readFileSync(absPath, "utf-8"));
+      }
+    } catch {
+      return { error: "Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY — check it is valid JSON.", failedAt: new Date().toISOString() };
     }
 
     const auth = new google.auth.GoogleAuth({
