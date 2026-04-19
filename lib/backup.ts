@@ -29,12 +29,24 @@ function ensureBackupDir(): void {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
+export type BackupEntry = {
+  filename: string;
+  sizeBytes: number;
+  createdAt: string;
+  label: "auto" | "manual" | "unknown";
+  driveUpload?: { driveFileId: string; uploadedAt: string } | { error: string; failedAt: string };
+};
+
 function writeDriveSidecar(
   filename: string,
   result: { driveFileId: string; uploadedAt: string } | { error: string; failedAt: string }
 ): void {
-  const sidecarPath = path.join(getBackupDir(), `${filename}.gdrive`);
-  fs.writeFileSync(sidecarPath, JSON.stringify(result));
+  try {
+    const sidecarPath = path.join(getBackupDir(), `${filename}.gdrive`);
+    fs.writeFileSync(sidecarPath, JSON.stringify(result));
+  } catch (err) {
+    console.warn("[backup] Failed to write Drive sidecar:", err);
+  }
 }
 
 function readDriveSidecar(
@@ -74,14 +86,6 @@ export async function createBackup(label: "auto" | "manual" = "manual"): Promise
 
   return { filename, driveUpload };
 }
-
-export type BackupEntry = {
-  filename: string;
-  sizeBytes: number;
-  createdAt: string;
-  label: "auto" | "manual" | "unknown";
-  driveUpload?: { driveFileId: string; uploadedAt: string } | { error: string; failedAt: string };
-};
 
 export function listBackups(): BackupEntry[] {
   ensureBackupDir();
