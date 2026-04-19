@@ -224,7 +224,7 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
       onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
       tabIndex={-1}
     >
-      <div className="max-w-5xl w-fit min-w-[min(95vw,600px)] rounded-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      <div className="max-w-[95vw] w-fit rounded-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="bg-green-900 px-5 py-3 flex items-center justify-between flex-shrink-0">
           <div>
@@ -245,7 +245,7 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
         </div>
 
         {/* Table body */}
-        <div className="flex-1 overflow-auto bg-white">
+        <div className="flex-1 overflow-auto bg-white w-fit max-w-[95vw]">
           {loading && (
             <div className="flex items-center justify-center py-16 text-sm text-gray-400">
               Loading…
