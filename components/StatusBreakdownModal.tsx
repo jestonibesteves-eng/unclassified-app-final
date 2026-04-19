@@ -24,7 +24,6 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
   const fetchedKey = useRef<string | null>(null);
   const captureRef = useRef<HTMLDivElement>(null);
   const exportTitleRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Escape key
   useEffect(() => {
@@ -87,33 +86,28 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
   }
 
   async function exportImage() {
-    if (!captureRef.current || !scrollContainerRef.current) return;
+    if (!captureRef.current) return;
     setExportError(null);
-    const sc = scrollContainerRef.current;
-    // Temporarily expand the scroll container so html-to-image sees the full table
-    const prevOverflow = sc.style.overflow;
-    const prevMaxH = sc.style.maxHeight;
-    const prevH = sc.style.height;
-    sc.style.overflow = "visible";
-    sc.style.maxHeight = "none";
-    sc.style.height = "auto";
+    // Reveal title bar before measuring so it's included in dimensions
+    if (exportTitleRef.current) exportTitleRef.current.classList.remove("hidden");
+    // Read full natural dimensions before any overflow clipping
+    const fullWidth = captureRef.current.scrollWidth;
+    const fullHeight = captureRef.current.scrollHeight;
     try {
       const { toPng } = await import("html-to-image");
-      if (exportTitleRef.current) exportTitleRef.current.classList.remove("hidden");
-      const url = await toPng(captureRef.current, { pixelRatio: 2 });
+      const url = await toPng(captureRef.current, {
+        pixelRatio: 2,
+        width: fullWidth,
+        height: fullHeight,
+        style: { overflow: "visible" },
+      });
       if (exportTitleRef.current) exportTitleRef.current.classList.add("hidden");
-      sc.style.overflow = prevOverflow;
-      sc.style.maxHeight = prevMaxH;
-      sc.style.height = prevH;
       const a = document.createElement("a");
       a.href = url;
       a.download = `status-breakdown-${new Date().toISOString().slice(0, 10)}.png`;
       a.click();
     } catch (err) {
       if (exportTitleRef.current) exportTitleRef.current.classList.add("hidden");
-      sc.style.overflow = prevOverflow;
-      sc.style.maxHeight = prevMaxH;
-      sc.style.height = prevH;
       console.error("[StatusBreakdownModal exportImage]", err);
       setExportError("Failed to export image. Try Export CSV instead.");
     }
@@ -152,7 +146,7 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
         </div>
 
         {/* Table body */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-auto bg-white">
+        <div className="flex-1 overflow-auto bg-white">
           {loading && (
             <div className="flex items-center justify-center py-16 text-sm text-gray-400">Loading…</div>
           )}
