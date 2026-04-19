@@ -12,6 +12,11 @@ export type StatusTableRow = {
   byProvince: Record<string, StatusTableCell>;
   total: StatusTableCell;
 };
+export type StatusTableResponse = {
+  rows: StatusTableRow[];
+  grandTotal: StatusTableRow;
+  provinces: string[];
+};
 
 const CANONICAL_ORDER = [
   "For Initial Validation",
@@ -116,7 +121,7 @@ export async function GET(req: NextRequest) {
       ),
     };
 
-    return NextResponse.json({ rows, grandTotal, provinces });
+    return NextResponse.json({ rows, grandTotal, provinces } satisfies StatusTableResponse);
   } catch (err) {
     console.error("[/api/dashboard/status-table]", err);
     return NextResponse.json({ error: "Failed to load status data." }, { status: 500 });

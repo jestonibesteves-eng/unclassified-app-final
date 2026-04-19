@@ -218,7 +218,7 @@ export default async function PublicDashboardPage({
           </ChartCard>
           <ChartCard
             title="Records by Status"
-            action={<StatusBreakdownButton publicToken={token} hideExport />}
+            action={<StatusBreakdownButton publicToken={token} hideExport selectedProvinces={selectedProvinces} />}
           >
             <StatusWithAreaChart data={statusData} />
           </ChartCard>
