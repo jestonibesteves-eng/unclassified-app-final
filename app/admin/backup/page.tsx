@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useUser } from "@/components/UserContext";
 import { useToast } from "@/components/Toast";
@@ -115,7 +115,10 @@ export default function BackupPage() {
   const router = useRouter();
 
   const [backups, setBackups] = useState<BackupEntry[]>([]);
-  const hasDriveColumn = backups.some((b) => b.driveUpload !== undefined);
+  const hasDriveColumn = useMemo(
+    () => backups.some((b) => b.driveUpload !== undefined),
+    [backups]
+  );
   const [pendingRestore, setPendingRestore] = useState<PendingRestore>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -362,13 +365,13 @@ export default function BackupPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                  <td colSpan={hasDriveColumn ? 6 : 5} className="px-4 py-8 text-center text-gray-400">
                     Loading backups…
                   </td>
                 </tr>
               ) : backups.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                  <td colSpan={hasDriveColumn ? 6 : 5} className="px-4 py-8 text-center text-gray-400">
                     No backups yet. Create one using the button above.
                   </td>
                 </tr>
@@ -417,7 +420,7 @@ export default function BackupPage() {
                             <span className="text-gray-300 text-[11px]">—</span>
                           ) : "driveFileId" in b.driveUpload ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-green-50 text-green-700">
-                              <svg width="10" height="10" viewBox="0 0 87.3 78" fill="none" aria-hidden="true">
+                              <svg width="12" height="10" viewBox="0 0 87.3 78" fill="none" aria-hidden="true">
                                 <path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L27.5 53H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
                                 <path d="M43.65 25L29.9 0c-1.35.8-2.5 1.9-3.3 3.3L1.2 48.5c-.8 1.4-1.2 2.95-1.2 4.5h27.5z" fill="#00ac47"/>
                                 <path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75L86.1 57c.8-1.4 1.2-2.95 1.2-4.5H59.8L73.55 76.8z" fill="#ea4335"/>
@@ -428,11 +431,16 @@ export default function BackupPage() {
                               Uploaded
                             </span>
                           ) : (
-                            <span
-                              className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-red-600 cursor-help"
-                              title={b.driveUpload.error}
-                            >
-                              Failed
+                            <span className="inline-flex flex-col gap-0.5">
+                              <span
+                                className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-red-600"
+                                title={b.driveUpload.error}
+                              >
+                                Failed
+                              </span>
+                              <span className="text-[9px] text-red-400 max-w-[120px] truncate" title={b.driveUpload.error}>
+                                {b.driveUpload.error}
+                              </span>
                             </span>
                           )}
                         </td>
