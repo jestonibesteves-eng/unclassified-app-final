@@ -177,6 +177,7 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
                   })}
                 </p>
               </div>
+              {(() => { const showTotal = provinces.length > 1; return (
               <table className="border-collapse text-left" style={{ minWidth: 600 }}>
                   <thead className="sticky top-0 z-20">
                     {/* Province group header row */}
@@ -197,12 +198,14 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
                           {p}
                         </th>
                       ))}
-                      <th
-                        colSpan={2}
-                        className="px-2 py-1.5 text-center text-[8px] font-bold text-green-900 uppercase tracking-[0.08em] border-b border-emerald-100 bg-emerald-100"
-                      >
-                        R-V TOTAL
-                      </th>
+                      {showTotal && (
+                        <th
+                          colSpan={2}
+                          className="px-2 py-1.5 text-center text-[8px] font-bold text-green-900 uppercase tracking-[0.08em] border-b border-emerald-100 bg-emerald-100"
+                        >
+                          R-V TOTAL
+                        </th>
+                      )}
                     </tr>
                     {/* LHs / Area sub-header row */}
                     <tr className="bg-emerald-50">
@@ -216,12 +219,14 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
                           </th>
                         </React.Fragment>
                       ))}
-                      <th className="px-2 pb-1.5 text-[8px] font-semibold text-green-800 border-b-2 border-emerald-300 text-center bg-emerald-100" style={{ minWidth: 52 }}>
-                        LHs
-                      </th>
-                      <th className="px-2 pb-1.5 text-[8px] font-semibold text-green-800 border-b-2 border-emerald-300 text-center bg-emerald-100" style={{ minWidth: 88 }}>
-                        Area (has.)
-                      </th>
+                      {showTotal && (<>
+                        <th className="px-2 pb-1.5 text-[8px] font-semibold text-green-800 border-b-2 border-emerald-300 text-center bg-emerald-100" style={{ minWidth: 52 }}>
+                          LHs
+                        </th>
+                        <th className="px-2 pb-1.5 text-[8px] font-semibold text-green-800 border-b-2 border-emerald-300 text-center bg-emerald-100" style={{ minWidth: 88 }}>
+                          Area (has.)
+                        </th>
+                      </>)}
                     </tr>
                   </thead>
                   <tbody>
@@ -253,7 +258,7 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
                             </React.Fragment>
                           );
                         })}
-                        {(() => {
+                        {showTotal && (() => {
                           const lhTotalPct = grandTotal && grandTotal.total.count > 0 ? Math.round((r.total.count / grandTotal.total.count) * 100) : 0;
                           const areaTotalPct = grandTotal && grandTotal.total.area > 0 ? Math.round((r.total.area / grandTotal.total.area) * 100) : 0;
                           return (
@@ -294,16 +299,19 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
                             </React.Fragment>
                           );
                         })}
-                        <td className="px-2 py-2 text-right text-[10px] font-bold text-emerald-800 font-mono bg-emerald-100">
-                          {grandTotal.total.count.toLocaleString()}
-                        </td>
-                        <td className="px-2 py-2 text-right text-[10px] font-bold text-emerald-800 font-mono bg-emerald-100">
-                          {grandTotal.total.area.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
+                        {showTotal && (<>
+                          <td className="px-2 py-2 text-right text-[10px] font-bold text-emerald-800 font-mono bg-emerald-100">
+                            {grandTotal.total.count.toLocaleString()}
+                          </td>
+                          <td className="px-2 py-2 text-right text-[10px] font-bold text-emerald-800 font-mono bg-emerald-100">
+                            {grandTotal.total.area.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                        </>)}
                       </tr>
                     )}
                   </tbody>
               </table>
+              ); })()}
             </div>
           )}
         </div>
