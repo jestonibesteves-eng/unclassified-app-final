@@ -257,7 +257,7 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
             </div>
           )}
           {!loading && !error && (
-            <div ref={captureRef}>
+            <div ref={captureRef} style={{ width: "fit-content" }}>
               <div ref={exportTitleRef} className="bg-green-900 px-5 py-3 hidden">
                 <p className="text-[10px] font-bold text-green-300 uppercase tracking-[0.13em]">
                   Province Breakdown — Per Landholding Data

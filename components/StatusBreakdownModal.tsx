@@ -163,7 +163,7 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
             <div className="flex items-center justify-center py-16 text-sm text-red-500">{error}</div>
           )}
           {!loading && !error && (
-            <div ref={captureRef}>
+            <div ref={captureRef} style={{ width: "fit-content" }}>
               {/* Hidden title bar — revealed only during PNG export */}
               <div ref={exportTitleRef} className="bg-green-900 px-5 py-3 hidden">
                 <p className="text-[10px] font-bold text-green-300 uppercase tracking-[0.13em]">
