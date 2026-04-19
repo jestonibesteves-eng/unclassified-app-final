@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
+import { uploadBackupToDrive, type DriveUploadResult } from "@/lib/google-drive";
 
 // Resolved at call-time so env vars set after module load are respected.
 
@@ -28,7 +29,30 @@ function ensureBackupDir(): void {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
-export async function createBackup(label: "auto" | "manual" = "manual"): Promise<string> {
+function writeDriveSidecar(
+  filename: string,
+  result: { driveFileId: string; uploadedAt: string } | { error: string; failedAt: string }
+): void {
+  const sidecarPath = path.join(getBackupDir(), `${filename}.gdrive`);
+  fs.writeFileSync(sidecarPath, JSON.stringify(result));
+}
+
+function readDriveSidecar(
+  filename: string
+): BackupEntry["driveUpload"] {
+  const sidecarPath = path.join(getBackupDir(), `${filename}.gdrive`);
+  if (!fs.existsSync(sidecarPath)) return undefined;
+  try {
+    return JSON.parse(fs.readFileSync(sidecarPath, "utf-8"));
+  } catch {
+    return undefined;
+  }
+}
+
+export async function createBackup(label: "auto" | "manual" = "manual"): Promise<{
+  filename: string;
+  driveUpload: DriveUploadResult;
+}> {
   ensureBackupDir();
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -43,7 +67,12 @@ export async function createBackup(label: "auto" | "manual" = "manual"): Promise
     db.close();
   }
 
-  return filename;
+  const driveUpload = await uploadBackupToDrive(dest, filename);
+  if (driveUpload !== null) {
+    writeDriveSidecar(filename, driveUpload);
+  }
+
+  return { filename, driveUpload };
 }
 
 export type BackupEntry = {
@@ -51,6 +80,7 @@ export type BackupEntry = {
   sizeBytes: number;
   createdAt: string;
   label: "auto" | "manual" | "unknown";
+  driveUpload?: { driveFileId: string; uploadedAt: string } | { error: string; failedAt: string };
 };
 
 export function listBackups(): BackupEntry[] {
@@ -63,7 +93,15 @@ export function listBackups(): BackupEntry[] {
       const stat = fs.statSync(fullPath);
       const match = filename.match(/^dev_[\d\-_]+_(auto|manual)\.db$/);
       const label = (match?.[1] as "auto" | "manual") ?? "unknown";
-      return { filename, sizeBytes: stat.size, createdAt: stat.mtime.toISOString(), label };
+      const entry: BackupEntry = {
+        filename,
+        sizeBytes: stat.size,
+        createdAt: stat.mtime.toISOString(),
+        label,
+      };
+      const driveUpload = readDriveSidecar(filename);
+      if (driveUpload !== undefined) entry.driveUpload = driveUpload;
+      return entry;
     })
     .sort((a, b) => b.filename.localeCompare(a.filename));
 }
@@ -74,6 +112,8 @@ export function deleteBackup(filename: string): void {
   const fullPath = path.join(getBackupDir(), filename);
   if (!fs.existsSync(fullPath)) throw new Error("Backup not found.");
   fs.unlinkSync(fullPath);
+  const sidecarPath = path.join(getBackupDir(), `${filename}.gdrive`);
+  if (fs.existsSync(sidecarPath)) fs.unlinkSync(sidecarPath);
 }
 
 /** Returns the absolute path to a backup file for streaming. */
