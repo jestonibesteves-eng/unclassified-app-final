@@ -20,6 +20,7 @@ import PublicDashboardShareButton from "@/components/PublicDashboardShareButton"
 import { DashboardStatCards, IssueStrip } from "@/components/DashboardClient";
 import DashboardProgress from "@/components/DashboardProgress";
 import { getStats } from "@/lib/dashboard-stats";
+import { StatusBreakdownButton } from "@/components/StatusBreakdownButton";
 export default async function Dashboard({
   searchParams,
 }: {
@@ -208,7 +209,10 @@ export default async function Dashboard({
         <ChartCard title="Records per Province (Total Scope)">
           <ProvinceBarChart data={provinceData} />
         </ChartCard>
-        <ChartCard title="Records by Status">
+        <ChartCard
+          title="Records by Status"
+          action={<StatusBreakdownButton selectedProvinces={effectiveProvinces} />}
+        >
           <StatusWithAreaChart data={statusData} />
         </ChartCard>
       </div>
@@ -254,14 +258,15 @@ export default async function Dashboard({
   );
 }
 
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+function ChartCard({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div className="card-bezel">
       <div className="card-bezel-inner">
-        <div className="bg-green-900 px-4 py-2.5">
+        <div className="bg-green-900 px-4 py-2.5 flex items-center justify-between">
           <h3 className="text-[10px] font-semibold text-green-300 uppercase tracking-[0.13em]">
             {title}
           </h3>
+          {action && <div className="flex-shrink-0">{action}</div>}
         </div>
         <div className="p-4">{children}</div>
       </div>
