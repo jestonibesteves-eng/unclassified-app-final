@@ -232,34 +232,45 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
                         </td>
                         {provinces.map((p) => {
                           const cell = r.byProvince[p];
-                          const provTotal = grandTotal?.byProvince[p]?.area ?? 0;
-                          const pct = provTotal > 0 && cell?.area ? Math.round((cell.area / provTotal) * 100) : 0;
+                          const provLhTotal = grandTotal?.byProvince[p]?.count ?? 0;
+                          const provAreaTotal = grandTotal?.byProvince[p]?.area ?? 0;
+                          const lhPct = provLhTotal > 0 && cell?.count ? Math.round((cell.count / provLhTotal) * 100) : 0;
+                          const areaPct = provAreaTotal > 0 && cell?.area ? Math.round((cell.area / provAreaTotal) * 100) : 0;
                           return (
                             <React.Fragment key={p}>
-                              <td className="px-2 py-1.5 text-right text-[10px] text-gray-700 font-mono">
+                              <td
+                                className="px-2 py-1.5 text-right text-[10px] text-gray-700 font-mono"
+                                style={lhPct > 0 ? { background: `linear-gradient(to right, rgba(99,102,241,0.18) ${lhPct}%, transparent ${lhPct}%)` } : undefined}
+                              >
                                 {cell?.count != null ? cell.count.toLocaleString() : "—"}
                               </td>
                               <td
                                 className="px-2 py-1.5 text-right text-[10px] text-gray-600 font-mono border-r border-emerald-100"
-                                style={pct > 0 ? { background: `linear-gradient(to right, rgba(16,185,129,0.18) ${pct}%, transparent ${pct}%)` } : undefined}
+                                style={areaPct > 0 ? { background: `linear-gradient(to right, rgba(16,185,129,0.18) ${areaPct}%, transparent ${areaPct}%)` } : undefined}
                               >
                                 {cell?.area != null ? cell.area.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
                               </td>
                             </React.Fragment>
                           );
                         })}
-                        <td className="px-2 py-1.5 text-right text-[10px] font-semibold text-gray-800 font-mono bg-emerald-50">
-                          {r.total.count.toLocaleString()}
-                        </td>
                         {(() => {
-                          const totalPct = grandTotal && grandTotal.total.area > 0 ? Math.round((r.total.area / grandTotal.total.area) * 100) : 0;
+                          const lhTotalPct = grandTotal && grandTotal.total.count > 0 ? Math.round((r.total.count / grandTotal.total.count) * 100) : 0;
+                          const areaTotalPct = grandTotal && grandTotal.total.area > 0 ? Math.round((r.total.area / grandTotal.total.area) * 100) : 0;
                           return (
-                            <td
-                              className="px-2 py-1.5 text-right text-[10px] font-semibold text-gray-800 font-mono bg-emerald-50"
-                              style={totalPct > 0 ? { background: `linear-gradient(to right, rgba(16,185,129,0.25) ${totalPct}%, rgba(236,253,245,1) ${totalPct}%)` } : undefined}
-                            >
-                              {r.total.area.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </td>
+                            <>
+                              <td
+                                className="px-2 py-1.5 text-right text-[10px] font-semibold text-gray-800 font-mono bg-emerald-50"
+                                style={lhTotalPct > 0 ? { background: `linear-gradient(to right, rgba(99,102,241,0.25) ${lhTotalPct}%, rgba(236,253,245,1) ${lhTotalPct}%)` } : undefined}
+                              >
+                                {r.total.count.toLocaleString()}
+                              </td>
+                              <td
+                                className="px-2 py-1.5 text-right text-[10px] font-semibold text-gray-800 font-mono bg-emerald-50"
+                                style={areaTotalPct > 0 ? { background: `linear-gradient(to right, rgba(16,185,129,0.25) ${areaTotalPct}%, rgba(236,253,245,1) ${areaTotalPct}%)` } : undefined}
+                              >
+                                {r.total.area.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                            </>
                           );
                         })()}
                       </tr>
