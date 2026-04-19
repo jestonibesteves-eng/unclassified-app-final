@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
 import { validatePublicToken } from "@/lib/public-token";
 
+export const dynamic = "force-dynamic";
+
 export type StatusTableCell = { count: number; area: number };
 export type StatusTableRow = {
   status: string;
@@ -45,6 +47,8 @@ export async function GET(req: NextRequest) {
         ? { province_edited: { in: provinceList } }
         : { province_edited: { not: null } };
 
+    // JS-side aggregation is required — Prisma groupBy cannot express
+    // COALESCE(amendarea_validated, amendarea) in a _sum.
     const lhs = await prisma.landholding.findMany({
       where: scope,
       select: {
