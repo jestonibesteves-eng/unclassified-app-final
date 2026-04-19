@@ -11,7 +11,7 @@ type BackupEntry = {
   sizeBytes: number;
   createdAt: string;
   label: "auto" | "manual" | "unknown";
-  driveUpload?: { driveFileId: string; uploadedAt: string } | { error: string; failedAt: string };
+  b2Upload?: { b2FileKey: string; uploadedAt: string } | { error: string; failedAt: string };
 };
 
 type PendingRestore = { filename: string; stagedAt: string } | null;
@@ -115,8 +115,8 @@ export default function BackupPage() {
   const router = useRouter();
 
   const [backups, setBackups] = useState<BackupEntry[]>([]);
-  const hasDriveColumn = useMemo(
-    () => backups.some((b) => b.driveUpload !== undefined),
+  const hasB2Column = useMemo(
+    () => backups.some((b) => b.b2Upload !== undefined),
     [backups]
   );
   const [pendingRestore, setPendingRestore] = useState<PendingRestore>(null);
@@ -357,8 +357,8 @@ export default function BackupPage() {
                 <th className="px-4 py-2.5 font-semibold tracking-wide">Created</th>
                 <th className="px-4 py-2.5 font-semibold tracking-wide">Size</th>
                 <th className="px-4 py-2.5 font-semibold tracking-wide">Type</th>
-                {hasDriveColumn && (
-                  <th className="px-4 py-2.5 font-semibold tracking-wide">Drive</th>
+                {hasB2Column && (
+                  <th className="px-4 py-2.5 font-semibold tracking-wide">B2</th>
                 )}
                 <th className="px-4 py-2.5 font-semibold tracking-wide text-right">Actions</th>
               </tr>
@@ -366,13 +366,13 @@ export default function BackupPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={hasDriveColumn ? 6 : 5} className="px-4 py-8 text-center text-gray-400">
+                  <td colSpan={hasB2Column ? 6 : 5} className="px-4 py-8 text-center text-gray-400">
                     Loading backups…
                   </td>
                 </tr>
               ) : backups.length === 0 ? (
                 <tr>
-                  <td colSpan={hasDriveColumn ? 6 : 5} className="px-4 py-8 text-center text-gray-400">
+                  <td colSpan={hasB2Column ? 6 : 5} className="px-4 py-8 text-center text-gray-400">
                     No backups yet. Create one using the button above.
                   </td>
                 </tr>
@@ -415,11 +415,11 @@ export default function BackupPage() {
                           {b.label}
                         </span>
                       </td>
-                      {hasDriveColumn && (
+                      {hasB2Column && (
                         <td className="px-4 py-2.5 whitespace-nowrap">
-                          {b.driveUpload === undefined ? (
+                          {b.b2Upload === undefined ? (
                             <span className="text-gray-300 text-[11px]">—</span>
-                          ) : "driveFileId" in b.driveUpload ? (
+                          ) : "b2FileKey" in b.b2Upload ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-green-50 text-green-700">
                               <svg width="12" height="10" viewBox="0 0 87.3 78" fill="none" aria-hidden="true">
                                 <path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L27.5 53H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
@@ -435,12 +435,12 @@ export default function BackupPage() {
                             <span className="inline-flex flex-col gap-0.5">
                               <span
                                 className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-red-600"
-                                title={b.driveUpload.error}
+                                title={b.b2Upload.error}
                               >
                                 Failed
                               </span>
-                              <span className="text-[9px] text-red-400 max-w-[120px] truncate" title={b.driveUpload.error}>
-                                {b.driveUpload.error}
+                              <span className="text-[9px] text-red-400 max-w-[120px] truncate" title={b.b2Upload.error}>
+                                {b.b2Upload.error}
                               </span>
                             </span>
                           )}
