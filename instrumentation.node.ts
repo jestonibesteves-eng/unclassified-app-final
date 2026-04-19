@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import Database from "better-sqlite3";
+import { uploadBackupToDrive } from "@/lib/google-drive";
 
 export function registerNode() {
   const url    = process.env.DATABASE_URL ?? "file:./dev.db";
@@ -69,6 +70,19 @@ function scheduleDailyBackup(dbPath: string) {
       }
 
       console.log(`[backup] Daily backup created: ${filename}`);
+
+      const driveResult = await uploadBackupToDrive(dest, filename);
+      if (driveResult === null) {
+        // Drive not configured — nothing to do.
+      } else if ("driveFileId" in driveResult) {
+        const sidecarPath = path.join(backupDir, `${filename}.gdrive`);
+        fs.writeFileSync(sidecarPath, JSON.stringify(driveResult));
+        console.log(`[backup] Uploaded to Google Drive: ${driveResult.driveFileId}`);
+      } else {
+        const sidecarPath = path.join(backupDir, `${filename}.gdrive`);
+        fs.writeFileSync(sidecarPath, JSON.stringify(driveResult));
+        console.error(`[backup] Google Drive upload failed: ${driveResult.error}`);
+      }
     } catch (err) {
       console.error("[backup] Daily backup failed:", err);
     }
