@@ -88,7 +88,8 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
   async function exportImage() {
     if (!captureRef.current) return;
     setExportError(null);
-    // Read full natural table dimensions first (before title bar is shown)
+    // Remove centering margin so scrollWidth/scrollHeight read true content size
+    captureRef.current.style.margin = "0";
     const fullWidth = captureRef.current.scrollWidth;
     // Reveal title bar and stretch it to match full table width
     if (exportTitleRef.current) {
@@ -108,6 +109,7 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
         exportTitleRef.current.classList.add("hidden");
         exportTitleRef.current.style.minWidth = "";
       }
+      captureRef.current.style.margin = "0 auto";
       const a = document.createElement("a");
       a.href = url;
       a.download = `status-breakdown-${new Date().toISOString().slice(0, 10)}.png`;
@@ -117,6 +119,7 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
         exportTitleRef.current.classList.add("hidden");
         exportTitleRef.current.style.minWidth = "";
       }
+      captureRef.current.style.margin = "0 auto";
       console.error("[StatusBreakdownModal exportImage]", err);
       setExportError("Failed to export image. Try Export CSV instead.");
     }

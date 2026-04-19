@@ -180,6 +180,7 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
   async function exportImage() {
     if (!captureRef.current) return;
     setExportError(null);
+    captureRef.current.style.margin = "0";
     const fullWidth = captureRef.current.scrollWidth;
     if (exportTitleRef.current) {
       exportTitleRef.current.style.minWidth = `${fullWidth}px`;
@@ -198,6 +199,7 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
         exportTitleRef.current.classList.add("hidden");
         exportTitleRef.current.style.minWidth = "";
       }
+      captureRef.current.style.margin = "0 auto";
       const a = document.createElement("a");
       a.href = url;
       a.download = `province-breakdown-${new Date().toISOString().slice(0, 10)}.png`;
@@ -207,6 +209,7 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
         exportTitleRef.current.classList.add("hidden");
         exportTitleRef.current.style.minWidth = "";
       }
+      captureRef.current.style.margin = "0 auto";
       console.error("[exportImage]", err);
       setExportError("Failed to export image. Try Export CSV instead.");
     }
