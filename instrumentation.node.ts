@@ -53,13 +53,13 @@ function scheduleDailyBackup(dbPath: string) {
 
   async function runBackup() {
     try {
-      const { filename, driveUpload } = await createBackup("auto");
+      const { filename, b2Upload } = await createBackup("auto");
       console.log(`[backup] Daily backup created: ${filename}`);
-      if (driveUpload !== null && driveUpload !== undefined) {
-        if ("driveFileId" in driveUpload) {
-          console.log(`[backup] Uploaded to Google Drive: ${driveUpload.driveFileId}`);
+      if (b2Upload !== null && b2Upload !== undefined) {
+        if ("b2FileKey" in b2Upload) {
+          console.log(`[backup] Uploaded to Backblaze B2: ${b2Upload.b2FileKey}`);
         } else {
-          console.error(`[backup] Google Drive upload failed: ${driveUpload.error}`);
+          console.error(`[backup] Backblaze B2 upload failed: ${b2Upload.error}`);
         }
       }
     } catch (err) {

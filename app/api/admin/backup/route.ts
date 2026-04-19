@@ -27,8 +27,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
   try {
-    const { filename, driveUpload } = await createBackup("manual");
-    return NextResponse.json({ filename, driveUpload });
+    const { filename, b2Upload } = await createBackup("manual");
+    return NextResponse.json({ filename, b2Upload });
   } catch (err) {
     console.error("[backup] Manual backup failed:", err);
     return NextResponse.json({ error: "Backup failed." }, { status: 500 });
