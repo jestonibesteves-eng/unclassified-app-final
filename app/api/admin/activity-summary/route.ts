@@ -99,5 +99,67 @@ export async function GET(req: NextRequest) {
     })
   );
 
-  return NextResponse.json({ provinces: results, days });
+  // Regional users — aggregated individually, not by province
+  const regionalUsers = await prisma.user.findMany({
+    where: { office_level: "regional", is_active: true },
+    select: { username: true },
+  });
+
+  const regional = await Promise.all(
+    regionalUsers.map(async ({ username }) => {
+      const baseWhere = { changed_by: username };
+      const periodWhere = { ...baseWhere, created_at: { gte: since } };
+
+      const [
+        totalPeriod,
+        total24h,
+        byAction,
+        byField,
+        latestLog,
+        recentLogs,
+        distinctLHsRaw,
+      ] = await Promise.all([
+        prisma.auditLog.count({ where: periodWhere }),
+        prisma.auditLog.count({ where: { ...baseWhere, created_at: { gte: since24h } } }),
+        prisma.auditLog.groupBy({
+          by: ["action"],
+          where: periodWhere,
+          _count: { action: true },
+          orderBy: { _count: { action: "desc" } },
+        }),
+        prisma.auditLog.groupBy({
+          by: ["field_changed"],
+          where: { ...periodWhere, field_changed: { not: null } },
+          _count: { field_changed: true },
+          orderBy: { _count: { field_changed: "desc" } },
+          take: 4,
+        }),
+        prisma.auditLog.findFirst({
+          where: baseWhere,
+          orderBy: { created_at: "desc" },
+          select: { created_at: true, action: true, field_changed: true },
+        }),
+        prisma.auditLog.findMany({
+          where: periodWhere,
+          orderBy: { created_at: "desc" },
+          take: 6,
+          select: { created_at: true, action: true, field_changed: true, new_value: true },
+        }),
+        prisma.auditLog.groupBy({ by: ["seqno_darro"], where: periodWhere }),
+      ]);
+
+      return {
+        username,
+        totalPeriod,
+        total24h,
+        byAction: byAction.map((r) => ({ action: r.action, count: r._count.action })),
+        topFields: byField.map((r) => ({ field: r.field_changed!, count: r._count.field_changed })),
+        lastActivity: latestLog?.created_at ?? null,
+        recentLogs,
+        uniqueLandholdings: distinctLHsRaw.length,
+      };
+    })
+  );
+
+  return NextResponse.json({ provinces: results, regional, days });
 }

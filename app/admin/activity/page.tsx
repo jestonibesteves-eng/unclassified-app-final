@@ -19,6 +19,16 @@ type ProvinceSummary = {
   uniqueLandholdings: number;
   activeUserCount: number;
 };
+type RegionalSummary = {
+  username: string;
+  totalPeriod: number;
+  total24h: number;
+  byAction: ActionCount[];
+  topFields: FieldCount[];
+  lastActivity: string | null;
+  recentLogs: RecentLog[];
+  uniqueLandholdings: number;
+};
 
 const DAYS_OPTIONS = [
   { label: "Today",   value: 1  },
@@ -119,6 +129,7 @@ export default function DARPOActivityPage() {
   const router = useRouter();
   const [days, setDays] = useState(7);
   const [data, setData] = useState<ProvinceSummary[]>([]);
+  const [regional, setRegional] = useState<RegionalSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [exporting, setExporting] = useState<"image" | "pdf" | null>(null);
@@ -176,7 +187,10 @@ export default function DARPOActivityPage() {
     setLoading(true);
     fetch(`/api/admin/activity-summary?days=${days}`)
       .then((r) => r.json())
-      .then((j) => setData(j.provinces ?? []))
+      .then((j) => {
+        setData(j.provinces ?? []);
+        setRegional(j.regional ?? []);
+      })
       .finally(() => setLoading(false));
   }, [days]);
 
@@ -420,6 +434,136 @@ export default function DARPOActivityPage() {
         )}
       </div>
       </div>
+
+      {/* ── Regional Accounts — outside exportRef, excluded from PNG/PDF export ── */}
+      {!loading && regional.length > 0 && (
+        <div className="max-w-6xl mx-auto px-6 pb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-[10px] uppercase tracking-[0.18em] font-bold text-gray-400">
+              Regional Accounts · not included in export
+            </span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {regional.map((r) => {
+              const isExpanded = expanded === `regional:${r.username}`;
+              const style = r.total24h > 0
+                ? "border-blue-200 shadow-sm shadow-blue-50"
+                : r.totalPeriod > 0
+                ? "border-gray-200"
+                : "border-gray-100 opacity-55";
+
+              return (
+                <div key={r.username} className={`bg-white rounded-xl border transition-all duration-200 ${style}`}>
+                  <div className="p-5">
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="text-[9px] uppercase tracking-wider font-bold text-blue-400 bg-blue-50 px-1.5 py-0.5 rounded">Regional</span>
+                        </div>
+                        <h2 className="text-[13px] font-bold text-gray-800 leading-tight font-mono">{r.username}</h2>
+                        {r.lastActivity && (
+                          <p className="text-[10px] text-gray-400 mt-0.5">Last: {formatDateTime(r.lastActivity)}</p>
+                        )}
+                      </div>
+                      <StatusBadge total24h={r.total24h} totalPeriod={r.totalPeriod} />
+                    </div>
+
+                    <div className="mb-4">
+                      <div className="flex items-baseline justify-between mb-1.5">
+                        <span className="text-[28px] font-bold text-gray-900 leading-none">
+                          {r.totalPeriod.toLocaleString()}
+                        </span>
+                        {r.total24h > 0 && (
+                          <span className="text-[10px] font-semibold text-emerald-600">+{r.total24h} today</span>
+                        )}
+                      </div>
+                      <ActivityBar value={r.totalPeriod} max={Math.max(...regional.map((x) => x.totalPeriod), 1)} />
+                      <p className="text-[10px] text-gray-400 mt-1">actions in {periodLabel}</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                      <div className="bg-gray-50 rounded-lg px-2.5 py-2">
+                        <p className="text-[9px] text-gray-400 uppercase tracking-wider leading-none mb-1">LHs</p>
+                        <p className="text-[14px] font-bold text-gray-800 leading-none">{r.uniqueLandholdings.toLocaleString()}</p>
+                        <p className="text-[9px] text-gray-400 mt-0.5">touched</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg px-2.5 py-2">
+                        <p className="text-[9px] text-gray-400 uppercase tracking-wider leading-none mb-1">Today</p>
+                        <p className={`text-[14px] font-bold leading-none ${r.total24h > 0 ? "text-emerald-600" : "text-gray-300"}`}>
+                          {r.total24h}
+                        </p>
+                        <p className="text-[9px] text-gray-400 mt-0.5">actions</p>
+                      </div>
+                    </div>
+
+                    {r.byAction.length > 0 && (
+                      <div className="mb-3">
+                        <p className="text-[9.5px] text-gray-400 uppercase tracking-wider font-semibold mb-1.5">Action types</p>
+                        <div className="flex flex-wrap gap-1">
+                          {r.byAction.map((a) => (
+                            <span
+                              key={a.action}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9.5px] font-semibold ${actionStyle(a.action).pill}`}
+                            >
+                              {a.action} <span className="opacity-60">{a.count}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {r.topFields.length > 0 && (
+                      <div className="mb-3">
+                        <p className="text-[9.5px] text-gray-400 uppercase tracking-wider font-semibold mb-1.5">Most-edited fields</p>
+                        <div className="space-y-1">
+                          {r.topFields.map((f) => (
+                            <div key={f.field} className="flex items-center gap-2">
+                              <span className="text-[10px] text-gray-600 font-mono truncate flex-1">{f.field}</span>
+                              <span className="text-[9px] text-gray-400 flex-shrink-0 font-semibold">{f.count}×</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {r.recentLogs.length > 0 && (
+                      <button
+                        onClick={() => setExpanded(isExpanded ? null : `regional:${r.username}`)}
+                        className="text-[10px] text-emerald-600 hover:text-emerald-800 font-semibold transition-colors"
+                      >
+                        {isExpanded ? "Hide recent ↑" : "Show recent activity ↓"}
+                      </button>
+                    )}
+                  </div>
+
+                  {isExpanded && r.recentLogs.length > 0 && (
+                    <div className="border-t border-gray-100 divide-y divide-gray-50">
+                      {r.recentLogs.map((log, i) => (
+                        <div key={i} className="flex items-start gap-2.5 px-5 py-2.5">
+                          <span className={`mt-0.5 flex-shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold ${actionStyle(log.action).pill}`}>
+                            {log.action}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            {log.field_changed && (
+                              <p className="text-[10px] text-gray-700 font-semibold truncate">{log.field_changed}</p>
+                            )}
+                            {log.new_value && (
+                              <p className="text-[9.5px] text-gray-400 truncate">→ {log.new_value}</p>
+                            )}
+                            <p className="text-[9px] text-gray-400 mt-0.5">{timeAgo(log.created_at)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
