@@ -13,9 +13,10 @@ export type DriveUploadResult =
  * env vars are not set (Drive not configured).
  * Never throws — errors are returned as { error, failedAt }.
  *
- * GOOGLE_SERVICE_ACCOUNT_KEY accepts either:
- *   - An absolute or relative path to the service account JSON key file
+ * GOOGLE_SERVICE_ACCOUNT_KEY accepts:
  *   - The raw JSON string of the service account key
+ *   - The service account JSON base64-encoded (recommended for hosted environments)
+ *   - An absolute or relative path to the service account JSON key file
  */
 export async function uploadBackupToDrive(
   filePath: string,
@@ -29,21 +30,29 @@ export async function uploadBackupToDrive(
   try {
     let credentials: object;
     try {
-      let raw = keyRaw.trim().startsWith("{")
-        ? keyRaw
-        : fs.readFileSync(
-            path.isAbsolute(keyRaw) ? keyRaw : path.resolve(process.cwd(), keyRaw),
+      const trimmed = keyRaw.trim();
+      let raw: string;
+      if (trimmed.startsWith("{")) {
+        raw = trimmed;
+      } else {
+        let decoded: string | null = null;
+        try {
+          const candidate = Buffer.from(trimmed, "base64").toString("utf-8");
+          if (candidate.trim().startsWith("{")) decoded = candidate;
+        } catch { }
+
+        if (decoded) {
+          raw = decoded;
+        } else {
+          raw = fs.readFileSync(
+            path.isAbsolute(trimmed) ? trimmed : path.resolve(process.cwd(), trimmed),
             "utf-8"
           );
-      // Some hosting panels convert \n escape sequences in env var values to actual
-      // newlines, breaking JSON.parse. Fix by escaping literal newlines inside every
-      // JSON string value (handles the PEM body AND the trailing \n after -----END-----).
-      raw = raw.replace(/"(?:[^"\\]|\\.)*"/g, (match) =>
-        match.replace(/\n/g, "\\n").replace(/\r/g, "\\r")
-      );
+        }
+      }
       credentials = JSON.parse(raw);
     } catch {
-      return { error: "Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY — check it is valid JSON.", failedAt: new Date().toISOString() };
+      return { error: "Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY — must be raw JSON, base64-encoded JSON, or a file path.", failedAt: new Date().toISOString() };
     }
 
     const auth = new google.auth.GoogleAuth({
