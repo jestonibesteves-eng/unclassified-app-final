@@ -88,10 +88,13 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
   async function exportImage() {
     if (!captureRef.current) return;
     setExportError(null);
-    // Reveal title bar before measuring so it's included in dimensions
-    if (exportTitleRef.current) exportTitleRef.current.classList.remove("hidden");
-    // Read full natural dimensions before any overflow clipping
+    // Read full natural table dimensions first (before title bar is shown)
     const fullWidth = captureRef.current.scrollWidth;
+    // Reveal title bar and stretch it to match full table width
+    if (exportTitleRef.current) {
+      exportTitleRef.current.style.minWidth = `${fullWidth}px`;
+      exportTitleRef.current.classList.remove("hidden");
+    }
     const fullHeight = captureRef.current.scrollHeight;
     try {
       const { toPng } = await import("html-to-image");
@@ -101,13 +104,19 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
         height: fullHeight,
         style: { overflow: "visible" },
       });
-      if (exportTitleRef.current) exportTitleRef.current.classList.add("hidden");
+      if (exportTitleRef.current) {
+        exportTitleRef.current.classList.add("hidden");
+        exportTitleRef.current.style.minWidth = "";
+      }
       const a = document.createElement("a");
       a.href = url;
       a.download = `status-breakdown-${new Date().toISOString().slice(0, 10)}.png`;
       a.click();
     } catch (err) {
-      if (exportTitleRef.current) exportTitleRef.current.classList.add("hidden");
+      if (exportTitleRef.current) {
+        exportTitleRef.current.classList.add("hidden");
+        exportTitleRef.current.style.minWidth = "";
+      }
       console.error("[StatusBreakdownModal exportImage]", err);
       setExportError("Failed to export image. Try Export CSV instead.");
     }
