@@ -34,9 +34,8 @@ All 7 dashboard sections get skeleton treatment:
 ## Visual Style
 
 - Skeleton blocks use `bg-gray-200 animate-pulse rounded` (Tailwind)
-- Darker `bg-gray-300` for prominent elements (chart card headers, large values)
+- Darker `bg-gray-300` for large value blocks; `bg-green-900` for chart card headers (matches real `ChartCard` header color for a smoother loading transition)
 - All blocks sized to match the real element's visual weight (not pixel-perfect, but proportionally correct)
-- Green primary color is NOT used in the skeleton — pure gray palette
 
 ## Constraints
 
