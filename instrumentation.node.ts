@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import Database from "better-sqlite3";
-import { uploadBackupToDrive } from "@/lib/google-drive";
+import { createBackup } from "@/lib/backup";
 
 export function registerNode() {
   const url    = process.env.DATABASE_URL ?? "file:./dev.db";
@@ -53,36 +53,13 @@ function scheduleDailyBackup(dbPath: string) {
 
   async function runBackup() {
     try {
-      const backupDir = process.env.BACKUP_DIR || path.join(path.dirname(dbPath), "backups");
-      if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
-
-      const now = new Date();
-      const pad = (n: number) => String(n).padStart(2, "0");
-      const ts  = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;
-      const filename = `dev_${ts}_auto.db`;
-      const dest = path.join(backupDir, filename);
-
-      const db = new Database(dbPath);
-      try {
-        await db.backup(dest);
-      } finally {
-        db.close();
-      }
-
+      const { filename, driveUpload } = await createBackup("auto");
       console.log(`[backup] Daily backup created: ${filename}`);
-
-      const driveResult = await uploadBackupToDrive(dest, filename);
-      if (driveResult !== null) {
-        const sidecarPath = path.join(backupDir, `${filename}.gdrive`);
-        try {
-          fs.writeFileSync(sidecarPath, JSON.stringify(driveResult));
-        } catch (err) {
-          console.warn("[backup] Failed to write Drive sidecar:", err);
-        }
-        if ("driveFileId" in driveResult) {
-          console.log(`[backup] Uploaded to Google Drive: ${driveResult.driveFileId}`);
+      if (driveUpload !== null && driveUpload !== undefined) {
+        if ("driveFileId" in driveUpload) {
+          console.log(`[backup] Uploaded to Google Drive: ${driveUpload.driveFileId}`);
         } else {
-          console.error(`[backup] Google Drive upload failed: ${driveResult.error}`);
+          console.error(`[backup] Google Drive upload failed: ${driveUpload.error}`);
         }
       }
     } catch (err) {

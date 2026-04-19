@@ -55,7 +55,12 @@ function readDriveSidecar(
   const sidecarPath = path.join(getBackupDir(), `${filename}.gdrive`);
   if (!fs.existsSync(sidecarPath)) return undefined;
   try {
-    return JSON.parse(fs.readFileSync(sidecarPath, "utf-8"));
+    const parsed = JSON.parse(fs.readFileSync(sidecarPath, "utf-8"));
+    if (parsed && typeof parsed === "object") {
+      if ("driveFileId" in parsed && "uploadedAt" in parsed) return parsed as { driveFileId: string; uploadedAt: string };
+      if ("error" in parsed && "failedAt" in parsed) return parsed as { error: string; failedAt: string };
+    }
+    return undefined;
   } catch {
     return undefined;
   }
