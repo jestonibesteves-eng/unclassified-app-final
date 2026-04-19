@@ -180,17 +180,33 @@ export function ProvinceBreakdownModal({ open, onClose, selectedProvinces, publi
   async function exportImage() {
     if (!captureRef.current) return;
     setExportError(null);
+    const fullWidth = captureRef.current.scrollWidth;
+    if (exportTitleRef.current) {
+      exportTitleRef.current.style.minWidth = `${fullWidth}px`;
+      exportTitleRef.current.classList.remove("hidden");
+    }
+    const fullHeight = captureRef.current.scrollHeight;
     try {
       const { toPng } = await import("html-to-image");
-      if (exportTitleRef.current) exportTitleRef.current.classList.remove("hidden");
-      const url = await toPng(captureRef.current, { pixelRatio: 2 });
-      if (exportTitleRef.current) exportTitleRef.current.classList.add("hidden");
+      const url = await toPng(captureRef.current, {
+        pixelRatio: 2,
+        width: fullWidth,
+        height: fullHeight,
+        style: { overflow: "visible" },
+      });
+      if (exportTitleRef.current) {
+        exportTitleRef.current.classList.add("hidden");
+        exportTitleRef.current.style.minWidth = "";
+      }
       const a = document.createElement("a");
       a.href = url;
       a.download = `province-breakdown-${new Date().toISOString().slice(0, 10)}.png`;
       a.click();
     } catch (err) {
-      if (exportTitleRef.current) exportTitleRef.current.classList.add("hidden");
+      if (exportTitleRef.current) {
+        exportTitleRef.current.classList.add("hidden");
+        exportTitleRef.current.style.minWidth = "";
+      }
       console.error("[exportImage]", err);
       setExportError("Failed to export image. Try Export CSV instead.");
     }
