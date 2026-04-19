@@ -12,6 +12,7 @@ import { CocromChartsRow } from "@/components/CocromChartsRow";
 import DashboardAreaToggle from "@/components/DashboardAreaToggle";
 import DashboardProvinceFilter from "@/components/DashboardProvinceFilter";
 import { DashboardStatCards } from "@/components/DashboardClient";
+import { StatusBreakdownButton } from "@/components/StatusBreakdownButton";
 
 const TOKEN_KEY = "public_dashboard_token";
 
@@ -215,7 +216,10 @@ export default async function PublicDashboardPage({
           <ChartCard title="Records per Province (Total Scope)">
             <ProvinceBarChart data={provinceData} />
           </ChartCard>
-          <ChartCard title="Records by Status">
+          <ChartCard
+            title="Records by Status"
+            action={<StatusBreakdownButton publicToken={token} hideExport />}
+          >
             <StatusWithAreaChart data={statusData} />
           </ChartCard>
         </div>
@@ -261,11 +265,12 @@ export default async function PublicDashboardPage({
   );
 }
 
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+function ChartCard({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm">
-      <div className="bg-green-900 px-4 py-2.5">
+      <div className="bg-green-900 px-4 py-2.5 flex items-center justify-between">
         <h3 className="text-[10px] font-semibold text-green-300 uppercase tracking-[0.13em]">{title}</h3>
+        {action && <div className="flex-shrink-0">{action}</div>}
       </div>
       <div className="p-4 bg-white">{children}</div>
     </div>
