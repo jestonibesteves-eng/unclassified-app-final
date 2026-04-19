@@ -29,14 +29,19 @@ export async function uploadBackupToDrive(
   try {
     let credentials: object;
     try {
-      if (keyRaw.trim().startsWith("{")) {
-        credentials = JSON.parse(keyRaw);
-      } else {
-        const absPath = path.isAbsolute(keyRaw)
-          ? keyRaw
-          : path.resolve(process.cwd(), keyRaw);
-        credentials = JSON.parse(fs.readFileSync(absPath, "utf-8"));
-      }
+      let raw = keyRaw.trim().startsWith("{")
+        ? keyRaw
+        : fs.readFileSync(
+            path.isAbsolute(keyRaw) ? keyRaw : path.resolve(process.cwd(), keyRaw),
+            "utf-8"
+          );
+      // Some hosting panels convert \n escape sequences inside the private_key value
+      // to actual newlines, breaking JSON.parse. Re-escape them before parsing.
+      raw = raw.replace(
+        /(-----BEGIN [A-Z ]+-----)([\s\S]*?)(-----END [A-Z ]+-----)/g,
+        (_, begin, middle, end) => begin + middle.replace(/\r?\n/g, "\\n") + end
+      );
+      credentials = JSON.parse(raw);
     } catch {
       return { error: "Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY — check it is valid JSON.", failedAt: new Date().toISOString() };
     }
