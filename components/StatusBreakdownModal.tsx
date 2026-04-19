@@ -232,13 +232,18 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
                         </td>
                         {provinces.map((p) => {
                           const cell = r.byProvince[p];
+                          const provTotal = grandTotal?.byProvince[p]?.area ?? 0;
+                          const pct = provTotal > 0 && cell?.area ? Math.round((cell.area / provTotal) * 100) : 0;
                           return (
                             <React.Fragment key={p}>
                               <td className="px-2 py-1.5 text-right text-[10px] text-gray-700 font-mono">
                                 {cell?.count != null ? cell.count.toLocaleString() : "—"}
                               </td>
-                              <td className="px-2 py-1.5 text-right text-[10px] text-gray-600 font-mono border-r border-emerald-100">
-                                {cell?.area != null ? cell.area.toFixed(2) : "—"}
+                              <td
+                                className="px-2 py-1.5 text-right text-[10px] text-gray-600 font-mono border-r border-emerald-100"
+                                style={pct > 0 ? { background: `linear-gradient(to right, rgba(16,185,129,0.18) ${pct}%, transparent ${pct}%)` } : undefined}
+                              >
+                                {cell?.area != null ? cell.area.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
                               </td>
                             </React.Fragment>
                           );
@@ -246,9 +251,17 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
                         <td className="px-2 py-1.5 text-right text-[10px] font-semibold text-gray-800 font-mono bg-emerald-50">
                           {r.total.count.toLocaleString()}
                         </td>
-                        <td className="px-2 py-1.5 text-right text-[10px] font-semibold text-gray-800 font-mono bg-emerald-50">
-                          {r.total.area.toFixed(2)}
-                        </td>
+                        {(() => {
+                          const totalPct = grandTotal && grandTotal.total.area > 0 ? Math.round((r.total.area / grandTotal.total.area) * 100) : 0;
+                          return (
+                            <td
+                              className="px-2 py-1.5 text-right text-[10px] font-semibold text-gray-800 font-mono bg-emerald-50"
+                              style={totalPct > 0 ? { background: `linear-gradient(to right, rgba(16,185,129,0.25) ${totalPct}%, rgba(236,253,245,1) ${totalPct}%)` } : undefined}
+                            >
+                              {r.total.area.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                          );
+                        })()}
                       </tr>
                     ))}
                     {/* Grand Total row */}
@@ -265,7 +278,7 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
                                 {cell?.count != null ? cell.count.toLocaleString() : "—"}
                               </td>
                               <td className="px-2 py-2 text-right text-[10px] font-bold text-gray-800 font-mono border-r border-emerald-200">
-                                {cell?.area != null ? cell.area.toFixed(2) : "—"}
+                                {cell?.area != null ? cell.area.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
                               </td>
                             </React.Fragment>
                           );
@@ -274,7 +287,7 @@ export function StatusBreakdownModal({ open, onClose, selectedProvinces, publicT
                           {grandTotal.total.count.toLocaleString()}
                         </td>
                         <td className="px-2 py-2 text-right text-[10px] font-bold text-emerald-800 font-mono bg-emerald-100">
-                          {grandTotal.total.area.toFixed(2)}
+                          {grandTotal.total.area.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                       </tr>
                     )}
