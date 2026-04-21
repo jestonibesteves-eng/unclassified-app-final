@@ -42,35 +42,45 @@ const ENC_SUB_CFG: Record<EncSubfilter, { label: string; accent: string }> = {
   amount: { label: "Amount",  accent: "#f97316" },
 };
 
-function statusColors(pct: number) {
-  if (pct >= 80) return { text: "text-emerald-600" };
-  if (pct >= 50) return { text: "text-amber-600"  };
-  return           { text: "text-red-600"    };
+function statusColor(pct: number): string {
+  if (pct >= 80) return "#10b981";
+  if (pct >= 50) return "#f59e0b";
+  return "#ef4444";
+}
+
+function statusTextClass(pct: number): string {
+  if (pct >= 80) return "text-emerald-600";
+  if (pct >= 50) return "text-amber-500";
+  return "text-red-500";
 }
 
 function fmtArea  (n: number) { return n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " ha"; }
 function fmtAmount(n: number) { return "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function fmtCount (n: number) { return n.toLocaleString(); }
 
-/* ─── Gauge arc math ─── */
-/**
- * Computes the SVG arc path for a semi-circle gauge.
- * Spans from (24,112) on the left to (196,112) on the right,
- * going counter-clockwise over the top (viewBox 0 0 220 130, center 110,112, radius 86).
- *
- * p=0   → null (nothing to draw)
- * p=1   → full semi-circle
- */
+/* ─── Gauge geometry ───────────────────────────────────────────────────────
+   Semi-circle: left (28, 108) → over the top → right (192, 108)
+   Center: (110, 108), radius: 82, viewBox: 0 0 220 118
+   sweep-flag=1 → clockwise on screen → arc goes UPWARD (correct for a gauge)
+────────────────────────────────────────────────────────────────────────── */
+const CX = 110, CY = 108, R = 82;
+const START_X = CX - R; // 28
+const END_X   = CX + R; // 192
+
+function gaugePoint(p: number): { x: number; y: number } {
+  const angle = Math.PI * (1 - p);
+  return {
+    x: CX + R * Math.cos(angle),
+    y: CY - R * Math.sin(angle),
+  };
+}
+
 function gaugeArc(p: number): string | null {
   const clamped = Math.min(Math.max(p, 0), 1);
-  if (clamped < 0.003) return null;
-
-  if (clamped >= 0.999) return "M 24 112 A 86 86 0 0 0 196 112";
-
-  const angle = Math.PI * (1 - clamped);
-  const ex = (110 + 86 * Math.cos(angle)).toFixed(3);
-  const ey = (112 - 86 * Math.sin(angle)).toFixed(3);
-  return `M 24 112 A 86 86 0 0 0 ${ex} ${ey}`;
+  if (clamped < 0.004) return null;
+  if (clamped >= 0.999) return `M ${START_X} ${CY} A ${R} ${R} 0 0 1 ${END_X} ${CY}`;
+  const { x, y } = gaugePoint(clamped);
+  return `M ${START_X} ${CY} A ${R} ${R} 0 0 1 ${x.toFixed(3)} ${y.toFixed(3)}`;
 }
 
 /* ─── SemiGauge ─── */
@@ -87,35 +97,54 @@ function SemiGauge({
   line1: string;
   line2: string;
 }) {
-  const p    = total > 0 ? value / total : 0;
-  const path = gaugeArc(p);
+  const p       = total > 0 ? Math.min(value / total, 1) : 0;
+  const arcPath = gaugeArc(p);
+  const tip     = p > 0.004 && p < 0.999 ? gaugePoint(p) : null;
 
   return (
-    <svg viewBox="0 0 220 130" width="100%" aria-hidden>
+    <svg viewBox="0 0 220 118" width="100%" aria-hidden>
+      <defs>
+        <filter id="gauge-glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="2" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+
       {/* Track */}
       <path
-        d="M 24 112 A 86 86 0 0 0 196 112"
-        fill="none" stroke="#f1f5f9" strokeWidth="22" strokeLinecap="round"
+        d={`M ${START_X} ${CY} A ${R} ${R} 0 0 1 ${END_X} ${CY}`}
+        fill="none" stroke="#e9ecef" strokeWidth="14" strokeLinecap="round"
       />
-      {/* Progress */}
-      {path && (
+
+      {/* Progress arc */}
+      {arcPath && (
         <path
-          d={path}
-          fill="none" stroke={color} strokeWidth="22" strokeLinecap="round"
+          d={arcPath}
+          fill="none"
+          stroke={color}
+          strokeWidth="14"
+          strokeLinecap="round"
+          opacity="0.95"
         />
       )}
-      {/* Min label */}
-      <text x="16" y="126" fontSize="9" fill="#cbd5e1" textAnchor="middle">0</text>
+
+      {/* Tip dot */}
+      {tip && (
+        <circle cx={tip.x} cy={tip.y} r="5" fill={color} />
+      )}
+
+      {/* 0 label */}
+      <text x={START_X} y="116" fontSize="8.5" fill="#cbd5e1" textAnchor="middle">0</text>
       {/* Max label */}
-      <text x="204" y="126" fontSize="9" fill="#cbd5e1" textAnchor="middle">
+      <text x={END_X} y="116" fontSize="8.5" fill="#cbd5e1" textAnchor="middle">
         {total.toLocaleString()}
       </text>
-      {/* Center line 1 */}
-      <text x="110" y="95" fontSize="13" fontWeight="800" fill={color} textAnchor="middle">
+
+      {/* Center value */}
+      <text x="110" y="88" fontSize="13.5" fontWeight="800" fill={color} textAnchor="middle">
         {line1}
       </text>
-      {/* Center line 2 */}
-      <text x="110" y="110" fontSize="9" fill="#94a3b8" textAnchor="middle">
+      <text x="110" y="103" fontSize="8" fill="#9ca3af" textAnchor="middle" letterSpacing="0.2">
         {line2}
       </text>
     </svg>
@@ -125,43 +154,49 @@ function SemiGauge({
 /* ─── SimpleCard (Validation + Distribution) ─── */
 function SimpleCard({
   title,
-  accent,
   data,
 }: {
-  title:  string;
-  accent: string;
+  title:  "Validation" | "Distribution";
   data:   SimpleMilestone;
 }) {
   const pct       = data.total > 0 ? (data.completed / data.total) * 100 : 0;
   const remaining = data.total - data.completed;
   const weeksLeft = Math.ceil(daysToDeadline() / 7);
-  const pace      = weeksLeft > 0 && remaining > 0
-    ? Math.ceil(remaining / weeksLeft)
-    : 0;
-  const col = statusColors(pct);
+  const pace      = weeksLeft > 0 && remaining > 0 ? Math.ceil(remaining / weeksLeft) : 0;
+  const color     = statusColor(pct);
+  const textCls   = statusTextClass(pct);
 
-  const verb  = title === "Validation" ? "validated" : "distributed";
-  const noun  = title === "Validation" ? "landholdings" : "ARBs";
+  const isValidation = title === "Validation";
+  const verb  = isValidation ? "validated"  : "distributed";
+  const noun  = isValidation ? "landholdings" : "ARBs";
+  const accent = isValidation ? "#3b82f6" : "#10b981";
   const line1 = `${data.completed.toLocaleString()} ${verb}`;
   const line2 = `${pct.toFixed(1)}% of ${data.total.toLocaleString()} ${noun}`;
 
   return (
     <div className="card-bezel">
       <div className="card-bezel-inner">
-        <div className="bg-green-900 px-5 py-2.5 rounded-t-[17px]">
+        {/* Header */}
+        <div className="bg-green-900 px-5 py-2.5 rounded-t-[17px] flex items-center justify-between">
           <h3 className="text-[10px] font-semibold text-green-300 uppercase tracking-[0.13em]">{title}</h3>
+          <span
+            className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+            style={{ background: `${color}22`, color }}
+          >
+            {pct >= 80 ? "On Track" : pct >= 50 ? "At Risk" : "Critical"}
+          </span>
         </div>
 
-        {/* Stats row */}
-        <div className="px-5 pt-4 pb-2 flex items-start justify-between gap-2">
+        {/* Stats */}
+        <div className="px-5 pt-4 pb-1 flex items-start justify-between gap-2">
           <div>
-            <p className={`text-[1.6rem] font-bold tabular-nums leading-none ${col.text}`}>
+            <p className={`text-[1.6rem] font-bold tabular-nums leading-none ${textCls}`}>
               {data.completed.toLocaleString()}
             </p>
             <p className="text-[10px] text-gray-400 mt-0.5">of {data.total.toLocaleString()}</p>
           </div>
           <div className="text-right">
-            <p className={`text-[1.1rem] font-bold tabular-nums leading-none ${col.text}`}>
+            <p className={`text-[1.1rem] font-bold tabular-nums leading-none ${textCls}`}>
               {pct.toFixed(1)}%
             </p>
             <p className="text-[10px] text-gray-400 mt-0.5">{remaining.toLocaleString()} left</p>
@@ -169,18 +204,12 @@ function SimpleCard({
         </div>
 
         {/* Gauge */}
-        <div className="px-4">
-          <SemiGauge
-            value={data.completed}
-            total={data.total}
-            color={accent}
-            line1={line1}
-            line2={line2}
-          />
+        <div className="px-3 pt-1">
+          <SemiGauge value={data.completed} total={data.total} color={accent} line1={line1} line2={line2} />
         </div>
 
-        {/* Required pace */}
-        <div className="px-5 pb-5 text-center">
+        {/* Pace */}
+        <div className="px-5 pb-5 text-center -mt-1">
           {pace === 0 ? (
             <p className="text-[10px] font-semibold text-emerald-600">✓ Target reached</p>
           ) : (
@@ -214,21 +243,15 @@ function EncodingCard({ data }: { data: EncodingData }) {
   const pct       = total > 0 ? (completed / total) * 100 : 0;
   const remaining = total - completed;
   const weeksLeft = Math.ceil(daysToDeadline() / 7);
-  const pace      = weeksLeft > 0 && remaining > 0
-    ? Math.ceil(remaining / weeksLeft)
-    : 0;
-  const col = statusColors(pct);
+  const pace      = weeksLeft > 0 && remaining > 0 ? Math.ceil(remaining / weeksLeft) : 0;
+  const color     = statusColor(pct);
+  const textCls   = statusTextClass(pct);
 
   const fmtVal = (n: number) =>
-    sub === "area"   ? fmtArea(n)
-    : sub === "amount" ? fmtAmount(n)
-    : fmtCount(n);
+    sub === "area" ? fmtArea(n) : sub === "amount" ? fmtAmount(n) : fmtCount(n);
 
   const unitLabel =
-    sub === "cocrom" ? "COCROMs"
-    : sub === "arb"  ? "ARBs"
-    : sub === "area" ? "ha."
-    :                  "condoned amt";
+    sub === "cocrom" ? "COCROMs" : sub === "arb" ? "ARBs" : sub === "area" ? "ha." : "condoned amt";
 
   const line1 = `${fmtVal(completed)} encoded`;
   const line2 = `${pct.toFixed(1)}% of ${fmtVal(total)} ${unitLabel}`;
@@ -236,8 +259,15 @@ function EncodingCard({ data }: { data: EncodingData }) {
   return (
     <div className="card-bezel">
       <div className="card-bezel-inner">
-        <div className="bg-green-900 px-5 py-2.5 rounded-t-[17px]">
+        {/* Header */}
+        <div className="bg-green-900 px-5 py-2.5 rounded-t-[17px] flex items-center justify-between">
           <h3 className="text-[10px] font-semibold text-green-300 uppercase tracking-[0.13em]">Encoding</h3>
+          <span
+            className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+            style={{ background: `${color}22`, color }}
+          >
+            {pct >= 80 ? "On Track" : pct >= 50 ? "At Risk" : "Critical"}
+          </span>
         </div>
 
         {/* Subfilter tabs */}
@@ -262,16 +292,16 @@ function EncodingCard({ data }: { data: EncodingData }) {
           })}
         </div>
 
-        {/* Stats row */}
-        <div className="px-5 pt-3 pb-2 flex items-start justify-between gap-2">
+        {/* Stats */}
+        <div className="px-5 pt-3 pb-1 flex items-start justify-between gap-2">
           <div>
-            <p className={`text-[1.6rem] font-bold tabular-nums leading-none ${col.text}`}>
+            <p className={`text-[1.6rem] font-bold tabular-nums leading-none ${textCls}`}>
               {fmtVal(completed)}
             </p>
             <p className="text-[10px] text-gray-400 mt-0.5">of {fmtVal(total)}</p>
           </div>
           <div className="text-right">
-            <p className={`text-[1.1rem] font-bold tabular-nums leading-none ${col.text}`}>
+            <p className={`text-[1.1rem] font-bold tabular-nums leading-none ${textCls}`}>
               {pct.toFixed(1)}%
             </p>
             <p className="text-[10px] text-gray-400 mt-0.5">{fmtVal(remaining)} left</p>
@@ -279,18 +309,12 @@ function EncodingCard({ data }: { data: EncodingData }) {
         </div>
 
         {/* Gauge */}
-        <div className="px-4">
-          <SemiGauge
-            value={completed}
-            total={total}
-            color={cfg.accent}
-            line1={line1}
-            line2={line2}
-          />
+        <div className="px-3 pt-1">
+          <SemiGauge value={completed} total={total} color={cfg.accent} line1={line1} line2={line2} />
         </div>
 
-        {/* Required pace */}
-        <div className="px-5 pb-5 text-center">
+        {/* Pace */}
+        <div className="px-5 pb-5 text-center -mt-1">
           {pace === 0 ? (
             <p className="text-[10px] font-semibold text-emerald-600">✓ Target reached</p>
           ) : (
@@ -315,17 +339,10 @@ function SkeletonCard() {
             <div className="h-8 bg-gray-100 rounded w-1/4" />
             <div className="h-6 bg-gray-100 rounded w-1/5" />
           </div>
-          {/* Semi-circle gauge skeleton */}
-          <div className="flex justify-center">
-            <div
-              className="bg-gray-100"
-              style={{
-                width: "100%",
-                height: "96px",
-                borderRadius: "50% 50% 0 0 / 100% 100% 0 0",
-              }}
-            />
-          </div>
+          <div
+            className="bg-gray-100 mx-auto"
+            style={{ width: "100%", height: "90px", borderRadius: "50% 50% 0 0 / 100% 100% 0 0" }}
+          />
           <div className="h-3 bg-gray-100 rounded w-2/5 mx-auto mt-4" />
         </div>
       </div>
@@ -370,7 +387,7 @@ export default function DashboardProgress() {
 
   return (
     <div className="mt-8 mb-6">
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-1.5">
@@ -388,7 +405,7 @@ export default function DashboardProgress() {
               {valCompleted.toLocaleString()} / {valTotal.toLocaleString()}
             </span>{" "}
             validated{" "}
-            <span className={`font-semibold ${valPct >= 80 ? "text-emerald-600" : valPct >= 50 ? "text-amber-600" : "text-red-500"}`}>
+            <span className={`font-semibold ${valPct >= 80 ? "text-emerald-600" : valPct >= 50 ? "text-amber-500" : "text-red-500"}`}>
               ({valPct.toFixed(1)}%)
             </span>
             {" "}· Deadline: June 15, 2026
@@ -396,15 +413,15 @@ export default function DashboardProgress() {
         </div>
       </div>
 
-      {/* ── 3 cards ── */}
+      {/* Cards */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {loading || !response ? (
           <><SkeletonCard /><SkeletonCard /><SkeletonCard /></>
         ) : (
           <>
-            <SimpleCard  title="Validation"   accent="#3b82f6" data={response.validation}   />
-            <EncodingCard                                       data={response.encoding}     />
-            <SimpleCard  title="Distribution" accent="#10b981" data={response.distribution} />
+            <SimpleCard  title="Validation"   data={response.validation}   />
+            <EncodingCard                      data={response.encoding}     />
+            <SimpleCard  title="Distribution" data={response.distribution} />
           </>
         )}
       </div>
