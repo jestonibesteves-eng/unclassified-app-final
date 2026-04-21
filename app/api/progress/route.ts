@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { rawDb } from "@/lib/db";
+import { rawDb, prisma } from "@/lib/db";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
+
+const TOKEN_KEY = "public_dashboard_token";
 
 // ── SQL helpers ────────────────────────────────────────────────────────────
 const ENC_DATE =
@@ -16,17 +18,25 @@ function safeProv(s: string) { return s.replace(/'/g, "''"); }
 
 export async function GET(req: NextRequest) {
   try {
-    const token = req.cookies.get(SESSION_COOKIE)?.value;
-    const sessionUser = token ? await verifySessionToken(token) : null;
-    if (!sessionUser) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    // Allow access via session OR a valid public token query param
+    const publicToken = req.nextUrl.searchParams.get("token");
+    let isPublic = false;
+    if (publicToken) {
+      const setting = await prisma.setting.findUnique({ where: { key: TOKEN_KEY } });
+      if (setting?.value === publicToken) isPublic = true;
+    }
 
-    // Province scope: non-regional users are locked to their province;
-    // regional users may filter by ?provinces= query param
-    const isRegional = sessionUser.office_level === "regional";
+    const sessionCookie = req.cookies.get(SESSION_COOKIE)?.value;
+    const sessionUser   = sessionCookie ? await verifySessionToken(sessionCookie) : null;
+    if (!sessionUser && !isPublic) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+
+    // Province scope: public view = no restriction (regional);
+    // non-regional session users are locked to their province
+    const isRegional = isPublic || sessionUser?.office_level === "regional";
     let lhWhere  = "";
     let lhWhere2 = "";
 
-    if (!isRegional && sessionUser.province) {
+    if (!isRegional && sessionUser?.province) {
       const p = safeProv(sessionUser.province);
       lhWhere  = `AND l.province_edited = '${p}'`;
       lhWhere2 = `AND province_edited   = '${p}'`;

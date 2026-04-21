@@ -511,7 +511,13 @@ function SkeletonCard() {
 }
 
 /* ─── Main section ─── */
-export default function DashboardProgress({ selectedProvinces = [] }: { selectedProvinces?: string[] }) {
+export default function DashboardProgress({
+  selectedProvinces = [],
+  publicToken,
+}: {
+  selectedProvinces?: string[];
+  publicToken?: string;
+}) {
   const [response, setResponse] = useState<ProgressResponse | null>(null);
   const [loading, setLoading]   = useState(true);
   const [sub, setSub]           = useState<EncSubfilter>("cocrom");
@@ -521,10 +527,11 @@ export default function DashboardProgress({ selectedProvinces = [] }: { selected
     setLoading(true);
     (async () => {
       try {
-        const qs   = selectedProvinces.length > 0
-          ? "?provinces=" + encodeURIComponent(selectedProvinces.join(","))
-          : "";
-        const res  = await fetch(`/api/progress${qs}`);
+        const params = new URLSearchParams();
+        if (selectedProvinces.length > 0) params.set("provinces", selectedProvinces.join(","));
+        if (publicToken) params.set("token", publicToken);
+        const qs  = params.toString() ? "?" + params.toString() : "";
+        const res = await fetch(`/api/progress${qs}`);
         const json = await res.json();
         if (!cancelled && json?.validation && json?.encoding && json?.distribution) {
           setResponse(json as ProgressResponse);
@@ -536,7 +543,7 @@ export default function DashboardProgress({ selectedProvinces = [] }: { selected
       }
     })();
     return () => { cancelled = true; };
-  }, [selectedProvinces.join(",")]);
+  }, [selectedProvinces.join(","), publicToken]);
 
   const daysLeft  = daysToDeadline();
   const weeksLeft = Math.ceil(daysLeft / 7);
