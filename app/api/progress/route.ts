@@ -11,8 +11,6 @@ const AMOUNT_CLEAN = `TRIM(REPLACE(COALESCE(a.allocated_condoned_amount,''),',',
 const IS_CLEAN     = (col: string) =>
   `(${col} GLOB '[0-9]*' AND ${col} NOT GLOB '*[^0-9.]*')`;
 
-const ENC_STATUSES =
-  `l.status IN ('Partially Encoded','Fully Encoded','Partially Distributed','Fully Distributed')`;
 
 function safeProv(s: string) { return s.replace(/'/g, "''"); }
 
@@ -22,11 +20,25 @@ export async function GET(req: NextRequest) {
     const sessionUser = token ? await verifySessionToken(token) : null;
     if (!sessionUser) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
-    // Province scope for non-regional users
-    const prov = sessionUser.office_level !== "regional" && sessionUser.province
-      ? sessionUser.province : null;
-    const lhWhere  = prov ? `AND l.province_edited = '${safeProv(prov)}'` : "";
-    const lhWhere2 = prov ? `AND province_edited   = '${safeProv(prov)}'` : "";
+    // Province scope: non-regional users are locked to their province;
+    // regional users may filter by ?provinces= query param
+    const isRegional = sessionUser.office_level === "regional";
+    let lhWhere  = "";
+    let lhWhere2 = "";
+
+    if (!isRegional && sessionUser.province) {
+      const p = safeProv(sessionUser.province);
+      lhWhere  = `AND l.province_edited = '${p}'`;
+      lhWhere2 = `AND province_edited   = '${p}'`;
+    } else if (isRegional) {
+      const raw = req.nextUrl.searchParams.get("provinces") ?? "";
+      const provs = raw.split(",").map((s) => s.trim()).filter(Boolean);
+      if (provs.length > 0) {
+        const list = provs.map((p) => `'${safeProv(p)}'`).join(",");
+        lhWhere  = `AND l.province_edited IN (${list})`;
+        lhWhere2 = `AND province_edited   IN (${list})`;
+      }
+    }
 
     // ── Validation ──────────────────────────────────────────────────────
     const valTotal = (rawDb.prepare(
@@ -52,7 +64,33 @@ export async function GET(req: NextRequest) {
       ${lhWhere2}
     `).get() as { n: number }).n;
 
+    // Landholding-level area + amount breakdowns for Validation
+    // "validated" = amendarea_validated_confirmed = 1 AND condoned_amount_confirmed = 1
+    const LH_AREA    = `TRIM(REPLACE(COALESCE(l.amendarea,''),',',''))`;
+    const LH_AREA_V  = `TRIM(REPLACE(COALESCE(l.amendarea_validated, l.amendarea,''),',',''))`;
+    const LH_AMOUNT  = `TRIM(REPLACE(COALESCE(l.condoned_amount,''),',',''))`;
+    const IS_CLEAN_L = (c: string) => `(${c} GLOB '[0-9]*' AND ${c} NOT GLOB '*[^0-9.]*')`;
+    const LH_VALIDATED = `(l.amendarea_validated_confirmed = 1 AND l.condoned_amount_confirmed = 1)`;
+
+    const valLhMetrics = rawDb.prepare(`
+      SELECT
+        SUM(CASE WHEN ${IS_CLEAN_L(LH_AREA)}
+            THEN CAST(${LH_AREA} AS REAL) ELSE 0 END) as area_total,
+        SUM(CASE WHEN ${LH_VALIDATED} AND ${IS_CLEAN_L(LH_AREA_V)}
+            THEN CAST(${LH_AREA_V} AS REAL) ELSE 0 END) as area_completed,
+        SUM(CASE WHEN ${IS_CLEAN_L(LH_AMOUNT)}
+            THEN CAST(${LH_AMOUNT} AS REAL) ELSE 0 END) as amount_total,
+        SUM(CASE WHEN ${LH_VALIDATED} AND ${IS_CLEAN_L(LH_AMOUNT)}
+            THEN CAST(${LH_AMOUNT} AS REAL) ELSE 0 END) as amount_completed
+      FROM "Landholding" l
+      WHERE 1=1 ${lhWhere2}
+    `).get() as {
+      area_total: number; area_completed: number;
+      amount_total: number; amount_completed: number;
+    } | undefined;
+
     // ── Encoding ────────────────────────────────────────────────────────
+    // Encoding agg — total = ALL eligible COCROMs (no status filter); encoded = date_encoded IS NOT NULL
     const encAgg = rawDb.prepare(`
       SELECT
         COUNT(*) as cocrom_total,
@@ -70,7 +108,6 @@ export async function GET(req: NextRequest) {
       FROM "Arb" a
       JOIN "Landholding" l ON a.seqno_darro = l.seqno_darro
       WHERE a.carpable = 'CARPABLE' AND a.eligibility = 'Eligible'
-        AND ${ENC_STATUSES}
         ${lhWhere}
     `).get() as {
       cocrom_total: number; cocrom_completed: number;
@@ -79,24 +116,76 @@ export async function GET(req: NextRequest) {
       amount_total: number; amount_completed: number;
     } | undefined;
 
-    // ── Distribution ────────────────────────────────────────────────────
-    const distTotal = (rawDb.prepare(`
-      SELECT COUNT(*) as n FROM "Arb" a
-      JOIN "Landholding" l ON a.seqno_darro = l.seqno_darro
-      WHERE a.carpable = 'CARPABLE' AND a.eligibility = 'Eligible' ${lhWhere}
-    `).get() as { n: number }).n;
+    // Landholdings that have ≥1 encoded eligible COCROM, split by validation status
+    const encLhBreakdown = rawDb.prepare(`
+      SELECT
+        COUNT(CASE WHEN l.amendarea_validated_confirmed = 1
+                    AND l.condoned_amount_confirmed = 1 THEN 1 END) as lh_validated,
+        COUNT(CASE WHEN NOT (l.amendarea_validated_confirmed = 1
+                    AND l.condoned_amount_confirmed = 1) THEN 1 END) as lh_not_validated
+      FROM (
+        SELECT DISTINCT a.seqno_darro
+        FROM "Arb" a
+        WHERE a.carpable = 'CARPABLE' AND a.eligibility = 'Eligible'
+          AND a.date_encoded IS NOT NULL
+      ) enc
+      JOIN "Landholding" l ON l.seqno_darro = enc.seqno_darro
+      WHERE 1=1 ${lhWhere2}
+    `).get() as { lh_validated: number; lh_not_validated: number } | undefined;
 
-    const distCompleted = (rawDb.prepare(`
-      SELECT COUNT(*) as n FROM "Arb" a
+    // ── Distribution ────────────────────────────────────────────────────
+    // Denominator = encoded COCROMs; completed = distributed
+    const distAgg = rawDb.prepare(`
+      SELECT
+        COUNT(*) as cocrom_total,
+        SUM(CASE WHEN a.date_distributed IS NOT NULL THEN 1 ELSE 0 END) as cocrom_completed,
+        COUNT(DISTINCT a.arb_name) as arb_total,
+        COUNT(DISTINCT CASE WHEN a.date_distributed IS NOT NULL THEN a.arb_name END) as arb_completed,
+        SUM(CASE WHEN ${IS_CLEAN(AREA_CLEAN)}
+            THEN CAST(${AREA_CLEAN} AS REAL) ELSE 0 END) as area_total,
+        SUM(CASE WHEN a.date_distributed IS NOT NULL AND ${IS_CLEAN(AREA_CLEAN)}
+            THEN CAST(${AREA_CLEAN} AS REAL) ELSE 0 END) as area_completed,
+        SUM(CASE WHEN ${IS_CLEAN(AMOUNT_CLEAN)}
+            THEN CAST(${AMOUNT_CLEAN} AS REAL) ELSE 0 END) as amount_total,
+        SUM(CASE WHEN a.date_distributed IS NOT NULL AND ${IS_CLEAN(AMOUNT_CLEAN)}
+            THEN CAST(${AMOUNT_CLEAN} AS REAL) ELSE 0 END) as amount_completed
+      FROM "Arb" a
       JOIN "Landholding" l ON a.seqno_darro = l.seqno_darro
       WHERE a.carpable = 'CARPABLE' AND a.eligibility = 'Eligible'
-        AND a.date_distributed IS NOT NULL ${lhWhere}
-    `).get() as { n: number }).n;
+        AND a.date_encoded IS NOT NULL
+        ${lhWhere}
+    `).get() as {
+      cocrom_total: number; cocrom_completed: number;
+      arb_total: number;   arb_completed: number;
+      area_total: number;  area_completed: number;
+      amount_total: number; amount_completed: number;
+    } | undefined;
+
+    // Landholdings with ≥1 distributed COCROM, split by validation status
+    const distLhBreakdown = rawDb.prepare(`
+      SELECT
+        COUNT(CASE WHEN l.amendarea_validated_confirmed = 1
+                    AND l.condoned_amount_confirmed = 1 THEN 1 END) as lh_validated,
+        COUNT(CASE WHEN NOT (l.amendarea_validated_confirmed = 1
+                    AND l.condoned_amount_confirmed = 1) THEN 1 END) as lh_not_validated
+      FROM (
+        SELECT DISTINCT a.seqno_darro
+        FROM "Arb" a
+        WHERE a.carpable = 'CARPABLE' AND a.eligibility = 'Eligible'
+          AND a.date_distributed IS NOT NULL
+      ) dist
+      JOIN "Landholding" l ON l.seqno_darro = dist.seqno_darro
+      WHERE 1=1 ${lhWhere2}
+    `).get() as { lh_validated: number; lh_not_validated: number } | undefined;
 
     return NextResponse.json({
       validation: {
-        total:     valTotal,
-        completed: valCompleted,
+        total:            valTotal,     // LH count — gauge + COCROM/ARB tabs
+        completed:        valCompleted, // validated LH count
+        area_total:       valLhMetrics?.area_total       ?? 0,
+        area_completed:   valLhMetrics?.area_completed   ?? 0,
+        amount_total:     valLhMetrics?.amount_total     ?? 0,
+        amount_completed: valLhMetrics?.amount_completed ?? 0,
       },
       encoding: {
         cocrom_total:     encAgg?.cocrom_total     ?? 0,
@@ -107,10 +196,20 @@ export async function GET(req: NextRequest) {
         area_completed:   encAgg?.area_completed   ?? 0,
         amount_total:     encAgg?.amount_total     ?? 0,
         amount_completed: encAgg?.amount_completed ?? 0,
+        lh_validated:     encLhBreakdown?.lh_validated     ?? 0,
+        lh_not_validated: encLhBreakdown?.lh_not_validated ?? 0,
       },
       distribution: {
-        total:     distTotal,
-        completed: distCompleted,
+        cocrom_total:     distAgg?.cocrom_total     ?? 0,
+        cocrom_completed: distAgg?.cocrom_completed ?? 0,
+        arb_total:        distAgg?.arb_total        ?? 0,
+        arb_completed:    distAgg?.arb_completed    ?? 0,
+        area_total:       distAgg?.area_total       ?? 0,
+        area_completed:   distAgg?.area_completed   ?? 0,
+        amount_total:     distAgg?.amount_total     ?? 0,
+        amount_completed: distAgg?.amount_completed ?? 0,
+        lh_validated:     distLhBreakdown?.lh_validated     ?? 0,
+        lh_not_validated: distLhBreakdown?.lh_not_validated ?? 0,
       },
     });
 
