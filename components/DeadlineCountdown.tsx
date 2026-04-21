@@ -99,7 +99,8 @@ function Colon({ theme }: { theme: typeof THEME.safe }) {
 }
 
 export default function DeadlineCountdown({ className = "" }: { className?: string }) {
-  const [msLeft, setMsLeft] = useState(() => DEADLINE_MS - Date.now());
+  // null on server — avoids SSR/client Date.now() mismatch
+  const [msLeft, setMsLeft] = useState<number | null>(null);
 
   useEffect(() => {
     const tick = () => setMsLeft(DEADLINE_MS - Date.now());
@@ -107,6 +108,32 @@ export default function DeadlineCountdown({ className = "" }: { className?: stri
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, []);
+
+  // Render a size-stable shell on the server / before mount
+  if (msLeft === null) {
+    const t = THEME.safe;
+    return (
+      <div
+        className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border ${className}`}
+        style={{
+          background: `linear-gradient(135deg, ${t.ringBg}cc 0%, white 100%)`,
+          borderColor: t.ring + "44",
+          boxShadow: `0 0 0 1px ${t.ring}18, 0 4px 20px ${t.glow}`,
+        }}
+      >
+        <div className="shrink-0" style={{ width: 76, height: 76 }} />
+        <div className="flex flex-col gap-1 min-w-0">
+          <span className={`self-start text-[7.5px] font-bold uppercase tracking-[0.2em] px-1.5 py-0.5 rounded-full ${t.badge}`}>
+            Deadline Countdown
+          </span>
+          <div style={{ height: 40 }} />
+          <p className="text-[8.5px] font-medium leading-none" style={{ color: t.ring, opacity: 0.5 }}>
+            June 15, 2026
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const theme = THEME[urgency(msLeft)];
   const { days, hours, minutes, seconds } = decompose(msLeft);
