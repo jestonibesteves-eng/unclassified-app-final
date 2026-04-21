@@ -12,7 +12,7 @@ type Props = {
 export function StatusBreakdownButton({ selectedProvinces, publicToken, hideExport }: Props) {
   const [open, setOpen] = useState(false);
   return (
-    <>
+    <span>
       <button
         onClick={() => setOpen(true)}
         title="View as status breakdown table"
@@ -43,6 +43,6 @@ export function StatusBreakdownButton({ selectedProvinces, publicToken, hideExpo
         publicToken={publicToken}
         hideExport={hideExport}
       />
-    </>
+    </span>
   );
 }

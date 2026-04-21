@@ -14,6 +14,7 @@ import DashboardProvinceFilter from "@/components/DashboardProvinceFilter";
 import { DashboardStatCards } from "@/components/DashboardClient";
 import { StatusBreakdownButton } from "@/components/StatusBreakdownButton";
 import DashboardProgress from "@/components/DashboardProgress";
+import DeadlineCountdown from "@/components/DeadlineCountdown";
 
 const TOKEN_KEY = "public_dashboard_token";
 
@@ -137,8 +138,9 @@ export default async function PublicDashboardPage({
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-screen-2xl mx-auto px-6 py-5">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4">
+            {/* Left: logo + title */}
+            <div className="flex items-center gap-4 shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/dar-logo.svg"
@@ -156,7 +158,14 @@ export default async function PublicDashboardPage({
                 <p className="text-[11px] text-gray-400">Data Management System — Public Dashboard</p>
               </div>
             </div>
-            <div className="flex flex-col items-end gap-2">
+
+            {/* Centre: deadline countdown */}
+            <div className="flex-1 mx-4 hidden sm:flex justify-center">
+              <DeadlineCountdown />
+            </div>
+
+            {/* Right: date + live + toggle */}
+            <div className="flex flex-col items-end gap-2 shrink-0">
               <div className="text-right">
                 <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">
                   Region V · Reconciled List
@@ -171,28 +180,6 @@ export default async function PublicDashboardPage({
                 <DashboardAreaToggle current={areaMode} />
               </Suspense>
             </div>
-
-            {/* Deadline countdown */}
-            {(() => {
-              const DEADLINE  = new Date("2026-06-15T00:00:00+08:00");
-              const daysLeft  = Math.max(0, Math.ceil((DEADLINE.getTime() - Date.now()) / 86400000));
-              const weeksLeft = Math.ceil(daysLeft / 7);
-              const { bg, border, num, muted } = daysLeft <= 30
-                ? { bg: "bg-red-50",    border: "border-red-200",    num: "text-red-600",    muted: "text-red-400"    }
-                : daysLeft <= 60
-                ? { bg: "bg-amber-50",  border: "border-amber-200",  num: "text-amber-600",  muted: "text-amber-400"  }
-                : { bg: "bg-emerald-50",border: "border-emerald-200",num: "text-emerald-700",muted: "text-emerald-500" };
-              return (
-                <div className={`flex flex-col items-center justify-center rounded-2xl border ${bg} ${border} py-3 px-6`}>
-                  <p className={`text-[9px] font-bold uppercase tracking-[0.18em] ${muted} mb-0.5`}>Deadline Countdown</p>
-                  <p className={`text-[2rem] font-black leading-none tabular-nums ${num}`}>
-                    {daysLeft} <span className="text-[1rem] font-bold">days</span>
-                    <span className="ml-3 text-[1.1rem] font-bold opacity-55">({weeksLeft} wks)</span>
-                  </p>
-                  <p className={`text-[10px] font-medium mt-0.5 ${muted}`}>until June 15, 2026</p>
-                </div>
-              );
-            })()}
           </div>
         </div>
       </div>

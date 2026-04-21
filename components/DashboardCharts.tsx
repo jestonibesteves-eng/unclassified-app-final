@@ -232,7 +232,7 @@ export function StatusWithAreaChart({ data, action }: { data: StatusKV[]; action
             Validated Area
           </button>
         </div>
-        {action}
+        <span>{action}</span>
       </div>
 
       <ResponsiveContainer width="100%" height={240}>

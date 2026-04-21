@@ -222,6 +222,12 @@ input, select, textarea, button {
   padding: 1rem 1.25rem 1.25rem;
 }
 
+/* ── Keyframes ── */
+@keyframes blink {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0;   }
+}
+
 /* ── Motion system ── */
 
 /* Page-level entrance — add .page-enter to each page's root div */

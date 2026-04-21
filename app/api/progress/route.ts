@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { rawDb, prisma } from "@/lib/db";
+import { rawDb } from "@/lib/db";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
 
 const TOKEN_KEY = "public_dashboard_token";
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     const publicToken = req.nextUrl.searchParams.get("token");
     let isPublic = false;
     if (publicToken) {
-      const setting = await prisma.setting.findUnique({ where: { key: TOKEN_KEY } });
+      const setting = rawDb.prepare(`SELECT value FROM "Setting" WHERE key = ?`).get(TOKEN_KEY) as { value: string } | undefined;
       if (setting?.value === publicToken) isPublic = true;
     }
 

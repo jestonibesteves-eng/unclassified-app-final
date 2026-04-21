@@ -21,6 +21,7 @@ import { DashboardStatCards, IssueStrip } from "@/components/DashboardClient";
 import DashboardProgress from "@/components/DashboardProgress";
 import { getStats } from "@/lib/dashboard-stats";
 import { StatusBreakdownButton } from "@/components/StatusBreakdownButton";
+import DeadlineCountdown from "@/components/DeadlineCountdown";
 export default async function Dashboard({
   searchParams,
 }: {
@@ -148,26 +149,9 @@ export default async function Dashboard({
         </div>
 
         {/* Centre: deadline countdown */}
-        {(() => {
-          const DEADLINE  = new Date("2026-06-15T00:00:00+08:00");
-          const daysLeft  = Math.max(0, Math.ceil((DEADLINE.getTime() - Date.now()) / 86400000));
-          const weeksLeft = Math.ceil(daysLeft / 7);
-          const { bg, border, num, muted } = daysLeft <= 30
-            ? { bg: "bg-red-50",    border: "border-red-200",    num: "text-red-600",    muted: "text-red-400"    }
-            : daysLeft <= 60
-            ? { bg: "bg-amber-50",  border: "border-amber-200",  num: "text-amber-600",  muted: "text-amber-400"  }
-            : { bg: "bg-emerald-50",border: "border-emerald-200",num: "text-emerald-700",muted: "text-emerald-500" };
-          return (
-            <div className={`flex-1 mx-6 hidden sm:flex flex-col items-center justify-center rounded-2xl border ${bg} ${border} py-3 px-4`}>
-              <p className={`text-[9px] font-bold uppercase tracking-[0.18em] ${muted} mb-0.5`}>Deadline Countdown</p>
-              <p className={`text-[2rem] font-black leading-none tabular-nums ${num}`}>
-                {daysLeft} <span className="text-[1rem] font-bold">days</span>
-                <span className="ml-3 text-[1.1rem] font-bold opacity-55">({weeksLeft} wks)</span>
-              </p>
-              <p className={`text-[10px] font-medium mt-0.5 ${muted}`}>until June 15, 2026</p>
-            </div>
-          );
-        })()}
+        <div className="flex-1 mx-6 hidden sm:flex justify-center">
+          <DeadlineCountdown />
+        </div>
 
         {/* Right: controls */}
         <div className="flex flex-col items-end gap-2 shrink-0">
