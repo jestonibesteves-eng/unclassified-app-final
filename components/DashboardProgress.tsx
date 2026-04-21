@@ -1,18 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
-} from "recharts";
+import { useState, useEffect } from "react";
 
 /* ─── Types ─── */
-type PeriodType   = "day" | "week" | "month";
 type EncSubfilter = "cocrom" | "arb" | "area" | "amount";
 
 interface SimpleMilestone {
   total:     number;
   completed: number;
-  series:    { date: string; count: number }[];
 }
 
 interface EncodingData {
@@ -24,11 +19,9 @@ interface EncodingData {
   area_completed:   number;
   amount_total:     number;
   amount_completed: number;
-  series: { date: string; cocrom: number; arb: number; area: number; amount: number }[];
 }
 
 interface ProgressResponse {
-  period:       PeriodType;
   validation:   SimpleMilestone;
   encoding:     EncodingData;
   distribution: SimpleMilestone;
@@ -40,18 +33,8 @@ const DEADLINE = new Date("2026-06-15T00:00:00");
 function daysToDeadline(): number {
   return Math.max(0, Math.ceil((DEADLINE.getTime() - Date.now()) / 86400000));
 }
-function periodsLeft(period: PeriodType): number {
-  const d = daysToDeadline();
-  if (period === "week")  return Math.ceil(d / 7);
-  if (period === "month") return Math.ceil(d / 30);
-  return d;
-}
 
 /* ─── Config ─── */
-const PERIOD_LABELS: Record<PeriodType, string> = {
-  day: "Daily", week: "Weekly", month: "Monthly",
-};
-
 const ENC_SUB_CFG: Record<EncSubfilter, { label: string; accent: string }> = {
   cocrom: { label: "COCROM",  accent: "#f59e0b" },
   arb:    { label: "ARB",     accent: "#8b5cf6" },
@@ -60,118 +43,107 @@ const ENC_SUB_CFG: Record<EncSubfilter, { label: string; accent: string }> = {
 };
 
 function statusColors(pct: number) {
-  if (pct >= 80) return { bar: "bg-emerald-500", text: "text-emerald-600" };
-  if (pct >= 50) return { bar: "bg-amber-500",   text: "text-amber-600"  };
-  return           { bar: "bg-red-500",    text: "text-red-600"    };
-}
-
-function formatDateLabel(date: string, period: PeriodType): string {
-  if (period === "day") {
-    const d = new Date(date + "T00:00:00");
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  }
-  if (period === "week") return "Wk " + date.split("-")[1];
-  const d = new Date(date + "-01T00:00:00");
-  return d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+  if (pct >= 80) return { text: "text-emerald-600" };
+  if (pct >= 50) return { text: "text-amber-600"  };
+  return           { text: "text-red-600"    };
 }
 
 function fmtArea  (n: number) { return n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " ha"; }
 function fmtAmount(n: number) { return "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function fmtCount (n: number) { return n.toLocaleString(); }
 
-/* ─── Shared chart wrapper ─── */
-function MilestoneChart({
-  chartData,
-  accent,
-  pace,
-  period,
-  label,
+/* ─── Gauge arc math ─── */
+/**
+ * Computes the SVG arc path for a semi-circle gauge.
+ * Spans from (24,112) on the left to (196,112) on the right,
+ * going counter-clockwise over the top (viewBox 0 0 220 130, center 110,112, radius 86).
+ *
+ * p=0   → null (nothing to draw)
+ * p=1   → full semi-circle
+ */
+function gaugeArc(p: number): string | null {
+  const clamped = Math.min(Math.max(p, 0), 1);
+  if (clamped < 0.003) return null;
+
+  if (clamped >= 0.999) return "M 24 112 A 86 86 0 0 0 196 112";
+
+  const angle = Math.PI * (1 - clamped);
+  const ex = (110 + 86 * Math.cos(angle)).toFixed(3);
+  const ey = (112 - 86 * Math.sin(angle)).toFixed(3);
+  return `M 24 112 A 86 86 0 0 0 ${ex} ${ey}`;
+}
+
+/* ─── SemiGauge ─── */
+function SemiGauge({
+  value,
+  total,
+  color,
+  line1,
+  line2,
 }: {
-  chartData: { label: string; value: number }[];
-  accent:    string;
-  pace:      number;
-  period:    PeriodType;
-  label:     string;
+  value: number;
+  total: number;
+  color: string;
+  line1: string;
+  line2: string;
 }) {
-  const paceUnit = period === "day" ? "day" : period === "week" ? "wk" : "mo";
-  const paceLabel = pace < 1 ? pace.toFixed(2) : pace < 100 ? pace.toFixed(1) : Math.ceil(pace).toLocaleString();
+  const p    = total > 0 ? value / total : 0;
+  const path = gaugeArc(p);
 
   return (
-    <>
-      <div className="px-1">
-        {chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={148}>
-            <LineChart data={chartData} margin={{ top: 8, right: 12, left: -20, bottom: 0 }}>
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 9, fill: "#94a3b8" }}
-                axisLine={false} tickLine={false}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                tick={{ fontSize: 9, fill: "#94a3b8" }}
-                axisLine={false} tickLine={false}
-                allowDecimals={false}
-              />
-              <Tooltip
-                contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #e5e7eb", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}
-                labelStyle={{ fontSize: 10, color: "#6b7280", marginBottom: 2 }}
-                formatter={(v) => [typeof v === "number" ? v.toLocaleString() : v, label]}
-              />
-              {pace > 0 && (
-                <ReferenceLine y={pace} stroke="#ef4444" strokeDasharray="4 3" strokeWidth={1.5} />
-              )}
-              <Line
-                type="monotone" dataKey="value"
-                stroke={accent} strokeWidth={2}
-                dot={false} activeDot={{ r: 3, strokeWidth: 0, fill: accent }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-[11px] text-gray-300 italic">No activity in this period</p>
-          </div>
-        )}
-      </div>
-
-      {/* Legend */}
-      <div className="px-5 pb-4 flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block w-5 rounded" style={{ height: 2, backgroundColor: accent }} />
-          <span className="text-[9.5px] text-gray-500">{label}</span>
-        </div>
-        {pace > 0 && (
-          <div className="flex items-center gap-1.5">
-            <span className="inline-block w-4 border-t-2 border-dashed border-red-400" />
-            <span className="text-[9.5px] text-gray-500">
-              Required pace ({paceLabel}/{paceUnit})
-            </span>
-          </div>
-        )}
-      </div>
-    </>
+    <svg viewBox="0 0 220 130" width="100%" aria-hidden>
+      {/* Track */}
+      <path
+        d="M 24 112 A 86 86 0 0 0 196 112"
+        fill="none" stroke="#f1f5f9" strokeWidth="22" strokeLinecap="round"
+      />
+      {/* Progress */}
+      {path && (
+        <path
+          d={path}
+          fill="none" stroke={color} strokeWidth="22" strokeLinecap="round"
+        />
+      )}
+      {/* Min label */}
+      <text x="16" y="126" fontSize="9" fill="#cbd5e1" textAnchor="middle">0</text>
+      {/* Max label */}
+      <text x="204" y="126" fontSize="9" fill="#cbd5e1" textAnchor="middle">
+        {total.toLocaleString()}
+      </text>
+      {/* Center line 1 */}
+      <text x="110" y="95" fontSize="13" fontWeight="800" fill={color} textAnchor="middle">
+        {line1}
+      </text>
+      {/* Center line 2 */}
+      <text x="110" y="110" fontSize="9" fill="#94a3b8" textAnchor="middle">
+        {line2}
+      </text>
+    </svg>
   );
 }
 
-/* ─── Validation / Distribution card ─── */
+/* ─── SimpleCard (Validation + Distribution) ─── */
 function SimpleCard({
-  title, accent, data, period,
+  title,
+  accent,
+  data,
 }: {
   title:  string;
   accent: string;
   data:   SimpleMilestone;
-  period: PeriodType;
 }) {
   const pct       = data.total > 0 ? (data.completed / data.total) * 100 : 0;
   const remaining = data.total - data.completed;
-  const pace      = periodsLeft(period) > 0 && remaining > 0 ? remaining / periodsLeft(period) : 0;
-  const col       = statusColors(pct);
+  const weeksLeft = Math.ceil(daysToDeadline() / 7);
+  const pace      = weeksLeft > 0 && remaining > 0
+    ? Math.ceil(remaining / weeksLeft)
+    : 0;
+  const col = statusColors(pct);
 
-  const chartData = data.series.map((s) => ({
-    label: formatDateLabel(s.date, period),
-    value: s.count,
-  }));
+  const verb  = title === "Validation" ? "validated" : "distributed";
+  const noun  = title === "Validation" ? "landholdings" : "ARBs";
+  const line1 = `${data.completed.toLocaleString()} ${verb}`;
+  const line2 = `${pct.toFixed(1)}% of ${data.total.toLocaleString()} ${noun}`;
 
   return (
     <div className="card-bezel">
@@ -180,14 +152,13 @@ function SimpleCard({
           <h3 className="text-[10px] font-semibold text-green-300 uppercase tracking-[0.13em]">{title}</h3>
         </div>
 
+        {/* Stats row */}
         <div className="px-5 pt-4 pb-2 flex items-start justify-between gap-2">
           <div>
             <p className={`text-[1.6rem] font-bold tabular-nums leading-none ${col.text}`}>
               {data.completed.toLocaleString()}
             </p>
-            <p className="text-[10px] text-gray-400 mt-0.5">
-              of {data.total.toLocaleString()}
-            </p>
+            <p className="text-[10px] text-gray-400 mt-0.5">of {data.total.toLocaleString()}</p>
           </div>
           <div className="text-right">
             <p className={`text-[1.1rem] font-bold tabular-nums leading-none ${col.text}`}>
@@ -197,42 +168,70 @@ function SimpleCard({
           </div>
         </div>
 
-        <div className="px-5 py-2.5">
-          <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
-            <div className={`h-full rounded-full transition-all duration-700 ${col.bar}`}
-              style={{ width: `${Math.min(pct, 100)}%` }} />
-          </div>
+        {/* Gauge */}
+        <div className="px-4">
+          <SemiGauge
+            value={data.completed}
+            total={data.total}
+            color={accent}
+            line1={line1}
+            line2={line2}
+          />
         </div>
 
-        <MilestoneChart
-          chartData={chartData} accent={accent}
-          pace={pace} period={period} label={title}
-        />
+        {/* Required pace */}
+        <div className="px-5 pb-5 text-center">
+          {pace === 0 ? (
+            <p className="text-[10px] font-semibold text-emerald-600">✓ Target reached</p>
+          ) : (
+            <p className="text-[10px] text-gray-500">
+              Need <span className="font-bold text-gray-700">{pace.toLocaleString()}/wk</span> to meet deadline
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-/* ─── Encoding card (4 subfilters) ─── */
-function EncodingCard({ data, period }: { data: EncodingData; period: PeriodType }) {
+/* ─── EncodingCard ─── */
+function EncodingCard({ data }: { data: EncodingData }) {
   const [sub, setSub] = useState<EncSubfilter>("cocrom");
   const cfg = ENC_SUB_CFG[sub];
 
-  const total     = (sub === "cocrom" ? data.cocrom_total     : sub === "arb" ? data.arb_total     : sub === "area" ? data.area_total     : data.amount_total)     ?? 0;
-  const completed = (sub === "cocrom" ? data.cocrom_completed : sub === "arb" ? data.arb_completed : sub === "area" ? data.area_completed : data.amount_completed) ?? 0;
+  const total =
+    sub === "cocrom" ? data.cocrom_total
+    : sub === "arb"  ? data.arb_total
+    : sub === "area" ? data.area_total
+    :                  data.amount_total;
+
+  const completed =
+    sub === "cocrom" ? data.cocrom_completed
+    : sub === "arb"  ? data.arb_completed
+    : sub === "area" ? data.area_completed
+    :                  data.amount_completed;
 
   const pct       = total > 0 ? (completed / total) * 100 : 0;
   const remaining = total - completed;
-  const pl        = periodsLeft(period);
-  const pace      = pl > 0 && remaining > 0 ? remaining / pl : 0;
-  const col       = statusColors(pct);
+  const weeksLeft = Math.ceil(daysToDeadline() / 7);
+  const pace      = weeksLeft > 0 && remaining > 0
+    ? Math.ceil(remaining / weeksLeft)
+    : 0;
+  const col = statusColors(pct);
 
-  const fmt = sub === "area" ? fmtArea : sub === "amount" ? fmtAmount : fmtCount;
+  const fmtVal = (n: number) =>
+    sub === "area"   ? fmtArea(n)
+    : sub === "amount" ? fmtAmount(n)
+    : fmtCount(n);
 
-  const chartData = data.series.map((s) => ({
-    label: formatDateLabel(s.date, period),
-    value: s[sub],
-  }));
+  const unitLabel =
+    sub === "cocrom" ? "COCROMs"
+    : sub === "arb"  ? "ARBs"
+    : sub === "area" ? "ha."
+    :                  "condoned amt";
+
+  const line1 = `${fmtVal(completed)} encoded`;
+  const line2 = `${pct.toFixed(1)}% of ${fmtVal(total)} ${unitLabel}`;
 
   return (
     <div className="card-bezel">
@@ -251,7 +250,9 @@ function EncodingCard({ data, period }: { data: EncodingData; period: PeriodType
                 key={s}
                 onClick={() => setSub(s)}
                 className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-all border ${
-                  active ? "border-current bg-white shadow-sm" : "border-transparent text-gray-400 hover:text-gray-600 bg-gray-50"
+                  active
+                    ? "border-current bg-white shadow-sm"
+                    : "border-transparent text-gray-400 hover:text-gray-600 bg-gray-50"
                 }`}
                 style={active ? { color: c.accent, borderColor: c.accent } : undefined}
               >
@@ -261,45 +262,43 @@ function EncodingCard({ data, period }: { data: EncodingData; period: PeriodType
           })}
         </div>
 
-        {/* Stats */}
+        {/* Stats row */}
         <div className="px-5 pt-3 pb-2 flex items-start justify-between gap-2">
           <div>
             <p className={`text-[1.6rem] font-bold tabular-nums leading-none ${col.text}`}>
-              {sub === "area" ? completed.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-               : sub === "amount" ? completed.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-               : completed.toLocaleString()}
+              {fmtVal(completed)}
             </p>
-            <p className="text-[10px] text-gray-400 mt-0.5">
-              of {fmt(total)}
-              {sub === "area" ? "" : sub === "amount" ? "" : ""}
-            </p>
+            <p className="text-[10px] text-gray-400 mt-0.5">of {fmtVal(total)}</p>
           </div>
           <div className="text-right">
             <p className={`text-[1.1rem] font-bold tabular-nums leading-none ${col.text}`}>
               {pct.toFixed(1)}%
             </p>
-            <p className="text-[10px] text-gray-400 mt-0.5">
-              {sub === "area"   ? fmtArea(remaining)   + " left"
-               : sub === "amount" ? fmtAmount(remaining) + " left"
-               : remaining.toLocaleString() + " left"}
+            <p className="text-[10px] text-gray-400 mt-0.5">{fmtVal(remaining)} left</p>
+          </div>
+        </div>
+
+        {/* Gauge */}
+        <div className="px-4">
+          <SemiGauge
+            value={completed}
+            total={total}
+            color={cfg.accent}
+            line1={line1}
+            line2={line2}
+          />
+        </div>
+
+        {/* Required pace */}
+        <div className="px-5 pb-5 text-center">
+          {pace === 0 ? (
+            <p className="text-[10px] font-semibold text-emerald-600">✓ Target reached</p>
+          ) : (
+            <p className="text-[10px] text-gray-500">
+              Need <span className="font-bold text-gray-700">{fmtVal(pace)}/wk</span> to meet deadline
             </p>
-          </div>
+          )}
         </div>
-
-        {/* Progress bar */}
-        <div className="px-5 py-2.5">
-          <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-700"
-              style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: cfg.accent }}
-            />
-          </div>
-        </div>
-
-        <MilestoneChart
-          chartData={chartData} accent={cfg.accent}
-          pace={pace} period={period} label={cfg.label}
-        />
       </div>
     </div>
   );
@@ -312,12 +311,22 @@ function SkeletonCard() {
       <div className="card-bezel-inner">
         <div className="bg-gray-200 h-9 rounded-t-[17px]" />
         <div className="p-5">
-          <div className="flex justify-between mb-3">
+          <div className="flex justify-between mb-4">
             <div className="h-8 bg-gray-100 rounded w-1/4" />
             <div className="h-6 bg-gray-100 rounded w-1/5" />
           </div>
-          <div className="h-1.5 bg-gray-100 rounded mb-4" />
-          <div className="h-36 bg-gray-100 rounded" />
+          {/* Semi-circle gauge skeleton */}
+          <div className="flex justify-center">
+            <div
+              className="bg-gray-100"
+              style={{
+                width: "100%",
+                height: "96px",
+                borderRadius: "50% 50% 0 0 / 100% 100% 0 0",
+              }}
+            />
+          </div>
+          <div className="h-3 bg-gray-100 rounded w-2/5 mx-auto mt-4" />
         </div>
       </div>
     </div>
@@ -326,27 +335,26 @@ function SkeletonCard() {
 
 /* ─── Main section ─── */
 export default function DashboardProgress() {
-  const [period, setPeriod]     = useState<PeriodType>("week");
   const [response, setResponse] = useState<ProgressResponse | null>(null);
   const [loading, setLoading]   = useState(true);
 
-  const load = useCallback(async (p: PeriodType) => {
-    setLoading(true);
-    try {
-      const res  = await fetch(`/api/progress?period=${p}`);
-      const json = await res.json();
-      // Only accept a well-formed response
-      if (json?.validation && json?.encoding && json?.distribution) {
-        setResponse(json as ProgressResponse);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res  = await fetch("/api/progress");
+        const json = await res.json();
+        if (!cancelled && json?.validation && json?.encoding && json?.distribution) {
+          setResponse(json as ProgressResponse);
+        }
+      } catch (e) {
+        console.error("Progress fetch error:", e);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    } catch (e) {
-      console.error("Progress fetch error:", e);
-    } finally {
-      setLoading(false);
-    }
+    })();
+    return () => { cancelled = true; };
   }, []);
-
-  useEffect(() => { load(period); }, [period, load]);
 
   const daysLeft  = daysToDeadline();
   const weeksLeft = Math.ceil(daysLeft / 7);
@@ -386,32 +394,17 @@ export default function DashboardProgress() {
             {" "}· Deadline: June 15, 2026
           </p>
         </div>
-
-        {/* Shared period tabs */}
-        <div className="flex gap-1 p-1 bg-gray-100 rounded-lg self-start flex-shrink-0">
-          {(["day", "week", "month"] as PeriodType[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${
-                period === p ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              {PERIOD_LABELS[p]}
-            </button>
-          ))}
-        </div>
       </div>
 
-      {/* ── 3 charts ── */}
+      {/* ── 3 cards ── */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {loading || !response ? (
           <><SkeletonCard /><SkeletonCard /><SkeletonCard /></>
         ) : (
           <>
-            <SimpleCard  title="Validation"   accent="#3b82f6" data={response.validation}   period={period} />
-            <EncodingCard                                       data={response.encoding}     period={period} />
-            <SimpleCard  title="Distribution" accent="#10b981" data={response.distribution} period={period} />
+            <SimpleCard  title="Validation"   accent="#3b82f6" data={response.validation}   />
+            <EncodingCard                                       data={response.encoding}     />
+            <SimpleCard  title="Distribution" accent="#10b981" data={response.distribution} />
           </>
         )}
       </div>
