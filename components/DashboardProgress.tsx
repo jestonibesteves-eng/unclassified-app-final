@@ -102,52 +102,34 @@ function SemiGauge({
   const tip     = p > 0.004 && p < 0.999 ? gaugePoint(p) : null;
 
   return (
-    <svg viewBox="0 0 220 118" width="100%" aria-hidden>
-      <defs>
-        <filter id="gauge-glow" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="2" result="blur" />
-          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-      </defs>
-
-      {/* Track */}
-      <path
-        d={`M ${START_X} ${CY} A ${R} ${R} 0 0 1 ${END_X} ${CY}`}
-        fill="none" stroke="#e9ecef" strokeWidth="14" strokeLinecap="round"
-      />
-
-      {/* Progress arc */}
-      {arcPath && (
+    /* maxWidth constrains rendered size so gauge stays proportional inside wide cards */
+    <div style={{ maxWidth: "240px", margin: "0 auto" }}>
+      <svg viewBox="0 0 220 118" width="100%" aria-hidden>
+        {/* Track */}
         <path
-          d={arcPath}
-          fill="none"
-          stroke={color}
-          strokeWidth="14"
-          strokeLinecap="round"
-          opacity="0.95"
+          d={`M ${START_X} ${CY} A ${R} ${R} 0 0 1 ${END_X} ${CY}`}
+          fill="none" stroke="#e9ecef" strokeWidth="14" strokeLinecap="round"
         />
-      )}
-
-      {/* Tip dot */}
-      {tip && (
-        <circle cx={tip.x} cy={tip.y} r="5" fill={color} />
-      )}
-
-      {/* 0 label */}
-      <text x={START_X} y="116" fontSize="8.5" fill="#cbd5e1" textAnchor="middle">0</text>
-      {/* Max label */}
-      <text x={END_X} y="116" fontSize="8.5" fill="#cbd5e1" textAnchor="middle">
-        {total.toLocaleString()}
-      </text>
-
-      {/* Center value */}
-      <text x="110" y="88" fontSize="13.5" fontWeight="800" fill={color} textAnchor="middle">
-        {line1}
-      </text>
-      <text x="110" y="103" fontSize="8" fill="#9ca3af" textAnchor="middle" letterSpacing="0.2">
-        {line2}
-      </text>
-    </svg>
+        {/* Progress arc */}
+        {arcPath && (
+          <path d={arcPath} fill="none" stroke={color} strokeWidth="14" strokeLinecap="round" />
+        )}
+        {/* Tip dot at arc endpoint */}
+        {tip && <circle cx={tip.x} cy={tip.y} r="5" fill={color} />}
+        {/* 0 / max labels flanking the arc base */}
+        <text x={START_X} y="116" fontSize="8.5" fill="#cbd5e1" textAnchor="middle">0</text>
+        <text x={END_X}   y="116" fontSize="8.5" fill="#cbd5e1" textAnchor="middle">
+          {total.toLocaleString()}
+        </text>
+        {/* Center text — vertically centred inside the bowl (bowl spans y=26→108, mid=67) */}
+        <text x="110" y="63" fontSize="13.5" fontWeight="800" fill={color} textAnchor="middle">
+          {line1}
+        </text>
+        <text x="110" y="80" fontSize="8" fill="#9ca3af" textAnchor="middle">
+          {line2}
+        </text>
+      </svg>
+    </div>
   );
 }
 
@@ -204,7 +186,7 @@ function SimpleCard({
         </div>
 
         {/* Gauge */}
-        <div className="px-3 pt-1">
+        <div className="pt-1 px-4">
           <SemiGauge value={data.completed} total={data.total} color={accent} line1={line1} line2={line2} />
         </div>
 
@@ -309,7 +291,7 @@ function EncodingCard({ data }: { data: EncodingData }) {
         </div>
 
         {/* Gauge */}
-        <div className="px-3 pt-1">
+        <div className="pt-1 px-4">
           <SemiGauge value={completed} total={total} color={cfg.accent} line1={line1} line2={line2} />
         </div>
 
