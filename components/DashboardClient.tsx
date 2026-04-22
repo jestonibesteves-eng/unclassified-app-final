@@ -293,10 +293,7 @@ export function DashboardStatCards({
           <StatCard
             label="TOTAL AMOUNT CONDONED"
             rawValue={Math.floor(totalCondoned)}
-            displayValue={"₱" + totalCondoned.toLocaleString("en-PH", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+            displayValue={"₱" + formatCompact(Math.floor(totalCondoned))}
             sub={<>₱{validatedCondoned.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} validated <span className="text-red-300">(₱{notEligibleForEncodingCondoned.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Not Eligible for Encoding)</span></>}
             color="teal"
             index={3}
