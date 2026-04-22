@@ -389,7 +389,7 @@ export type CocromEncodingData = {
 const COCROM_ENC_SEGS = [
   { key: "encoded"           as const, label: "Encoded",               color: "#10b981" },
   { key: "forEncoding"       as const, label: "For Encoding",          color: "#3b82f6" },
-  { key: "arbNotEligible"    as const, label: "ARB Not Eligible",      color: "#f59e0b" },
+  { key: "arbNotEligible"    as const, label: "ARB Not Eligible",      color: "#f87171" },
   { key: "nonArbNotEligible" as const, label: "Non-ARB Not Eligible",  color: "#6b7280" },
 ];
 
