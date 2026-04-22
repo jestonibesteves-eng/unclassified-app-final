@@ -55,6 +55,9 @@ export async function GET(req: NextRequest) {
       `SELECT COUNT(*) as n FROM "Landholding" WHERE 1=1 ${lhWhere2}`
     ).get() as { n: number }).n;
 
+    // Matches the same logic as dashboard-stats.ts validatedRowResult:
+    // count = (Not Eligible for Encoding LHs) + (confirmed LHs where amendarea_validated
+    // is non-null AND matches CARPABLE ARB area within 0.01)
     const valCompleted = (rawDb.prepare(`
       SELECT COUNT(*) as n
       FROM "Landholding" l
@@ -66,33 +69,83 @@ export async function GET(req: NextRequest) {
         GROUP BY a.seqno_darro
       ) arb_totals ON arb_totals.seqno_darro = l.seqno_darro
       WHERE (
-        (l.amendarea_validated_confirmed = 1
+        l.status = 'Not Eligible for Encoding'
+        OR (
+          l.amendarea_validated_confirmed = 1
           AND l.condoned_amount_confirmed = 1
-          AND ABS(COALESCE(l.amendarea_validated, l.amendarea, 0) - COALESCE(arb_totals.total_area, 0)) < 0.01)
-        OR l.status = 'Not Eligible for Encoding'
+          AND l.amendarea_validated IS NOT NULL
+          AND l.status != 'Not Eligible for Encoding'
+          AND ABS(l.amendarea_validated - COALESCE(arb_totals.total_area, 0)) < 0.01
+        )
       )
       ${lhWhere2}
     `).get() as { n: number }).n;
 
-    // Landholding-level area + amount breakdowns for Validation
-    // "validated" = amendarea_validated_confirmed = 1 AND condoned_amount_confirmed = 1
+    // Landholding-level area + amount breakdowns for Validation.
+    // Mirrors dashboard-stats.ts exactly:
+    //   area_total   = hybrid (amendarea_validated if set, else amendarea)  → totalValidatedArea
+    //   area_completed = area for validated LHs using the same ARB-match condition → validatedArea
+    //   amount_total   = condoned_amount ?? net_of_reval_no_neg              → totalCondoned
+    //   amount_completed = condoned for validated LHs                        → validatedCondoned
     const LH_AREA    = `TRIM(REPLACE(COALESCE(l.amendarea,''),',',''))`;
-    const LH_AREA_V  = `TRIM(REPLACE(COALESCE(l.amendarea_validated, l.amendarea,''),',',''))`;
+    const LH_AREA_V  = `TRIM(REPLACE(COALESCE(l.amendarea_validated,''),',',''))`;
     const LH_AMOUNT  = `TRIM(REPLACE(COALESCE(l.condoned_amount,''),',',''))`;
+    const LH_REVAL   = `TRIM(REPLACE(COALESCE(l.net_of_reval_no_neg,''),',',''))`;
     const IS_CLEAN_L = (c: string) => `(${c} GLOB '[0-9]*' AND ${c} NOT GLOB '*[^0-9.]*')`;
-    const LH_VALIDATED = `(l.amendarea_validated_confirmed = 1 AND l.condoned_amount_confirmed = 1)`;
+
+    // Reusable condition: same definition of "validated LH" as valCompleted above
+    const VAL_COND = `(
+      l.status = 'Not Eligible for Encoding'
+      OR (
+        l.amendarea_validated_confirmed = 1
+        AND l.condoned_amount_confirmed = 1
+        AND l.amendarea_validated IS NOT NULL
+        AND l.status != 'Not Eligible for Encoding'
+        AND ABS(l.amendarea_validated - COALESCE(arb_totals.total_area, 0)) < 0.01
+      )
+    )`;
 
     const valLhMetrics = rawDb.prepare(`
       SELECT
-        SUM(CASE WHEN ${IS_CLEAN_L(LH_AREA)}
-            THEN CAST(${LH_AREA} AS REAL) ELSE 0 END) as area_total,
-        SUM(CASE WHEN ${LH_VALIDATED} AND ${IS_CLEAN_L(LH_AREA_V)}
-            THEN CAST(${LH_AREA_V} AS REAL) ELSE 0 END) as area_completed,
-        SUM(CASE WHEN ${IS_CLEAN_L(LH_AMOUNT)}
-            THEN CAST(${LH_AMOUNT} AS REAL) ELSE 0 END) as amount_total,
-        SUM(CASE WHEN ${LH_VALIDATED} AND ${IS_CLEAN_L(LH_AMOUNT)}
-            THEN CAST(${LH_AMOUNT} AS REAL) ELSE 0 END) as amount_completed
+        -- area_total: hybrid — amendarea_validated if available, else amendarea
+        SUM(CASE WHEN ${IS_CLEAN_L(LH_AREA_V)} THEN CAST(${LH_AREA_V} AS REAL)
+                 WHEN ${IS_CLEAN_L(LH_AREA)}   THEN CAST(${LH_AREA}   AS REAL)
+                 ELSE 0 END) as area_total,
+
+        -- area_completed: Not Eligible uses validated??original; confirmed uses validated
+        SUM(CASE
+          WHEN l.status = 'Not Eligible for Encoding' THEN
+            CASE WHEN ${IS_CLEAN_L(LH_AREA_V)} THEN CAST(${LH_AREA_V} AS REAL)
+                 WHEN ${IS_CLEAN_L(LH_AREA)}   THEN CAST(${LH_AREA}   AS REAL)
+                 ELSE 0 END
+          WHEN l.amendarea_validated_confirmed = 1
+               AND l.condoned_amount_confirmed = 1
+               AND l.amendarea_validated IS NOT NULL
+               AND l.status != 'Not Eligible for Encoding'
+               AND ABS(l.amendarea_validated - COALESCE(arb_totals.total_area, 0)) < 0.01
+            THEN CASE WHEN ${IS_CLEAN_L(LH_AREA_V)} THEN CAST(${LH_AREA_V} AS REAL) ELSE 0 END
+          ELSE 0
+        END) as area_completed,
+
+        -- amount_total: condoned_amount ?? net_of_reval_no_neg
+        SUM(CASE WHEN ${IS_CLEAN_L(LH_AMOUNT)} THEN CAST(${LH_AMOUNT} AS REAL)
+                 WHEN ${IS_CLEAN_L(LH_REVAL)}  THEN CAST(${LH_REVAL}  AS REAL)
+                 ELSE 0 END) as amount_total,
+
+        -- amount_completed: condoned (with reval fallback) for validated LHs
+        SUM(CASE WHEN ${VAL_COND} THEN
+          CASE WHEN ${IS_CLEAN_L(LH_AMOUNT)} THEN CAST(${LH_AMOUNT} AS REAL)
+               WHEN ${IS_CLEAN_L(LH_REVAL)}  THEN CAST(${LH_REVAL}  AS REAL)
+               ELSE 0 END
+        ELSE 0 END) as amount_completed
       FROM "Landholding" l
+      LEFT JOIN (
+        SELECT a.seqno_darro,
+               SUM(CASE WHEN ${IS_CLEAN(AREA_CLEAN)} THEN CAST(${AREA_CLEAN} AS REAL) ELSE 0 END) AS total_area
+        FROM "Arb" a
+        WHERE a.carpable = 'CARPABLE'
+        GROUP BY a.seqno_darro
+      ) arb_totals ON arb_totals.seqno_darro = l.seqno_darro
       WHERE 1=1 ${lhWhere2}
     `).get() as {
       area_total: number; area_completed: number;

@@ -127,8 +127,8 @@ export default async function Dashboard({
     <div className="page-enter" id="dashboard-content">
       {/* ── Header ── */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        {/* Left: title */}
-        <div className="shrink-0">
+        {/* Left: title — each section gets its own full-width row on mobile */}
+        <div className="sm:shrink-0">
           <div className="flex items-center gap-2 mb-1.5">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-semibold uppercase tracking-widest">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -148,14 +148,14 @@ export default async function Dashboard({
           </p>
         </div>
 
-        {/* Centre: deadline countdown */}
-        <div className="flex-1 mx-6 hidden sm:flex justify-center">
+        {/* Centre: deadline countdown — its own row on mobile, centred on desktop */}
+        <div className="flex sm:flex-1 sm:justify-center sm:mx-4">
           <DeadlineCountdown />
         </div>
 
-        {/* Right: controls */}
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          <div className="flex items-center gap-2">
+        {/* Right: controls — stacked column on both mobile and desktop */}
+        <div className="flex flex-col gap-2 sm:items-end sm:shrink-0">
+          <div className="flex items-center gap-2 flex-wrap">
             {sessionUser?.role === "super_admin" && <PublicDashboardShareButton />}
             <Suspense>
               <DashboardAreaToggle current={areaMode} />

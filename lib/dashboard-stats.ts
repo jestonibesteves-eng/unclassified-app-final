@@ -82,7 +82,7 @@ export async function getStats(provinceFilter: string | string[] | null) {
       const arbTotals = new Map<string, number>();
       if (confirmedLHs.length > 0) {
         const arbRows = await prisma.arb.findMany({
-          where: { seqno_darro: { in: confirmedLHs.map((l) => l.seqno_darro) } },
+          where: { seqno_darro: { in: confirmedLHs.map((l) => l.seqno_darro) }, carpable: "CARPABLE" },
           select: { seqno_darro: true, area_allocated: true },
         });
         for (const a of arbRows) {
@@ -96,7 +96,7 @@ export async function getStats(provinceFilter: string | string[] | null) {
       const matchingConfirmedLHs = confirmedLHs.filter((l) => {
         const arbTotal = arbTotals.get(l.seqno_darro) ?? 0;
         const validated = Number(l.amendarea_validated!);
-        return parseFloat(arbTotal.toFixed(4)) === parseFloat(validated.toFixed(4));
+        return Math.abs(arbTotal - validated) < 0.01;
       });
       let count = 0, area = 0, condoned = 0;
       let not_eligible_count = 0, not_eligible_area = 0, not_eligible_condoned = 0;
