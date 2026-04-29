@@ -292,7 +292,7 @@ function SimpleCard({
         ) : (() => {
           const available   = (data.cocrom_total ?? 0) - (data.cocrom_completed ?? 0);
           const distributed = data.cocrom_completed ?? 0;
-          const fulfillPct  = COMMITTED_COCROMS > 0 ? (distributed / COMMITTED_COCROMS) * 100 : 0;
+          const fulfillPct  = COMMITTED_COCROMS > 0 ? (available / COMMITTED_COCROMS) * 100 : 0;
           return (
             <div className="pt-1 pl-3 pr-3 flex items-center gap-2">
               {/* Gauge — shifted left, narrower */}
