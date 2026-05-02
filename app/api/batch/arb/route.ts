@@ -3,6 +3,7 @@ import { prisma, rawDb } from "@/lib/db";
 import ExcelJS from "exceljs";
 import { Readable } from "stream";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
+import { computeAndUpdateStatus } from "@/lib/computeStatus";
 
 const EDITOR_ROLES = ["super_admin", "admin", "editor"];
 const LOCKED_STATUSES = [
@@ -350,6 +351,8 @@ export async function POST(req: NextRequest) {
       `INSERT INTO "AuditLog" (seqno_darro, action, field_changed, old_value, new_value, changed_by, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     );
 
+    const affectedSeqnos = new Set<string>();
+
     rawDb.transaction(() => {
       for (const r of toUpdate) {
         const lh = lhMap[r.seqno_darro];
@@ -439,8 +442,14 @@ export async function POST(req: NextRequest) {
         for (const [field, oldVal, newVal] of auditEntries) {
           insertAudit.run(r.seqno_darro, "ARB_UPDATE", field, oldVal, newVal, sessionUser.username, "batch_arb");
         }
+
+        affectedSeqnos.add(r.seqno_darro);
       }
     })();
+
+    for (const seqno of affectedSeqnos) {
+      await computeAndUpdateStatus(seqno);
+    }
 
     return NextResponse.json({ updated: toUpdate.length, notFound, outOfJurisdiction });
   } catch (err) {

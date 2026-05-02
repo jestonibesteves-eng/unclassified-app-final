@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma, rawDb } from "@/lib/db";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
+import { computeAndUpdateStatus } from "@/lib/computeStatus";
 
 const EDITOR_ROLES = ["super_admin", "admin", "editor"];
 
@@ -220,6 +221,7 @@ export async function POST(req: NextRequest) {
 
   const updatedRecords: { seqno_darro: string; arb_id: string; arb_name: string | null; landowner: string | null }[] = [];
   const skippedRecords: { seqno_darro: string; arb_id: string; reason: string }[] = [];
+  const affectedSeqnos = new Set<string>();
 
   const insertAudit = rawDb.prepare(
     `INSERT INTO "AuditLog" (seqno_darro, action, field_changed, old_value, new_value, changed_by, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
@@ -271,8 +273,13 @@ export async function POST(req: NextRequest) {
         rawDb.prepare(`UPDATE "Arb" SET "${field}" = ? WHERE id = ?`).run(r.value, arb.id);
         insertAudit.run(r.seqno, "ARB_UPDATE", field, oldVal, r.value, sessionUser.username, "batch_arb_info");
         updatedRecords.push({ seqno_darro: r.seqno, arb_id: r.arb_id, arb_name: arb.arb_name, landowner: lh.landowner });
+        affectedSeqnos.add(r.seqno);
       }
     })();
+
+    for (const seqno of affectedSeqnos) {
+      await computeAndUpdateStatus(seqno);
+    }
 
     return NextResponse.json({ updated: updatedRecords.length, updatedRecords, skippedRecords });
   } catch (err) {
