@@ -163,7 +163,7 @@ const ALL_NAV_GROUPS: NavGroup[] = [
       { href: "/admin/commitment-targets", label: "Commitment Targets", Icon: IconTarget,   superAdminOnly: true },
       { href: "/admin/activity",             label: "DARPO Activity",    Icon: IconActivity, superAdminOnly: true },
       { href: "/admin/backup",               label: "Backup",            Icon: IconBackup,   superAdminOnly: true },
-      { href: "/digest",                     label: "Email Digest",      Icon: IconDigest,   superAdminOnly: true },
+      { href: "/digest",                     label: "Weekly Digest (Email)", Icon: IconDigest, superAdminOnly: true },
     ],
   },
 ];

@@ -82,13 +82,17 @@ export function getActiveRecipients(): DigestRecipient[] {
 const VALIDATED_STATUSES = `'For Encoding','Fully Encoded','Partially Encoded','Fully Distributed','Partially Distributed','Not Eligible for Encoding'`;
 const ENCODED_STATUSES   = `'Fully Encoded','Partially Encoded','Fully Distributed','Partially Distributed'`;
 
+function toSqliteDt(d: Date): string {
+  return d.toISOString().replace("T", " ").replace(/\.\d{3}Z$/, "");
+}
+
 export async function getDigestData(
   weekStart: Date,
   weekEnd: Date,
   scope: DigestScope
 ): Promise<DigestData> {
-  const ws = weekStart.toISOString();
-  const we = weekEnd.toISOString();
+  const ws = toSqliteDt(weekStart);
+  const we = toSqliteDt(weekEnd);
 
   const provFilter = scope.level === "provincial" && scope.province ? scope.province : null;
 
