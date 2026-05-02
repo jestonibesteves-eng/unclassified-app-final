@@ -30,6 +30,13 @@ const STAGE_LABEL: Record<MetricKey, string> = {
   distribution: "Distribution",
 };
 
+const SUB_LABEL: Record<EncSubfilter, string> = {
+  cocrom: "per No. of COCROMs",
+  arb:    "per No. of ARBs",
+  area:   "per Area (hectares)",
+  amount: "per Amount Condoned",
+};
+
 const EMPTY_ENTRY: BulkEntry = {
   committed_cocroms: 0,
   validation:   { total: 0, completed: 0, area_total: 0, area_completed: 0, amount_total: 0, amount_completed: 0 },
@@ -202,14 +209,14 @@ function ProvinceMetricCell({
 
   if (m.total === 0) {
     return (
-      <td className="py-4 px-4 border-l border-gray-100 align-top">
+      <td className="py-4 px-4 border-l-2 border-gray-200 align-top">
         <span className="text-[11px] text-gray-300 italic">No data</span>
       </td>
     );
   }
 
   return (
-    <td className="py-4 px-4 border-l border-gray-100 align-top">
+    <td className="py-4 px-4 border-l-2 border-gray-200 align-top">
       <div className="flex flex-col gap-1.5">
         {/* Count + pct */}
         <div className="flex items-baseline gap-2 flex-wrap">
@@ -335,12 +342,15 @@ export function ProvinceOverviewModal({
     const params = new URLSearchParams();
     if (publicToken) params.set("token", publicToken);
     fetch(`/api/progress/bulk${params.toString() ? "?" + params.toString() : ""}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
+      .then(async (r) => {
+        const text = await r.text();
+        let json: unknown;
+        try { json = JSON.parse(text); } catch { throw new Error(`Server error (${r.status})`); }
+        if (!r.ok) throw new Error((json as { error?: string })?.error ?? `HTTP ${r.status}`);
+        return json as BulkProgressResponse;
       })
-      .then((json) => { setData(json as BulkProgressResponse); setLoading(false); })
-      .catch((err) => { setError(`Failed to load data. (${err?.message ?? "unknown"})`); setLoading(false); });
+      .then((json) => { setData(json); setLoading(false); })
+      .catch((err: unknown) => { setError(`Failed to load data. (${err instanceof Error ? err.message : "unknown"})`); setLoading(false); });
   }, [open, publicToken, data]);
 
   async function handleExport() {
@@ -384,7 +394,7 @@ export function ProvinceOverviewModal({
               Accomplishment Overview by Province
             </h2>
             <p className="text-[11px] text-green-500 mt-0.5 uppercase tracking-wide">
-              {activeTab.toUpperCase()} · As of {new Date().toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" })}
+              {SUB_LABEL[activeTab]} · As of {new Date().toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" })}
             </p>
           </div>
           <button
@@ -434,8 +444,21 @@ export function ProvinceOverviewModal({
                       by Province
                     </h2>
                     <span style={{ display: "inline-block", background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.3)", borderRadius: "5px", padding: "4px 10px", fontSize: "9px", fontWeight: 700, color: "#86efac", textTransform: "uppercase", letterSpacing: "0.15em" }}>
-                      {activeTab.toUpperCase()} Metrics
+                      {SUB_LABEL[activeTab]}
                     </span>
+                    {/* Data source legend */}
+                    <div style={{ display: "flex", gap: "8px", marginTop: "12px", flexWrap: "wrap" }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", background: "rgba(255,255,255,0.08)", borderRadius: "4px", padding: "3px 8px" }}>
+                        <span style={{ fontSize: "8px", fontWeight: 700, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.1em" }}>Validation</span>
+                        <span style={{ fontSize: "8px", color: "rgba(255,255,255,0.45)" }}>—</span>
+                        <span style={{ fontSize: "8px", color: "rgba(255,255,255,0.65)" }}>Landholding data</span>
+                      </span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "5px", background: "rgba(255,255,255,0.08)", borderRadius: "4px", padding: "3px 8px" }}>
+                        <span style={{ fontSize: "8px", fontWeight: 700, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.1em" }}>Encoding &amp; Distribution</span>
+                        <span style={{ fontSize: "8px", color: "rgba(255,255,255,0.45)" }}>—</span>
+                        <span style={{ fontSize: "8px", color: "rgba(255,255,255,0.65)" }}>ARB data</span>
+                      </span>
+                    </div>
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
                     <p style={{ fontSize: "8px", color: "#4ade80", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "3px" }}>As of</p>
@@ -477,14 +500,14 @@ export function ProvinceOverviewModal({
               <div className="rounded-xl border border-gray-200 overflow-hidden">
                 <table className="w-full border-collapse text-left">
                   <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="py-3 px-4 text-xs font-bold text-gray-600 uppercase tracking-wide whitespace-nowrap">
+                    <tr className="bg-gray-100 border-b-2 border-gray-300">
+                      <th className="py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wide whitespace-nowrap border-r-2 border-gray-300">
                         Province
                       </th>
                       {STAGE_KEYS.map((key) => (
                         <th
                           key={key}
-                          className="py-3 px-4 text-xs font-bold text-gray-600 uppercase tracking-wide border-l border-gray-200"
+                          className="py-3 px-4 text-xs font-bold text-gray-700 uppercase tracking-wide border-l-2 border-gray-300"
                         >
                           {STAGE_LABEL[key]}
                         </th>
@@ -492,12 +515,16 @@ export function ProvinceOverviewModal({
                     </tr>
                   </thead>
                   <tbody>
-                    {PROVINCES.map((prov) => {
+                    {PROVINCES.map((prov, idx) => {
                       if (loading || !data) return <SkeletonTableRow key={prov} />;
                       const entry = data.provinces[prov] ?? EMPTY_ENTRY;
+                      const isEven = idx % 2 === 0;
                       return (
-                        <tr key={prov} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60 transition-colors">
-                          <td className="py-4 px-4 align-top">
+                        <tr
+                          key={prov}
+                          className={`border-b-2 border-gray-200 last:border-0 transition-colors ${isEven ? "bg-white hover:bg-green-50/40" : "bg-gray-50/70 hover:bg-green-50/40"}`}
+                        >
+                          <td className="py-4 px-4 align-top border-r-2 border-gray-200">
                             <span className="text-[13px] font-bold text-gray-800 whitespace-nowrap">
                               {PROVINCE_SHORT[prov] ?? prov}
                             </span>
@@ -527,17 +554,19 @@ export function ProvinceOverviewModal({
             >
               Close
             </button>
-            <button
-              onClick={handleExport}
-              disabled={loading || !!error}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-700 text-white text-xs font-semibold hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M8 12l-4-4h2.5V2h3v6H12L8 12z"/>
-                <rect x="2" y="13" width="12" height="1.5" rx="0.75"/>
-              </svg>
-              Export as Image
-            </button>
+            {!publicToken && (
+              <button
+                onClick={handleExport}
+                disabled={loading || !!error}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-700 text-white text-xs font-semibold hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M8 12l-4-4h2.5V2h3v6H12L8 12z"/>
+                  <rect x="2" y="13" width="12" height="1.5" rx="0.75"/>
+                </svg>
+                Export as Image
+              </button>
+            )}
           </div>
         </div>
 

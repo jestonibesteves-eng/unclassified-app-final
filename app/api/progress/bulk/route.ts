@@ -332,16 +332,20 @@ export async function GET(req: NextRequest) {
     result["__REGION__"].distribution.lh_not_validated = rDistLhN;
 
     // ── CommitmentTarget per province ─────────────────────────────────────
-    const commitRows = rawDb.prepare(
-      `SELECT province, committed FROM "CommitmentTarget" WHERE region = 'V'`
-    ).all() as { province: string | null; committed: number }[];
-    for (const row of commitRows) {
-      if (row.province === null) {
-        result["__REGION__"].committed_cocroms = row.committed;
-      } else {
-        const p = row.province.toUpperCase().trim();
-        if (result[p]) result[p].committed_cocroms = row.committed;
+    try {
+      const commitRows = rawDb.prepare(
+        `SELECT province, committed FROM "CommitmentTarget" WHERE region = 'V'`
+      ).all() as { province: string | null; committed: number }[];
+      for (const row of commitRows) {
+        if (row.province === null) {
+          result["__REGION__"].committed_cocroms = row.committed;
+        } else {
+          const p = row.province.toUpperCase().trim();
+          if (result[p]) result[p].committed_cocroms = row.committed;
+        }
       }
+    } catch {
+      // CommitmentTarget table may not exist yet — committed_cocroms stays 0
     }
 
     // ── Assemble response ─────────────────────────────────────────────────
