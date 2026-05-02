@@ -464,7 +464,10 @@ export function CocromEncodingChart({
       </div>
 
       {/* Disclaimer note */}
-      <p className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1 mb-3 leading-snug">
+      <p className="flex items-center gap-1.5 text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1 mb-3 leading-snug">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className="shrink-0">
+          <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 3.25a.875.875 0 1 1 0 1.75.875.875 0 0 1 0-1.75zM6.75 7h1.5v4.5h-1.5V7z"/>
+        </svg>
         COCROMs already distributed are not counted in this chart.
       </p>
 
@@ -863,8 +866,11 @@ export function CocromDistributionChart({
 
             return (
               <div className="mt-3 bg-amber-50 border border-amber-200 rounded p-2.5 text-[10px] leading-relaxed text-amber-700">
-                <p className="font-semibold mb-1 uppercase tracking-wide text-[9px]">
-                  Note — Non-Eligible ARBs (not counted in chart)
+                <p className="flex items-center gap-1.5 font-semibold mb-1 uppercase tracking-wide text-[9px]">
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" className="shrink-0">
+                    <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 3.25a.875.875 0 1 1 0 1.75.875.875 0 0 1 0-1.75zM6.75 7h1.5v4.5h-1.5V7z"/>
+                  </svg>
+                  Non-Eligible ARBs (not counted in chart)
                 </p>
                 <p className="mb-2 text-amber-600">
                   These ARBs will never be distributed and account for the difference between

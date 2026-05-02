@@ -742,7 +742,7 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
         </div>
 
         {/* ── Body ── */}
-        <div className="flex-1 overflow-y-auto bg-gray-50/50">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-gray-50/50">
           {loading && (
             <div className="flex items-center justify-center py-16">
               <div className="w-6 h-6 rounded-full border-2 border-green-800 border-t-transparent animate-spin" />
@@ -777,6 +777,7 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
           )}
 
           {!loading && data && tab === "details" && (
+            <div className="flex-1 overflow-y-auto">
             <div className="p-5 space-y-4">
 
               {/* Identification */}
@@ -1246,10 +1247,11 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
               </div>}
 
             </div>
+            </div>
           )}
 
           {!loading && data && tab === "arbs" && (
-            <div className="p-5">
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden p-5">
               {data.arbs.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <p className="text-3xl mb-3">🌾</p>
@@ -1258,8 +1260,9 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
                 </div>
               ) : (
                 <>
-                  <div className="rounded-xl border border-gray-200 shadow-sm overflow-x-auto overflow-y-auto" style={{ maxHeight: "520px" }}>
-                  {arbEditError && <p className="px-4 py-2 text-sm text-red-600 bg-red-50 border-b border-red-200">{arbEditError}</p>}
+                  <div className="flex-1 min-h-0 flex flex-col rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                  {arbEditError && <p className="px-4 py-2 text-sm text-red-600 bg-red-50 border-b border-red-200 flex-shrink-0">{arbEditError}</p>}
+                  <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto">
                   <table className="w-full text-[13px]">
                     <thead className="bg-green-900 text-white sticky top-0 z-10">
                       <tr>
@@ -1370,22 +1373,20 @@ export function DetailModal({ seqno, onClose, onSaved, onPrev, onNext, hasPrev, 
                       });
                       })()}
                     </tbody>
-                    <tfoot>
-                      <tr className="border-t-2 border-gray-200 bg-gray-50">
-                        <td colSpan={5} className="px-3 py-2.5 text-[12px] font-semibold text-gray-500">Total Area</td>
-                        <td className="px-3 py-2.5 text-right font-mono font-bold text-gray-800">
-                          {data.arbs.reduce((sum, arb) => {
-                            if (!arb.area_allocated) return sum;
-                            const s = String(arb.area_allocated);
-                            if (s.endsWith("*")) return sum;
-                            const n = parseFloat(s);
-                            return sum + (isNaN(n) ? 0 : n);
-                          }, 0).toFixed(4)}
-                        </td>
-                        <td colSpan={isEditor ? 2 : 1} />
-                      </tr>
-                    </tfoot>
                   </table>
+                  </div>
+                  <div className="flex-shrink-0 border-t-2 border-gray-200 bg-gray-50 px-3 py-2.5 flex items-center justify-between">
+                    <span className="text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Total Area</span>
+                    <span className="font-mono font-bold text-gray-800 text-[13px]">
+                      {data.arbs.reduce((sum, arb) => {
+                        if (!arb.area_allocated) return sum;
+                        const s = String(arb.area_allocated);
+                        if (s.endsWith("*")) return sum;
+                        const n = parseFloat(s);
+                        return sum + (isNaN(n) ? 0 : n);
+                      }, 0).toFixed(4)} <span className="text-gray-400 font-normal text-[11px]">ha</span>
+                    </span>
+                  </div>
                   </div>
                 </>
               )}
