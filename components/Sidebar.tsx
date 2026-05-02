@@ -95,6 +95,14 @@ function IconTarget() {
     </svg>
   );
 }
+function IconDigest() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="2.5" width="12" height="9" rx="1.5" />
+      <polyline points="1 2.5 7 8 13 2.5" />
+    </svg>
+  );
+}
 function IconClose() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -155,6 +163,7 @@ const ALL_NAV_GROUPS: NavGroup[] = [
       { href: "/admin/commitment-targets", label: "Commitment Targets", Icon: IconTarget,   superAdminOnly: true },
       { href: "/admin/activity",             label: "DARPO Activity",    Icon: IconActivity, superAdminOnly: true },
       { href: "/admin/backup",               label: "Backup",            Icon: IconBackup,   superAdminOnly: true },
+      { href: "/digest",                     label: "Email Digest",      Icon: IconDigest,   superAdminOnly: true },
     ],
   },
 ];
