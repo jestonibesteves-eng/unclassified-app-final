@@ -125,34 +125,32 @@ export async function getDigestData(
   // Section 2 — cumulative COCROMs encoded ------------------------------------
   const encRow = provFilter
     ? rawDb.prepare(`SELECT
-        COUNT(CASE WHEN (a.carpable = 'CARPABLE' OR a.eligibility = 'Eligible')
+        COUNT(CASE WHEN a.eligibility = 'Eligible' AND l.status != 'Not Eligible for Encoding'
                         AND a.date_encoded IS NOT NULL AND a.date_encoded != '' THEN 1 END) as completed,
-        COUNT(CASE WHEN (a.carpable = 'CARPABLE' OR a.eligibility = 'Eligible') THEN 1 END) as total
+        COUNT(CASE WHEN a.eligibility = 'Eligible' AND l.status != 'Not Eligible for Encoding' THEN 1 END) as total
         FROM "Arb" a
         JOIN "Landholding" l ON a.seqno_darro = l.seqno_darro
         WHERE l.province_edited = ?`).get(provFilter) as { completed: number; total: number }
     : rawDb.prepare(`SELECT
-        COUNT(CASE WHEN (a.carpable = 'CARPABLE' OR a.eligibility = 'Eligible')
+        COUNT(CASE WHEN a.eligibility = 'Eligible' AND l.status != 'Not Eligible for Encoding'
                         AND a.date_encoded IS NOT NULL AND a.date_encoded != '' THEN 1 END) as completed,
-        COUNT(CASE WHEN (a.carpable = 'CARPABLE' OR a.eligibility = 'Eligible') THEN 1 END) as total
+        COUNT(CASE WHEN a.eligibility = 'Eligible' AND l.status != 'Not Eligible for Encoding' THEN 1 END) as total
         FROM "Arb" a
         JOIN "Landholding" l ON a.seqno_darro = l.seqno_darro`).get() as { completed: number; total: number };
 
   const cumCocromsEncoded = metric(encRow.completed, encRow.total);
 
-  // Section 2 — COCROMs for distribution (encoded, not yet distributed) -------
+  // Section 2 — COCROMs distributed vs commitment target ----------------------
   const distRow = provFilter
     ? rawDb.prepare(`SELECT
-        COUNT(CASE WHEN (a.carpable = 'CARPABLE' OR a.eligibility = 'Eligible')
-                        AND a.date_encoded IS NOT NULL AND a.date_encoded != ''
-                        AND (a.date_distributed IS NULL OR a.date_distributed = '') THEN 1 END) as available
+        COUNT(CASE WHEN a.eligibility = 'Eligible' AND l.status != 'Not Eligible for Encoding'
+                        AND a.date_distributed IS NOT NULL AND a.date_distributed != '' THEN 1 END) as available
         FROM "Arb" a
         JOIN "Landholding" l ON a.seqno_darro = l.seqno_darro
         WHERE l.province_edited = ?`).get(provFilter) as { available: number }
     : rawDb.prepare(`SELECT
-        COUNT(CASE WHEN (a.carpable = 'CARPABLE' OR a.eligibility = 'Eligible')
-                        AND a.date_encoded IS NOT NULL AND a.date_encoded != ''
-                        AND (a.date_distributed IS NULL OR a.date_distributed = '') THEN 1 END) as available
+        COUNT(CASE WHEN a.eligibility = 'Eligible' AND l.status != 'Not Eligible for Encoding'
+                        AND a.date_distributed IS NOT NULL AND a.date_distributed != '' THEN 1 END) as available
         FROM "Arb" a
         JOIN "Landholding" l ON a.seqno_darro = l.seqno_darro`).get() as { available: number };
 
@@ -229,17 +227,16 @@ async function getProvinceSummary(
       FROM "Landholding" WHERE province_edited = ?`).get(province) as { total: number; completed: number };
 
   const encRow = rawDb.prepare(`SELECT
-      COUNT(CASE WHEN (a.carpable = 'CARPABLE' OR a.eligibility = 'Eligible')
+      COUNT(CASE WHEN a.eligibility = 'Eligible' AND l.status != 'Not Eligible for Encoding'
                       AND a.date_encoded IS NOT NULL AND a.date_encoded != '' THEN 1 END) as completed,
-      COUNT(CASE WHEN (a.carpable = 'CARPABLE' OR a.eligibility = 'Eligible') THEN 1 END) as total
+      COUNT(CASE WHEN a.eligibility = 'Eligible' AND l.status != 'Not Eligible for Encoding' THEN 1 END) as total
       FROM "Arb" a
       JOIN "Landholding" l ON a.seqno_darro = l.seqno_darro
       WHERE l.province_edited = ?`).get(province) as { completed: number; total: number };
 
   const distRow = rawDb.prepare(`SELECT
-      COUNT(CASE WHEN (a.carpable = 'CARPABLE' OR a.eligibility = 'Eligible')
-                      AND a.date_encoded IS NOT NULL AND a.date_encoded != ''
-                      AND (a.date_distributed IS NULL OR a.date_distributed = '') THEN 1 END) as available
+      COUNT(CASE WHEN a.eligibility = 'Eligible' AND l.status != 'Not Eligible for Encoding'
+                      AND a.date_distributed IS NOT NULL AND a.date_distributed != '' THEN 1 END) as available
       FROM "Arb" a
       JOIN "Landholding" l ON a.seqno_darro = l.seqno_darro
       WHERE l.province_edited = ?`).get(province) as { available: number };
