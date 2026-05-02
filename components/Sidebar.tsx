@@ -83,6 +83,18 @@ function IconActivity() {
     </svg>
   );
 }
+function IconTarget() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="7" cy="7" r="5.5" />
+      <circle cx="7" cy="7" r="2.5" />
+      <line x1="7" y1="1.5" x2="7" y2="3" />
+      <line x1="7" y1="11" x2="7" y2="12.5" />
+      <line x1="1.5" y1="7" x2="3" y2="7" />
+      <line x1="11" y1="7" x2="12.5" y2="7" />
+    </svg>
+  );
+}
 function IconClose() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -139,9 +151,10 @@ const ALL_NAV_GROUPS: NavGroup[] = [
     label: "Admin",
     minRole: "admin",
     items: [
-      { href: "/users",                  label: "User Management", Icon: IconUsers                           },
-      { href: "/admin/activity",         label: "DARPO Activity",  Icon: IconActivity, superAdminOnly: true },
-      { href: "/admin/backup",           label: "Backup",          Icon: IconBackup,   superAdminOnly: true },
+      { href: "/users",                          label: "User Management",     Icon: IconUsers                               },
+      { href: "/admin/commitment-targets", label: "Commitment Targets", Icon: IconTarget,   superAdminOnly: true },
+      { href: "/admin/activity",             label: "DARPO Activity",    Icon: IconActivity, superAdminOnly: true },
+      { href: "/admin/backup",               label: "Backup",            Icon: IconBackup,   superAdminOnly: true },
     ],
   },
 ];

@@ -45,13 +45,18 @@ export default async function PublicDashboardPage({
   const provinceFilter: string | string[] | null =
     selectedProvinces.length > 0 ? selectedProvinces : null;
 
-  const allProvinces = (
-    await prisma.landholding.groupBy({
+  const [regionTarget, allProvincesRaw, stats] = await Promise.all([
+    prisma.commitmentTarget.findFirst({ where: { region: "V", province: null } }),
+    prisma.landholding.groupBy({
       by: ["province_edited"],
       where: { province_edited: { not: null } },
       orderBy: { province_edited: "asc" },
-    })
-  ).map((r) => r.province_edited as string);
+    }),
+    getStats(provinceFilter),
+  ]);
+
+  const targetDate  = regionTarget?.target_date ?? "2026-06-15";
+  const allProvinces = allProvincesRaw.map((r) => r.province_edited as string);
 
   const {
     total,
@@ -85,7 +90,7 @@ export default async function PublicDashboardPage({
     cocromDistNotEligible,
     notEligibleByProvince,
     notEligibleByReason,
-  } = await getStats(provinceFilter);
+  } = stats;
 
   const shownArea = useValidated ? totalValidatedArea : totalOriginalArea;
 
@@ -138,9 +143,9 @@ export default async function PublicDashboardPage({
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-screen-2xl mx-auto px-6 py-5">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
             {/* Left: logo + title */}
-            <div className="flex items-center gap-4 shrink-0">
+            <div className="flex items-center gap-4 lg:shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/dar-logo.svg"
@@ -159,14 +164,14 @@ export default async function PublicDashboardPage({
               </div>
             </div>
 
-            {/* Centre: deadline countdown */}
-            <div className="flex-1 mx-4 hidden sm:flex justify-center">
-              <DeadlineCountdown />
+            {/* Centre: deadline countdown — right on mobile, centred on desktop */}
+            <div className="flex justify-end lg:flex-1 lg:mx-4 lg:justify-center">
+              <DeadlineCountdown targetDate={targetDate} />
             </div>
 
-            {/* Right: date + live + toggle */}
-            <div className="flex flex-col items-end gap-2 shrink-0">
-              <div className="text-right">
+            {/* Right: date + live + toggle — row on mobile, column on desktop */}
+            <div className="flex items-center justify-between lg:flex-col lg:items-end gap-2 lg:shrink-0">
+              <div className="lg:text-right">
                 <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">
                   Region V · Reconciled List
                 </p>
@@ -247,7 +252,7 @@ export default async function PublicDashboardPage({
         />
 
         {/* Accomplishment Tracker */}
-        <DashboardProgress selectedProvinces={selectedProvinces} publicToken={token} />
+        <DashboardProgress selectedProvinces={selectedProvinces} publicToken={token} targetDate={targetDate} />
 
         {/* Not Eligible for Encoding */}
         <ChartCard title="Landholdings Not Eligible for Encoding">

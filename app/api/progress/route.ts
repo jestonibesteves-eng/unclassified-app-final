@@ -3,6 +3,12 @@ import { rawDb } from "@/lib/db";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
 
 const TOKEN_KEY = "public_dashboard_token";
+const CACHE_TTL_MS = 20_000;
+
+type CacheEntry = { data: unknown; expiresAt: number };
+const g = globalThis as unknown as { _progressCache?: Map<string, CacheEntry> };
+if (!g._progressCache) g._progressCache = new Map();
+const cache = g._progressCache;
 
 // ── SQL helpers ────────────────────────────────────────────────────────────
 const ENC_DATE =
@@ -35,11 +41,13 @@ export async function GET(req: NextRequest) {
     const isRegional = isPublic || sessionUser?.office_level === "regional";
     let lhWhere  = "";
     let lhWhere2 = "";
+    let filteredProvinces: string[] = [];
 
     if (!isRegional && sessionUser?.province) {
       const p = safeProv(sessionUser.province);
       lhWhere  = `AND l.province_edited = '${p}'`;
       lhWhere2 = `AND province_edited   = '${p}'`;
+      filteredProvinces = [sessionUser.province];
     } else if (isRegional) {
       const raw = req.nextUrl.searchParams.get("provinces") ?? "";
       const provs = raw.split(",").map((s) => s.trim()).filter(Boolean);
@@ -47,7 +55,14 @@ export async function GET(req: NextRequest) {
         const list = provs.map((p) => `'${safeProv(p)}'`).join(",");
         lhWhere  = `AND l.province_edited IN (${list})`;
         lhWhere2 = `AND province_edited   IN (${list})`;
+        filteredProvinces = provs;
       }
+    }
+
+    const cacheKey = filteredProvinces.length > 0 ? filteredProvinces.sort().join(",") : "__regional__";
+    const cached = cache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return NextResponse.json(cached.data);
     }
 
     // ── Validation ──────────────────────────────────────────────────────
@@ -241,7 +256,23 @@ export async function GET(req: NextRequest) {
       WHERE 1=1 ${lhWhere2}
     `).get() as { lh_validated: number; lh_not_validated: number } | undefined;
 
-    return NextResponse.json({
+    // Committed COCROMs from CommitmentTarget table — provincial sum when filtered, regional total otherwise.
+    let committedCocroms: number;
+    if (filteredProvinces.length === 0) {
+      const regionRow = rawDb.prepare(
+        `SELECT committed FROM "CommitmentTarget" WHERE region = 'V' AND province IS NULL LIMIT 1`
+      ).get() as { committed: number } | undefined;
+      committedCocroms = regionRow?.committed ?? 0;
+    } else {
+      const placeholders = filteredProvinces.map(() => "?").join(",");
+      const sumRow = rawDb.prepare(
+        `SELECT COALESCE(SUM(committed), 0) as total FROM "CommitmentTarget" WHERE region = 'V' AND province IN (${placeholders})`
+      ).get(...filteredProvinces) as { total: number } | undefined;
+      committedCocroms = sumRow?.total ?? 0;
+    }
+
+    const payload = {
+      committed_cocroms: committedCocroms,
       validation: {
         total:            valTotal,     // LH count — gauge + COCROM/ARB tabs
         completed:        valCompleted, // validated LH count
@@ -274,7 +305,10 @@ export async function GET(req: NextRequest) {
         lh_validated:     distLhBreakdown?.lh_validated     ?? 0,
         lh_not_validated: distLhBreakdown?.lh_not_validated ?? 0,
       },
-    });
+    };
+
+    cache.set(cacheKey, { data: payload, expiresAt: Date.now() + CACHE_TTL_MS });
+    return NextResponse.json(payload);
 
   } catch (err) {
     console.error("[/api/progress]", err);

@@ -109,6 +109,16 @@ model Setting {
   value String
 }
 
+model CommitmentTarget {
+  id          Int    @id @default(autoincrement())
+  region      String
+  province    String? // NULL = region-level total
+  committed   Int    @default(0)
+  target_date String @default("2026-06-15") // YYYY-MM-DD
+
+  @@index([region])
+}
+
 model AuditLog {
   id            Int         @id @default(autoincrement())
   seqno_darro   String

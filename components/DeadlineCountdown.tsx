@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 
-const DEADLINE = new Date("2026-06-15T00:00:00+08:00");
-const DEADLINE_MS = DEADLINE.getTime();
-
 // Total span from project start to deadline (used for arc fill %)
 // We treat "start" as 365 days before deadline
 const TOTAL_MS = 365 * 24 * 60 * 60 * 1000;
+
+function fmtDate(d: string) {
+  const [y, m, day] = d.split("-").map(Number);
+  return new Date(y, m - 1, day).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" });
+}
 
 type Urgency = "safe" | "warn" | "danger";
 
@@ -98,16 +100,24 @@ function Colon({ theme }: { theme: typeof THEME.safe }) {
   );
 }
 
-export default function DeadlineCountdown({ className = "" }: { className?: string }) {
+export default function DeadlineCountdown({
+  className = "",
+  targetDate = "2026-06-15",
+}: {
+  className?: string;
+  targetDate?: string;
+}) {
+  const deadlineMs = new Date(`${targetDate}T00:00:00+08:00`).getTime();
+
   // null on server — avoids SSR/client Date.now() mismatch
   const [msLeft, setMsLeft] = useState<number | null>(null);
 
   useEffect(() => {
-    const tick = () => setMsLeft(DEADLINE_MS - Date.now());
+    const tick = () => setMsLeft(deadlineMs - Date.now());
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [deadlineMs]);
 
   // Render a size-stable shell on the server / before mount
   if (msLeft === null) {
@@ -128,7 +138,7 @@ export default function DeadlineCountdown({ className = "" }: { className?: stri
           </span>
           <div style={{ height: 40 }} />
           <p className="text-[8.5px] font-medium leading-none" style={{ color: t.ring, opacity: 0.5 }}>
-            June 15, 2026
+            {fmtDate(targetDate)}
           </p>
         </div>
       </div>
@@ -208,7 +218,7 @@ export default function DeadlineCountdown({ className = "" }: { className?: stri
           <Unit value={pad(seconds)} label="sec"  theme={theme} />
         </div>
         <p className="text-[8.5px] font-medium leading-none" style={{ color: theme.ring, opacity: 0.5 }}>
-          June 15, 2026
+          {fmtDate(targetDate)}
         </p>
       </div>
     </div>

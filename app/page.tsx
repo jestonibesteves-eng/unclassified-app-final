@@ -56,14 +56,21 @@ export default async function Dashboard({
     ? [provinceScope]
     : selectedProvinces;
 
-  // Fetch all provinces for the filter UI (regional only)
-  const allProvinces = isRegional
-    ? (await prisma.landholding.groupBy({
-        by: ["province_edited"],
-        where: { province_edited: { not: null } },
-        orderBy: { province_edited: "asc" },
-      })).map((r) => r.province_edited as string)
-    : [];
+  // Run independent fetches in parallel
+  const [allProvincesRaw, regionTarget, stats] = await Promise.all([
+    isRegional
+      ? prisma.landholding.groupBy({
+          by: ["province_edited"],
+          where: { province_edited: { not: null } },
+          orderBy: { province_edited: "asc" },
+        })
+      : Promise.resolve([] as Array<{ province_edited: string | null }>),
+    prisma.commitmentTarget.findFirst({ where: { region: "V", province: null } }),
+    getStats(provinceFilter),
+  ]);
+
+  const allProvinces = allProvincesRaw.map((r) => r.province_edited as string);
+  const targetDate = regionTarget?.target_date ?? "2026-06-15";
 
   const {
     total, byProvince, byStatus, statusAreaMap,
@@ -76,7 +83,7 @@ export default async function Dashboard({
     eligibleDistinctCarpableARBCount, landholdingsWithArbs,
     cocromEncodingData, cocromDistributionData, cocromDistNotEligible,
     notEligibleByProvince, notEligibleByReason,
-  } = await getStats(provinceFilter);
+  } = stats;
 
   const provinceData = byProvince.map((p) => ({
     name: p.province_edited ?? "Unknown",
@@ -126,9 +133,9 @@ export default async function Dashboard({
   return (
     <div className="page-enter" id="dashboard-content">
       {/* ── Header ── */}
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        {/* Left: title — each section gets its own full-width row on mobile */}
-        <div className="sm:shrink-0">
+      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        {/* Left: title */}
+        <div className="lg:shrink-0">
           <div className="flex items-center gap-2 mb-1.5">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-semibold uppercase tracking-widest">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -148,13 +155,13 @@ export default async function Dashboard({
           </p>
         </div>
 
-        {/* Centre: deadline countdown — its own row on mobile, centred on desktop */}
-        <div className="flex sm:flex-1 sm:justify-center sm:mx-4">
-          <DeadlineCountdown />
+        {/* Centre: deadline countdown — right on mobile/tablet, centred on desktop */}
+        <div className="flex justify-end lg:flex-1 lg:justify-center lg:mx-4">
+          <DeadlineCountdown targetDate={targetDate} />
         </div>
 
-        {/* Right: controls — stacked column on both mobile and desktop */}
-        <div className="flex flex-col gap-2 sm:items-end sm:shrink-0">
+        {/* Right: controls */}
+        <div className="flex flex-col gap-2 items-end lg:shrink-0">
           <div className="flex items-center gap-2 flex-wrap">
             {sessionUser?.role === "super_admin" && <PublicDashboardShareButton />}
             <Suspense>
@@ -239,7 +246,7 @@ export default async function Dashboard({
       />
 
       {/* ── COCROM Distribution Progress ── */}
-      <DashboardProgress selectedProvinces={effectiveProvinces} />
+      <DashboardProgress selectedProvinces={effectiveProvinces} targetDate={targetDate} />
 
       {/* ── Not Eligible for Encoding (full-width) ── */}
       <div className="mt-6">

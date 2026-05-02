@@ -37,6 +37,17 @@ function runMigrations(db: Database.Database) {
   } catch {
     // Table already exists or DB not ready
   }
+  try {
+    db.prepare(`CREATE TABLE IF NOT EXISTS "CommitmentTarget" (
+      "id"          INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "region"      TEXT NOT NULL,
+      "province"    TEXT,
+      "committed"   INTEGER NOT NULL DEFAULT 0,
+      "target_date" TEXT NOT NULL DEFAULT '2026-06-15'
+    )`).run();
+  } catch {
+    // Table already exists or DB not ready
+  }
 }
 
 function createRawDb() {
