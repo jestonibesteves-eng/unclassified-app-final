@@ -78,7 +78,7 @@ export function buildEmailHtml(
   weekEnd: Date
 ): string {
   const weekRange   = `${fmtShort(weekStart)} – ${fmtShort(weekEnd)}, ${fmtYear(weekEnd)}`;
-  const displayName = recipient.nickname?.trim() || recipient.name;
+  const displayName = `${recipient.role} ${recipient.nickname?.trim() || recipient.name}`;
 
   const provinceChip =
     variant === "provincial" && data.scope.province
