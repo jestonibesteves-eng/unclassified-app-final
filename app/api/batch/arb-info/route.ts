@@ -27,6 +27,20 @@ const LOCKABLE: ArbInfoType[] = ["area_allocated", "allocated_condoned_amount"];
 const CARPABLE_VALUES = ["CARPABLE", "NON-CARPABLE"] as const;
 const ELIGIBILITY_VALUES = ["Eligible", "Not Eligible"] as const;
 
+function isValidDate(val: string): boolean {
+  const slashMatch = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  const dashMatch  = val.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const parts = slashMatch
+    ? [Number(slashMatch[3]), Number(slashMatch[1]) - 1, Number(slashMatch[2])]
+    : dashMatch
+    ? [Number(dashMatch[1]), Number(dashMatch[2]) - 1, Number(dashMatch[3])]
+    : null;
+  if (!parts) return false;
+  const [y, m, d] = parts;
+  const dt = new Date(y, m, d);
+  return dt.getFullYear() === y && dt.getMonth() === m && dt.getDate() === d;
+}
+
 /* ── Input parser ── */
 function parseLines(raw: string, type: ArbInfoType): {
   valid: { seqno: string; arb_id: string; value: string }[];
@@ -53,10 +67,16 @@ function parseLines(raw: string, type: ArbInfoType): {
     if (!arbId) { invalid.push({ line, reason: "Missing ARB_ID" }); continue; }
     if (!value) { invalid.push({ line, reason: "Missing value" }); continue; }
 
+    if (type === "date_encoded" || type === "date_distributed") {
+      if (!isValidDate(value)) {
+        invalid.push({ line, reason: `"${value}" is not a valid date — use MM/DD/YYYY or YYYY-MM-DD` });
+        continue;
+      }
+    }
+
     if (type === "area_allocated") {
-      const n = parseFloat(value.replace(/,/g, ""));
-      if (isNaN(n) || n <= 0) {
-        invalid.push({ line, reason: `"${value}" is not a valid positive number` });
+      if (!value.trim()) {
+        invalid.push({ line, reason: "Area allocated cannot be empty" });
         continue;
       }
     }

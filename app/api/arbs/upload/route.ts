@@ -66,7 +66,7 @@ function normalizeDate(val: unknown): string | null {
   const slash = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (slash) return `${slash[1].padStart(2,"0")}/${slash[2].padStart(2,"0")}/${slash[3]}`;
 
-  return s; // unrecognized — pass through as-is
+  return null; // unrecognized format — reject rather than store garbage
 }
 
 function getCellText(cell: ExcelJS.Cell): unknown {
