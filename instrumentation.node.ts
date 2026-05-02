@@ -40,6 +40,9 @@ export function registerNode() {
 
   // ── 4. Catch up on any missed auto-backup, then schedule daily at 2:00 AM ─
   scheduleDailyBackup(dbPath);
+
+  // ── 5. Schedule weekly email digest (Monday 8:00 AM PHT) ─────────────────
+  scheduleWeeklyDigest(dbPath);
 }
 
 function scheduleDailyBackup(dbPath: string) {
@@ -105,5 +108,95 @@ function scheduleDailyBackup(dbPath: string) {
   setTimeout(() => {
     runBackup();
     setInterval(runBackup, 24 * 60 * 60 * 1000);
+  }, delay);
+}
+
+function scheduleWeeklyDigest(dbPath: string) {
+  function msUntilNextMondayPht(): number {
+    const phtOffset = 8 * 3_600_000;
+    const nowPht    = new Date(Date.now() + phtOffset);
+    const day       = nowPht.getUTCDay(); // 0=Sun
+    const daysToMon = day === 1 ? 7 : (8 - day) % 7 || 7;
+
+    const nextMon = new Date(nowPht);
+    nextMon.setUTCDate(nowPht.getUTCDate() + daysToMon);
+    nextMon.setUTCHours(8, 0, 0, 0); // 8:00 AM PHT (as fake-UTC)
+    return nextMon.getTime() - phtOffset - Date.now();
+  }
+
+  function getRawSetting(key: string): string {
+    try {
+      const db  = new Database(dbPath);
+      const row = db.prepare(`SELECT value FROM "Setting" WHERE key = ?`).get(key) as { value: string } | undefined;
+      db.close();
+      return row?.value ?? "";
+    } catch {
+      return "";
+    }
+  }
+
+  function setRawSetting(key: string, value: string): void {
+    try {
+      const db = new Database(dbPath);
+      db.prepare(`INSERT OR REPLACE INTO "Setting" (key, value) VALUES (?, ?)`).run(key, value);
+      db.close();
+    } catch (err) {
+      console.error("[digest] Failed to write setting:", err);
+    }
+  }
+
+  async function runDigest() {
+    const enabled = getRawSetting("email_digest_enabled");
+    if (enabled !== "true") {
+      console.log("[digest] Auto-send is off — skipping scheduled digest.");
+      return;
+    }
+    try {
+      const { sendWeeklyDigest, getWeekBounds } = await import("@/lib/digest");
+      const { weekStart, weekEnd } = getWeekBounds();
+      const result = await sendWeeklyDigest(weekStart, weekEnd);
+      console.log(`[digest] Weekly digest sent: ${result.sent} sent, ${result.failed} failed.`);
+      if (result.sent > 0) {
+        setRawSetting("email_digest_last_sent_at", new Date().toISOString());
+      }
+    } catch (err) {
+      console.error("[digest] Scheduled digest failed:", err);
+    }
+  }
+
+  async function catchUpIfMissed() {
+    const enabled = getRawSetting("email_digest_enabled");
+    if (enabled !== "true") return;
+
+    const lastSentAt = getRawSetting("email_digest_last_sent_at");
+
+    const phtOffset = 8 * 3_600_000;
+    const nowPht    = new Date(Date.now() + phtOffset);
+    const day       = nowPht.getUTCDay();
+    const daysBack  = day === 0 ? 6 : day - 1;
+    const thisMon   = new Date(nowPht);
+    thisMon.setUTCDate(nowPht.getUTCDate() - daysBack);
+    thisMon.setUTCHours(8, 0, 0, 0);
+    const lastMon8amUtc = new Date(thisMon.getTime() - phtOffset);
+
+    if (Date.now() < lastMon8amUtc.getTime()) return;
+
+    const lastSent = lastSentAt ? new Date(lastSentAt).getTime() : 0;
+    if (lastSent < lastMon8amUtc.getTime()) {
+      console.log("[digest] Catch-up: missed weekly digest — sending now.");
+      await runDigest();
+    }
+  }
+
+  catchUpIfMissed();
+
+  const delay = msUntilNextMondayPht();
+  const hh = Math.floor(delay / 3_600_000);
+  const mm = Math.floor((delay % 3_600_000) / 60_000);
+  console.log(`[digest] Next weekly digest scheduled in ${hh}h ${mm}m (Monday 8:00 AM PHT)`);
+
+  setTimeout(() => {
+    runDigest();
+    setInterval(runDigest, 7 * 24 * 60 * 60 * 1000);
   }, delay);
 }

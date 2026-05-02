@@ -6,7 +6,7 @@ const SESSION_EXP_COOKIE = "dar_session_exp"; // non-httpOnly, readable by JS
 const SESSION_DURATION_S = 60 * 60; // 1 hour in seconds
 
 /* ── Route permission rules ── */
-const ADMIN_PAGES   = ["/flags", "/audit", "/users"];
+const ADMIN_PAGES   = ["/flags", "/audit", "/users", "/digest"];
 const EDITOR_PAGES  = ["/batch"];
 
 type SessionUser = {
