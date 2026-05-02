@@ -413,15 +413,17 @@ export function CocromEncodingChart({
     mode === "cocrom" ? seg.count : mode === "arbs" ? seg.arbs : mode === "area" ? seg.area : seg.amount;
 
   const fmtCenter = (n: number) =>
-    mode === "area" || mode === "amount"
+    mode === "area"
       ? n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : mode === "amount"
+      ? "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       : n.toLocaleString();
 
   const fmtLegend = (n: number) =>
     mode === "area"
       ? n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " ha."
       : mode === "amount"
-      ? n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      ? "₱" + n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       : n.toLocaleString();
 
   const chartData = COCROM_ENC_SEGS
@@ -509,6 +511,15 @@ export function CocromEncodingChart({
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })} ha.
+                      </span>
+                    </p>
+                    <p>
+                      <span className="text-gray-400">Amount: </span>
+                      <span className="font-bold">
+                        ₱{d.raw.amount.toLocaleString("en-PH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
                       </span>
                     </p>
                   </div>
@@ -670,7 +681,7 @@ export function CocromDistributionChart({
     mode === "area"
       ? val.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " ha."
       : mode === "amount"
-      ? val.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      ? "₱" + val.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       : val.toLocaleString();
 
   const totalDistributed = data.reduce((s, r) => s + getVal(r), 0);
@@ -681,7 +692,7 @@ export function CocromDistributionChart({
       {/* Filter toggle */}
       <div className="flex items-center justify-between mb-3">
         <p className="text-[10px] text-gray-400 tabular-nums">
-          <span className="font-bold text-purple-700">{totalDistributed.toLocaleString()}</span>
+          <span className="font-bold text-purple-700">{fmtTooltip(totalDistributed)}</span>
           {" "}distributed
           {" · "}
           <span className="font-bold text-purple-700">{overallPct}%</span>
@@ -837,7 +848,7 @@ export function CocromDistributionChart({
             const fmtSegVal = (seg: CocromSeg) => {
               const v = getSegVal(seg);
               if (mode === "area")   return `${fmtArea(v)} ha.`;
-              if (mode === "amount") return fmtArea(v);
+              if (mode === "amount") return "₱" + fmtArea(v);
               return v.toLocaleString();
             };
 
