@@ -43,6 +43,9 @@ export function registerNode() {
 
   // ── 5. Schedule weekly email digest (Monday 8:00 AM PHT) ─────────────────
   scheduleWeeklyDigest(dbPath);
+
+  // ── 6. Schedule nightly status recompute at 1:00 AM ──────────────────────
+  scheduleNightlyRecompute();
 }
 
 function scheduleDailyBackup(dbPath: string) {
@@ -208,5 +211,43 @@ function scheduleWeeklyDigest(dbPath: string) {
   setTimeout(() => {
     runDigest();
     setInterval(runDigest, 7 * 24 * 60 * 60 * 1000);
+  }, delay);
+}
+
+function scheduleNightlyRecompute() {
+  function msUntilNextOneAM(): number {
+    const now  = new Date();
+    const next = new Date(now);
+    next.setHours(1, 0, 0, 0);
+    if (next <= now) next.setDate(next.getDate() + 1);
+    return next.getTime() - now.getTime();
+  }
+
+  async function runRecompute() {
+    try {
+      const { prisma, rawDb } = await import("@/lib/db");
+      const { computeAndUpdateStatus } = await import("@/lib/computeStatus");
+      const seqnos = await prisma.arb.findMany({
+        distinct: ["seqno_darro"],
+        select: { seqno_darro: true },
+      });
+      for (const { seqno_darro } of seqnos) {
+        await computeAndUpdateStatus(seqno_darro);
+      }
+      rawDb.prepare(`INSERT OR REPLACE INTO "Setting" (key, value) VALUES ('recompute_last_ran_at', ?)`).run(new Date().toISOString());
+      console.log(`[recompute] Nightly recompute done — ${seqnos.length} landholding(s) processed.`);
+    } catch (err) {
+      console.error("[recompute] Nightly recompute failed:", err);
+    }
+  }
+
+  const delay = msUntilNextOneAM();
+  const hh = Math.floor(delay / 3_600_000);
+  const mm = Math.floor((delay % 3_600_000) / 60_000);
+  console.log(`[recompute] Next nightly recompute scheduled in ${hh}h ${mm}m (at 1:00 AM)`);
+
+  setTimeout(() => {
+    runRecompute();
+    setInterval(runRecompute, 24 * 60 * 60 * 1000);
   }, delay);
 }

@@ -63,6 +63,7 @@ function runMigrations(db: Database.Database) {
     db.prepare(`INSERT OR IGNORE INTO "Setting" (key, value) VALUES ('email_digest_enabled', 'false')`).run();
     db.prepare(`INSERT OR IGNORE INTO "Setting" (key, value) VALUES ('email_digest_last_sent_at', '')`).run();
     db.prepare(`INSERT OR IGNORE INTO "Setting" (key, value) VALUES ('email_digest_send_until', '')`).run();
+    db.prepare(`INSERT OR IGNORE INTO "Setting" (key, value) VALUES ('recompute_last_ran_at', '')`).run();
   } catch {
     // Table already exists or DB not ready
   }

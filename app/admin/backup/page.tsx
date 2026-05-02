@@ -130,18 +130,26 @@ export default function BackupPage() {
   const [cancelling, setCancelling] = useState(false);
   const [recomputing, setRecomputing] = useState(false);
   const [recomputeResult, setRecomputeResult] = useState<number | null>(null);
+  const [lastRecomputeAt, setLastRecomputeAt] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 15;
 
   const fetchBackups = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/backup");
-      if (!res.ok) throw new Error();
-      const data = await res.json();
+      const [backupRes, settingRes] = await Promise.all([
+        fetch("/api/admin/backup"),
+        fetch("/api/admin/settings?key=recompute_last_ran_at"),
+      ]);
+      if (!backupRes.ok) throw new Error();
+      const data = await backupRes.json();
       setBackups(data.backups);
       setPendingRestore(data.pendingRestore ?? null);
       setPage(1);
+      if (settingRes.ok) {
+        const s = await settingRes.json();
+        setLastRecomputeAt(s.value || null);
+      }
     } catch {
       toast("Failed to load backups.", "error");
     } finally {
@@ -249,6 +257,7 @@ export default function BackupPage() {
       if (!res.ok) throw new Error();
       const data = await res.json();
       setRecomputeResult(data.recomputed);
+      setLastRecomputeAt(data.ranAt ?? null);
       toast(`Recomputed status for ${data.recomputed} landholding(s).`, "success");
     } catch {
       toast("Failed to recompute statuses.", "error");
@@ -326,11 +335,16 @@ export default function BackupPage() {
           <div className="flex-1">
             <p className="text-[13px] font-semibold text-gray-800">Recompute All Landholding Statuses</p>
             <p className="text-[11px] text-gray-500 mt-0.5">
-              Re-runs the status formula on every landholding that has ARBs. Use this after formula changes to bring all records up to date.
+              Re-runs the status formula on every landholding that has ARBs. Runs automatically every night at 1:00 AM.
             </p>
             {recomputeResult !== null && (
               <p className="text-[11px] text-green-700 font-medium mt-1">
                 Done — {recomputeResult} landholding{recomputeResult !== 1 ? "s" : ""} recomputed.
+              </p>
+            )}
+            {lastRecomputeAt && (
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                Last run: {formatDateTime(lastRecomputeAt)}
               </p>
             )}
           </div>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma, rawDb } from "@/lib/db";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
 import { computeAndUpdateStatus } from "@/lib/computeStatus";
 
@@ -21,5 +21,8 @@ export async function POST(req: NextRequest) {
     updated++;
   }
 
-  return NextResponse.json({ recomputed: updated });
+  const ranAt = new Date().toISOString();
+  rawDb.prepare(`INSERT OR REPLACE INTO "Setting" (key, value) VALUES ('recompute_last_ran_at', ?)`).run(ranAt);
+
+  return NextResponse.json({ recomputed: updated, ranAt });
 }
