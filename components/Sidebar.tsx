@@ -160,10 +160,10 @@ const ALL_NAV_GROUPS: NavGroup[] = [
     minRole: "admin",
     items: [
       { href: "/users",                          label: "User Management",     Icon: IconUsers                               },
-      { href: "/admin/commitment-targets", label: "Commitment Targets", Icon: IconTarget,   superAdminOnly: true },
-      { href: "/admin/activity",             label: "DARPO Activity",    Icon: IconActivity, superAdminOnly: true },
-      { href: "/admin/backup",               label: "Backup",            Icon: IconBackup,   superAdminOnly: true },
-      { href: "/digest",                     label: "Weekly Digest (Email)", Icon: IconDigest, superAdminOnly: true },
+      { href: "/admin/commitment-targets", label: "Commitment Targets",   Icon: IconTarget,   superAdminOnly: true },
+      { href: "/admin/activity",           label: "DARPO Activity",       Icon: IconActivity, superAdminOnly: true },
+      { href: "/digest",                   label: "Weekly Digest (Email)", Icon: IconDigest,  superAdminOnly: true },
+      { href: "/admin/backup",             label: "Backup",               Icon: IconBackup,   superAdminOnly: true },
     ],
   },
 ];
