@@ -129,14 +129,14 @@ export async function getDigestData(
                         AND a.date_encoded IS NOT NULL AND a.date_encoded != '' THEN 1 END) as completed,
         COUNT(CASE WHEN (a.carpable = 'CARPABLE' OR a.eligibility = 'Eligible') THEN 1 END) as total
         FROM "Arb" a
-        JOIN "Landholding" l ON a.landholding_id = l.id
+        JOIN "Landholding" l ON a.seqno_darro = l.seqno_darro
         WHERE l.province_edited = ?`).get(provFilter) as { completed: number; total: number }
     : rawDb.prepare(`SELECT
         COUNT(CASE WHEN (a.carpable = 'CARPABLE' OR a.eligibility = 'Eligible')
                         AND a.date_encoded IS NOT NULL AND a.date_encoded != '' THEN 1 END) as completed,
         COUNT(CASE WHEN (a.carpable = 'CARPABLE' OR a.eligibility = 'Eligible') THEN 1 END) as total
         FROM "Arb" a
-        JOIN "Landholding" l ON a.landholding_id = l.id`).get() as { completed: number; total: number };
+        JOIN "Landholding" l ON a.seqno_darro = l.seqno_darro`).get() as { completed: number; total: number };
 
   const cumCocromsEncoded = metric(encRow.completed, encRow.total);
 
@@ -147,14 +147,14 @@ export async function getDigestData(
                         AND a.date_encoded IS NOT NULL AND a.date_encoded != ''
                         AND (a.date_distributed IS NULL OR a.date_distributed = '') THEN 1 END) as available
         FROM "Arb" a
-        JOIN "Landholding" l ON a.landholding_id = l.id
+        JOIN "Landholding" l ON a.seqno_darro = l.seqno_darro
         WHERE l.province_edited = ?`).get(provFilter) as { available: number }
     : rawDb.prepare(`SELECT
         COUNT(CASE WHEN (a.carpable = 'CARPABLE' OR a.eligibility = 'Eligible')
                         AND a.date_encoded IS NOT NULL AND a.date_encoded != ''
                         AND (a.date_distributed IS NULL OR a.date_distributed = '') THEN 1 END) as available
         FROM "Arb" a
-        JOIN "Landholding" l ON a.landholding_id = l.id`).get() as { available: number };
+        JOIN "Landholding" l ON a.seqno_darro = l.seqno_darro`).get() as { available: number };
 
   const commitment = await getCommitment(scope);
   const cumCocromsForDistribution = metric(distRow.available, commitment);
@@ -233,7 +233,7 @@ async function getProvinceSummary(
                       AND a.date_encoded IS NOT NULL AND a.date_encoded != '' THEN 1 END) as completed,
       COUNT(CASE WHEN (a.carpable = 'CARPABLE' OR a.eligibility = 'Eligible') THEN 1 END) as total
       FROM "Arb" a
-      JOIN "Landholding" l ON a.landholding_id = l.id
+      JOIN "Landholding" l ON a.seqno_darro = l.seqno_darro
       WHERE l.province_edited = ?`).get(province) as { completed: number; total: number };
 
   const distRow = rawDb.prepare(`SELECT
@@ -241,7 +241,7 @@ async function getProvinceSummary(
                       AND a.date_encoded IS NOT NULL AND a.date_encoded != ''
                       AND (a.date_distributed IS NULL OR a.date_distributed = '') THEN 1 END) as available
       FROM "Arb" a
-      JOIN "Landholding" l ON a.landholding_id = l.id
+      JOIN "Landholding" l ON a.seqno_darro = l.seqno_darro
       WHERE l.province_edited = ?`).get(province) as { available: number };
 
   const target  = await getCommitment({ level: "provincial", province });
