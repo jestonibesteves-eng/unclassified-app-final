@@ -52,6 +52,10 @@ export default function DigestPage() {
   const [sendResult, setSendResult] = useState<SendResult | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [editingId,  setEditingId]  = useState<number | null>(null);
+  const [editForm,   setEditForm]   = useState({ name: "", nickname: "", email: "", roleIdx: 0, province: PROVINCE_OPTIONS[0] });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError,  setEditError]  = useState("");
 
   // Add form state
   const [showAddForm, setShowAddForm] = useState(false);
@@ -132,6 +136,47 @@ export default function DigestPage() {
     await fetch(`/api/admin/digest/recipients/${id}`, { method: "DELETE" });
     await loadRecipients();
     setDeletingId(null);
+  }
+
+  function startEdit(r: DigestRecipient) {
+    const roleIdx = ROLE_DROPDOWN.findIndex(
+      (opt) => opt.label === r.role && opt.level === r.level
+    );
+    setEditForm({
+      name:     r.name,
+      nickname: r.nickname ?? "",
+      email:    r.email,
+      roleIdx:  roleIdx >= 0 ? roleIdx : 0,
+      province: r.province ?? PROVINCE_OPTIONS[0],
+    });
+    setEditError("");
+    setEditingId(r.id);
+  }
+
+  async function handleSaveEdit(id: number) {
+    setEditSaving(true);
+    setEditError("");
+    const opt = ROLE_DROPDOWN[editForm.roleIdx] ?? ROLE_DROPDOWN[0];
+    const res = await fetch(`/api/admin/digest/recipients/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name:     editForm.name,
+        nickname: editForm.nickname || null,
+        email:    editForm.email,
+        role:     opt.label,
+        level:    opt.level,
+        province: opt.level === "provincial" ? editForm.province : null,
+      }),
+    });
+    if (res.ok) {
+      setEditingId(null);
+      await loadRecipients();
+    } else {
+      const data = await res.json();
+      setEditError(data.error ?? "Failed to save.");
+    }
+    setEditSaving(false);
   }
 
   async function handleAdd(e: React.FormEvent) {
@@ -384,6 +429,77 @@ export default function DigestPage() {
               </thead>
               <tbody>
                 {recipients.map((r) => (
+                  editingId === r.id ? (
+                    <tr key={r.id} className="border-b border-green-100 bg-green-50/40">
+                      <td className="py-2 px-3">
+                        <input
+                          value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                          className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                        />
+                      </td>
+                      <td className="py-2 px-3">
+                        <input
+                          value={editForm.nickname} onChange={(e) => setEditForm((f) => ({ ...f, nickname: e.target.value }))}
+                          placeholder="—"
+                          className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                        />
+                      </td>
+                      <td className="py-2 px-3">
+                        <input
+                          type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                          className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                        />
+                      </td>
+                      <td className="py-2 px-3">
+                        <select
+                          value={editForm.roleIdx} onChange={(e) => setEditForm((f) => ({ ...f, roleIdx: Number(e.target.value) }))}
+                          className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                        >
+                          {ROLE_DROPDOWN.map((opt, i) => (
+                            <option key={i} value={i}>{opt.display ?? opt.label}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="py-2 px-3">
+                        {(ROLE_DROPDOWN[editForm.roleIdx]?.level === "provincial") ? (
+                          <select
+                            value={editForm.province} onChange={(e) => setEditForm((f) => ({ ...f, province: e.target.value }))}
+                            className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                          >
+                            {PROVINCE_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+                          </select>
+                        ) : (
+                          <span className="text-xs text-gray-400">Regional</span>
+                        )}
+                      </td>
+                      <td className="py-2 px-3 text-center">
+                        <button
+                          onClick={() => handleToggleActive(r)}
+                          disabled={togglingId === r.id}
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50 ${r.active ? "bg-green-600" : "bg-gray-300"}`}
+                        >
+                          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${r.active ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+                        </button>
+                      </td>
+                      <td className="py-2 px-3">
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleSaveEdit(r.id)} disabled={editSaving}
+                            className="rounded bg-green-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-800 disabled:opacity-50"
+                          >
+                            {editSaving ? "…" : "Save"}
+                          </button>
+                          <button
+                            onClick={() => { setEditingId(null); setEditError(""); }}
+                            className="rounded border border-gray-300 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                        {editError && <p className="text-xs text-red-600 mt-1">{editError}</p>}
+                      </td>
+                    </tr>
+                  ) : (
                   <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50/50">
                     <td className="py-2.5 px-3 font-medium text-gray-800">{r.name}</td>
                     <td className="py-2.5 px-3 text-gray-500">
@@ -414,6 +530,16 @@ export default function DigestPage() {
                       </button>
                     </td>
                     <td className="py-2.5 px-3">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => startEdit(r)}
+                          className="text-gray-400 hover:text-blue-600"
+                          title="Edit recipient"
+                        >
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
                       <button
                         onClick={() => handleDelete(r.id)}
                         disabled={deletingId === r.id}
@@ -424,8 +550,10 @@ export default function DigestPage() {
                           <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
+                      </div>
                     </td>
                   </tr>
+                  )
                 ))}
               </tbody>
             </table>
