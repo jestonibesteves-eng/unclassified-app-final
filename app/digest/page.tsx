@@ -6,6 +6,7 @@ import type { DigestRecipient } from "@/lib/digest";
 interface Settings {
   enabled: boolean;
   lastSentAt: string | null;
+  sendUntil: string | null;
 }
 
 interface SendResult {
@@ -45,7 +46,7 @@ function fmtDate(iso: string | null): string {
 }
 
 export default function DigestPage() {
-  const [settings, setSettings]     = useState<Settings>({ enabled: false, lastSentAt: null });
+  const [settings, setSettings]     = useState<Settings>({ enabled: false, lastSentAt: null, sendUntil: null });
   const [recipients, setRecipients] = useState<DigestRecipient[]>([]);
   const [sending, setSending]       = useState(false);
   const [sendResult, setSendResult] = useState<SendResult | null>(null);
@@ -88,6 +89,15 @@ export default function DigestPage() {
       body: JSON.stringify({ enabled: next }),
     });
     if (res.ok) setSettings((s) => ({ ...s, enabled: next }));
+  }
+
+  async function handleSendUntilChange(date: string) {
+    setSettings((s) => ({ ...s, sendUntil: date || null }));
+    await fetch("/api/admin/digest/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sendUntil: date || null }),
+    });
   }
 
   async function handleSendNow() {
@@ -191,13 +201,37 @@ export default function DigestPage() {
           </button>
         </div>
 
-        <div>
+        <div className="flex flex-wrap items-center gap-2">
           <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
             settings.enabled ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"
           }`}>
-            {settings.enabled ? "Auto-send on · Next: Monday 8:00 AM" : "Auto-send off"}
+            {settings.enabled
+              ? settings.sendUntil
+                ? `Auto-send on · Until ${new Date(settings.sendUntil + "T00:00:00+08:00").toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}`
+                : "Auto-send on · No end date"
+              : "Auto-send off"}
           </span>
         </div>
+
+        {settings.enabled && (
+          <div className="flex items-center gap-3">
+            <label className="text-sm text-gray-600 whitespace-nowrap">Send until:</label>
+            <input
+              type="date"
+              value={settings.sendUntil ?? ""}
+              onChange={(e) => handleSendUntilChange(e.target.value)}
+              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+            {settings.sendUntil && (
+              <button
+                onClick={() => handleSendUntilChange("")}
+                className="text-xs text-gray-400 hover:text-red-500"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="text-sm text-gray-500">
           Last sent: <span className="font-medium text-gray-700">{fmtDate(settings.lastSentAt)}</span>

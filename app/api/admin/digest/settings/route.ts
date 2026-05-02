@@ -23,8 +23,9 @@ export async function GET(req: NextRequest) {
 
   const enabled    = getSetting("email_digest_enabled") === "true";
   const lastSentAt = getSetting("email_digest_last_sent_at") || null;
+  const sendUntil  = getSetting("email_digest_send_until") || null;
 
-  return NextResponse.json({ enabled, lastSentAt });
+  return NextResponse.json({ enabled, lastSentAt, sendUntil });
 }
 
 export async function PUT(req: NextRequest) {
@@ -33,10 +34,19 @@ export async function PUT(req: NextRequest) {
   if (!user || user.role !== "super_admin")
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
-  const { enabled } = await req.json() as { enabled: boolean };
-  if (typeof enabled !== "boolean")
-    return NextResponse.json({ error: "enabled must be a boolean." }, { status: 400 });
+  const body = await req.json() as { enabled?: boolean; sendUntil?: string | null };
 
-  setSetting("email_digest_enabled", enabled ? "true" : "false");
-  return NextResponse.json({ enabled });
+  if (body.enabled !== undefined) {
+    if (typeof body.enabled !== "boolean")
+      return NextResponse.json({ error: "enabled must be a boolean." }, { status: 400 });
+    setSetting("email_digest_enabled", body.enabled ? "true" : "false");
+  }
+
+  if ("sendUntil" in body) {
+    setSetting("email_digest_send_until", body.sendUntil ?? "");
+  }
+
+  const enabled   = getSetting("email_digest_enabled") === "true";
+  const sendUntil = getSetting("email_digest_send_until") || null;
+  return NextResponse.json({ enabled, sendUntil });
 }

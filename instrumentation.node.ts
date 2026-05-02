@@ -151,6 +151,16 @@ function scheduleWeeklyDigest(dbPath: string) {
       console.log("[digest] Auto-send is off — skipping scheduled digest.");
       return;
     }
+    const sendUntil = getRawSetting("email_digest_send_until");
+    if (sendUntil) {
+      const phtNow = new Date(Date.now() + 8 * 3_600_000);
+      const phtToday = phtNow.toISOString().slice(0, 10);
+      if (phtToday > sendUntil) {
+        console.log(`[digest] Past send-until date (${sendUntil}) — disabling auto-send.`);
+        setRawSetting("email_digest_enabled", "false");
+        return;
+      }
+    }
     try {
       const { sendWeeklyDigest, getWeekBounds } = await import("@/lib/digest");
       const { weekStart, weekEnd } = getWeekBounds();
