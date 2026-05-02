@@ -7,6 +7,7 @@ import {
   statusColor, statusTextClass, daysToDeadline,
   fmtArea, fmtAmount, fmtCount, fmtAreaShort, fmtAmountShort,
 } from "@/lib/gauge-utils";
+import { ProvinceOverviewModal } from "./ProvinceOverviewModal";
 
 /* ─── Types ─── */
 
@@ -423,9 +424,10 @@ export default function DashboardProgress({
   publicToken?: string;
   targetDate?: string;
 }) {
-  const [response, setResponse] = useState<ProgressResponse | null>(null);
-  const [loading, setLoading]   = useState(true);
-  const [sub, setSub]           = useState<EncSubfilter>("cocrom");
+  const [response, setResponse]     = useState<ProgressResponse | null>(null);
+  const [loading, setLoading]       = useState(true);
+  const [sub, setSub]               = useState<EncSubfilter>("cocrom");
+  const [showOverview, setShowOverview] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -518,6 +520,23 @@ export default function DashboardProgress({
               </button>
             );
           })}
+          <button
+            onClick={() => setShowOverview(true)}
+            title="View all provinces"
+            className="ml-1 p-1.5 rounded-md border border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <rect x="1" y="1" width="5" height="5" rx="1"/>
+              <rect x="7" y="1" width="5" height="5" rx="1"/>
+              <rect x="13" y="1" width="2" height="5" rx="1"/>
+              <rect x="1" y="7" width="5" height="5" rx="1"/>
+              <rect x="7" y="7" width="5" height="5" rx="1"/>
+              <rect x="13" y="7" width="2" height="5" rx="1"/>
+              <rect x="1" y="13" width="5" height="2" rx="1"/>
+              <rect x="7" y="13" width="5" height="2" rx="1"/>
+              <rect x="13" y="13" width="2" height="2" rx="1"/>
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -540,6 +559,14 @@ export default function DashboardProgress({
           </>
         )}
       </div>
+
+      <ProvinceOverviewModal
+        open={showOverview}
+        onClose={() => setShowOverview(false)}
+        activeTab={sub}
+        targetDate={targetDate}
+        publicToken={publicToken}
+      />
     </div>
   );
 }
