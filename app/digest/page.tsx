@@ -17,11 +17,13 @@ interface SendResult {
 }
 
 const ROLE_DROPDOWN = [
-  { label: "ARDO",     level: "regional",   display: undefined },
-  { label: "CARPO",    level: "regional",   display: "CARPO (Regional)" },
-  { label: "CARPO",    level: "provincial", display: "CARPO (Provincial)" },
-  { label: "PARPO II", level: "provincial", display: undefined },
-] as const;
+  { label: "ARDO",       level: "regional"   as const, display: "ARDO" },
+  { label: "CARPO",      level: "regional"   as const, display: "CARPO (Regional)" },
+  { label: "CARPO",      level: "provincial" as const, display: "CARPO (Provincial)" },
+  { label: "PARPO II",   level: "provincial" as const, display: "PARPO II" },
+  { label: "__others__", level: "regional"   as const, display: "Others — specify below" },
+];
+const OTHERS_IDX = ROLE_DROPDOWN.length - 1;
 
 const PROVINCE_OPTIONS = [
   "ALBAY",
@@ -53,7 +55,7 @@ export default function DigestPage() {
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [editingId,  setEditingId]  = useState<number | null>(null);
-  const [editForm,   setEditForm]   = useState({ name: "", nickname: "", email: "", roleIdx: 0, province: PROVINCE_OPTIONS[0] });
+  const [editForm,   setEditForm]   = useState({ name: "", nickname: "", email: "", roleIdx: 0, province: PROVINCE_OPTIONS[0], customRole: "", customLevel: "regional" as "regional" | "provincial" });
   const [editSaving, setEditSaving] = useState(false);
   const [editError,  setEditError]  = useState("");
 
@@ -64,11 +66,14 @@ export default function DigestPage() {
   const [addEmail, setAddEmail]       = useState("");
   const [addRoleIdx, setAddRoleIdx]   = useState(0);
   const [addProvince, setAddProvince] = useState(PROVINCE_OPTIONS[0]);
+  const [addCustomRole, setAddCustomRole] = useState("");
+  const [addCustomLevel, setAddCustomLevel] = useState<"regional" | "provincial">("regional");
   const [addSaving, setAddSaving]     = useState(false);
   const [addError, setAddError]       = useState("");
 
-  const selectedRoleOption = ROLE_DROPDOWN[addRoleIdx] ?? ROLE_DROPDOWN[0];
-  const needsProvince      = selectedRoleOption.level === "provincial";
+  const isAddOthers    = addRoleIdx === OTHERS_IDX;
+  const addEffectLevel = isAddOthers ? addCustomLevel : (ROLE_DROPDOWN[addRoleIdx]?.level ?? "regional");
+  const needsProvince  = addEffectLevel === "provincial";
 
   const loadSettings = useCallback(async () => {
     const res = await fetch("/api/admin/digest/settings");
@@ -140,14 +145,17 @@ export default function DigestPage() {
 
   function startEdit(r: DigestRecipient) {
     const roleIdx = ROLE_DROPDOWN.findIndex(
-      (opt) => opt.label === r.role && opt.level === r.level
+      (opt) => opt.label !== "__others__" && opt.label === r.role && opt.level === r.level
     );
+    const isOthers = roleIdx < 0;
     setEditForm({
-      name:     r.name,
-      nickname: r.nickname ?? "",
-      email:    r.email,
-      roleIdx:  roleIdx >= 0 ? roleIdx : 0,
-      province: r.province ?? PROVINCE_OPTIONS[0],
+      name:        r.name,
+      nickname:    r.nickname ?? "",
+      email:       r.email,
+      roleIdx:     isOthers ? OTHERS_IDX : roleIdx,
+      province:    r.province ?? PROVINCE_OPTIONS[0],
+      customRole:  isOthers ? r.role : "",
+      customLevel: isOthers ? (r.level as "regional" | "provincial") : "regional",
     });
     setEditError("");
     setEditingId(r.id);
@@ -156,7 +164,10 @@ export default function DigestPage() {
   async function handleSaveEdit(id: number) {
     setEditSaving(true);
     setEditError("");
-    const opt = ROLE_DROPDOWN[editForm.roleIdx] ?? ROLE_DROPDOWN[0];
+    const isOthers = editForm.roleIdx === OTHERS_IDX;
+    const role     = isOthers ? editForm.customRole.trim() : (ROLE_DROPDOWN[editForm.roleIdx]?.label ?? "");
+    const level    = isOthers ? editForm.customLevel : (ROLE_DROPDOWN[editForm.roleIdx]?.level ?? "regional");
+    if (!role) { setEditError("Please specify a role."); setEditSaving(false); return; }
     const res = await fetch(`/api/admin/digest/recipients/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -164,9 +175,9 @@ export default function DigestPage() {
         name:     editForm.name,
         nickname: editForm.nickname || null,
         email:    editForm.email,
-        role:     opt.label,
-        level:    opt.level,
-        province: opt.level === "provincial" ? editForm.province : null,
+        role,
+        level,
+        province: level === "provincial" ? editForm.province : null,
       }),
     });
     if (res.ok) {
@@ -182,7 +193,10 @@ export default function DigestPage() {
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setAddError("");
+    if (isAddOthers && !addCustomRole.trim()) { setAddError("Please specify a role."); return; }
     setAddSaving(true);
+    const role  = isAddOthers ? addCustomRole.trim() : (ROLE_DROPDOWN[addRoleIdx]?.label ?? "");
+    const level = addEffectLevel;
     const res = await fetch("/api/admin/digest/recipients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -190,13 +204,14 @@ export default function DigestPage() {
         name:     addName,
         nickname: addNickname || undefined,
         email:    addEmail,
-        role:     selectedRoleOption.label,
-        level:    selectedRoleOption.level,
+        role,
+        level,
         province: needsProvince ? addProvince : undefined,
       }),
     });
     if (res.ok) {
       setAddName(""); setAddNickname(""); setAddEmail(""); setAddRoleIdx(0);
+      setAddCustomRole(""); setAddCustomLevel("regional");
       setShowAddForm(false);
       await loadRecipients();
     } else {
@@ -378,6 +393,28 @@ export default function DigestPage() {
                   ))}
                 </select>
               </div>
+              {isAddOthers && (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Specify Role</label>
+                    <input
+                      required value={addCustomRole} onChange={(e) => setAddCustomRole(e.target.value)}
+                      placeholder="e.g. DAR Secretary"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Scope</label>
+                    <select
+                      value={addCustomLevel} onChange={(e) => setAddCustomLevel(e.target.value as "regional" | "provincial")}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600"
+                    >
+                      <option value="regional">Regional</option>
+                      <option value="provincial">Provincial</option>
+                    </select>
+                  </div>
+                </>
+              )}
               {needsProvince && (
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Province</label>
@@ -459,9 +496,36 @@ export default function DigestPage() {
                             <option key={i} value={i}>{opt.display ?? opt.label}</option>
                           ))}
                         </select>
+                        {editForm.roleIdx === OTHERS_IDX && (
+                          <input
+                            value={editForm.customRole}
+                            onChange={(e) => setEditForm((f) => ({ ...f, customRole: e.target.value }))}
+                            placeholder="Specify role"
+                            className="mt-1 w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                          />
+                        )}
                       </td>
                       <td className="py-2 px-3">
-                        {(ROLE_DROPDOWN[editForm.roleIdx]?.level === "provincial") ? (
+                        {editForm.roleIdx === OTHERS_IDX ? (
+                          <div className="space-y-1">
+                            <select
+                              value={editForm.customLevel}
+                              onChange={(e) => setEditForm((f) => ({ ...f, customLevel: e.target.value as "regional" | "provincial" }))}
+                              className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                            >
+                              <option value="regional">Regional</option>
+                              <option value="provincial">Provincial</option>
+                            </select>
+                            {editForm.customLevel === "provincial" && (
+                              <select
+                                value={editForm.province} onChange={(e) => setEditForm((f) => ({ ...f, province: e.target.value }))}
+                                className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                              >
+                                {PROVINCE_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+                              </select>
+                            )}
+                          </div>
+                        ) : (ROLE_DROPDOWN[editForm.roleIdx]?.level === "provincial") ? (
                           <select
                             value={editForm.province} onChange={(e) => setEditForm((f) => ({ ...f, province: e.target.value }))}
                             className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
