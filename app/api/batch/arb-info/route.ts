@@ -62,9 +62,8 @@ function parseLines(raw: string, type: ArbInfoType): {
     }
 
     if (type === "allocated_condoned_amount") {
-      const n = parseFloat(value.replace(/[₱,\s]/g, ""));
-      if (isNaN(n) || n <= 0) {
-        invalid.push({ line, reason: `"${value}" is not a valid positive number` });
+      if (!value.trim()) {
+        invalid.push({ line, reason: "Allocated condoned amount cannot be empty" });
         continue;
       }
     }
