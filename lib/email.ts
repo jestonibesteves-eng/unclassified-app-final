@@ -250,14 +250,16 @@ export async function sendEmail(
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const transport = createTransport();
-    await transport.sendMail({
+    const info = await transport.sendMail({
       from: process.env.SMTP_FROM ?? process.env.SMTP_USER,
       to,
       subject,
       html,
     });
+    console.log(`[email] Sent to ${to} — messageId: ${info.messageId} response: ${info.response}`);
     return { ok: true };
   } catch (err) {
+    console.error(`[email] Failed to send to ${to}:`, err);
     return { ok: false, error: String(err) };
   }
 }
