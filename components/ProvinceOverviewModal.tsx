@@ -24,30 +24,14 @@ const PROVINCE_SHORT: Record<string, string> = {
   "SORSOGON":           "SORSOGON",
 };
 
-type MetricKey = "validation" | "encoding" | "distribution";
-
-const METRIC_ROWS: Record<EncSubfilter, { key: MetricKey; label: string; unit: string }[]> = {
-  cocrom: [
-    { key: "validation",   label: "VALIDATION",   unit: "LH" },
-    { key: "encoding",     label: "ENCODING",     unit: "ARB" },
-    { key: "distribution", label: "DISTRIBUTION", unit: "ARB" },
-  ],
-  arb: [
-    { key: "validation",   label: "VALIDATION",   unit: "LH" },
-    { key: "encoding",     label: "ENCODING",     unit: "ARB" },
-    { key: "distribution", label: "DISTRIBUTION", unit: "ARB" },
-  ],
-  area: [
-    { key: "validation",   label: "VALIDATION",   unit: "LH" },
-    { key: "encoding",     label: "ENCODING",     unit: "ARB" },
-    { key: "distribution", label: "DISTRIBUTION", unit: "ARB" },
-  ],
-  amount: [
-    { key: "validation",   label: "VALIDATION",   unit: "LH" },
-    { key: "encoding",     label: "ENCODING",     unit: "ARB" },
-    { key: "distribution", label: "DISTRIBUTION", unit: "ARB" },
-  ],
+const EMPTY_ENTRY: BulkEntry = {
+  committed_cocroms: 0,
+  validation:   { total: 0, completed: 0, area_total: 0, area_completed: 0, amount_total: 0, amount_completed: 0 },
+  encoding:     { cocrom_total: 0, cocrom_completed: 0, arb_total: 0, arb_completed: 0, area_total: 0, area_completed: 0, amount_total: 0, amount_completed: 0, lh_validated: 0, lh_not_validated: 0 },
+  distribution: { cocrom_total: 0, cocrom_completed: 0, arb_total: 0, arb_completed: 0, area_total: 0, area_completed: 0, amount_total: 0, amount_completed: 0, lh_validated: 0, lh_not_validated: 0 },
 };
+
+type MetricKey = "validation" | "encoding" | "distribution";
 
 function resolveMetric(entry: BulkEntry, metricKey: MetricKey, sub: EncSubfilter) {
   const enc  = entry.encoding;
@@ -69,8 +53,8 @@ function resolveMetric(entry: BulkEntry, metricKey: MetricKey, sub: EncSubfilter
 
   const pct   = total > 0 ? (completed / total) * 100 : 0;
   const color = statusColor(pct);
-
   const fmtVal = (n: number) => sub === "area" ? fmtAreaShort(n) : sub === "amount" ? fmtAmountShort(n) : n.toLocaleString();
+
   const verb   = metricKey === "validation" ? "validated" : metricKey === "encoding" ? "encoded" : "distributed";
   const unitMap: Record<EncSubfilter, string> = {
     cocrom: metricKey === "validation" ? "LHs" : "COCROMs",
@@ -84,7 +68,6 @@ function resolveMetric(entry: BulkEntry, metricKey: MetricKey, sub: EncSubfilter
     area:   metricKey === "validation" ? "ha. total" : "ha. encoded",
     amount: metricKey === "validation" ? "total condoned" : "total",
   };
-
   const subA = sub === "amount" ? `${fmtAmountShort(completed)} ${verb}`
              : sub === "area"   ? `${fmtAreaShort(completed)} ${verb}`
              : `${completed.toLocaleString()} ${unitMap[sub]} ${verb}`;
@@ -95,93 +78,165 @@ function resolveMetric(entry: BulkEntry, metricKey: MetricKey, sub: EncSubfilter
   return { total, completed, pct, color, subA, subB, fmtVal };
 }
 
-/* ── Compact cell ── */
-function OverviewCell({
-  entry, metricKey, sub, targetDate, isRegion = false,
+/* ── Full gauge card for Region V ── */
+function RegionGaugeCard({
+  entry, metricKey, sub, targetDate,
 }: {
   entry:      BulkEntry;
   metricKey:  MetricKey;
   sub:        EncSubfilter;
   targetDate: string;
-  isRegion?:  boolean;
 }) {
   const deadline  = new Date(`${targetDate}T00:00:00+08:00`);
   const daysLeft  = Math.max(0, Math.floor((deadline.getTime() - Date.now()) / 86400000));
   const weeksLeft = Math.ceil(daysLeft / 7);
 
-  const { total, completed, pct, color, subA, subB, fmtVal } = resolveMetric(entry, metricKey, sub);
-  const remaining = total - completed;
+  const m         = resolveMetric(entry, metricKey, sub);
+  const remaining = m.total - m.completed;
   const pace      = weeksLeft > 0 && remaining > 0 ? Math.ceil(remaining / weeksLeft) : 0;
-  const label     = statusLabel(pct);
+  const label     = statusLabel(m.pct);
 
-  const bgClass = isRegion ? "bg-green-50 border border-green-200" : "bg-white border border-gray-100";
+  const available  = entry.distribution.cocrom_total - entry.distribution.cocrom_completed;
+  const committed  = entry.committed_cocroms;
+  const fulfillPct = committed > 0 ? (available / committed) * 100 : 0;
 
   return (
-    <div className={`rounded-lg ${bgClass} p-2 flex flex-col gap-1 min-w-0`}>
+    <div className="bg-green-50 border border-green-200 rounded-lg p-2 flex flex-col gap-1 min-w-0">
       {/* Status badge */}
       <div className="flex justify-end">
         <span
           className="text-[7px] font-bold px-1.5 py-0.5 rounded-full"
-          style={{ background: `${color}22`, color }}
+          style={{ background: `${m.color}22`, color: m.color }}
         >
           {label}
         </span>
       </div>
-
-      {/* Count + percentage */}
+      {/* Count + pct */}
       <div className="flex items-start justify-between gap-1">
         <div>
-          <p className="text-[13px] font-bold leading-none tabular-nums" style={{ color }}>
-            {fmtVal(completed)}
+          <p className="text-[13px] font-bold leading-none tabular-nums" style={{ color: m.color }}>
+            {m.fmtVal(m.completed)}
           </p>
-          <p className="text-[8px] text-gray-400 mt-0.5">of {fmtVal(total)}</p>
+          <p className="text-[8px] text-gray-400 mt-0.5">of {m.fmtVal(m.total)}</p>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-[11px] font-bold leading-none tabular-nums" style={{ color }}>
-            {total === 0 ? "—" : `${pct.toFixed(1)}%`}
+          <p className="text-[11px] font-bold leading-none tabular-nums" style={{ color: m.color }}>
+            {m.total === 0 ? "—" : `${m.pct.toFixed(1)}%`}
           </p>
-          <p className="text-[7px] text-gray-400 mt-0.5">{fmtVal(remaining)} left</p>
+          <p className="text-[7px] text-gray-400 mt-0.5">{m.fmtVal(remaining)} left</p>
         </div>
       </div>
-
       {/* Gauge */}
       <div className="w-full">
         <SemiGauge
-          value={completed} total={total} color={color}
-          subA={subA} subB={subB} totalLabel={fmtVal(total)}
+          value={m.completed} total={m.total} color={m.color}
+          subA={m.subA} subB={m.subB} totalLabel={m.fmtVal(m.total)}
         />
       </div>
-
       {/* Need/wk */}
       <p className="text-[7px] text-gray-400 text-center -mt-1">
-        {total === 0 ? "No data" : pace === 0
+        {m.total === 0 ? "No data" : pace === 0
           ? <span className="text-emerald-600 font-semibold">✓ Target reached</span>
-          : <>Need <span className="font-semibold text-gray-600">{fmtVal(pace)}/wk</span></>
+          : <>Need <span className="font-semibold text-gray-600">{m.fmtVal(pace)}/wk</span></>
         }
       </p>
+      {/* Commitment strip — Distribution / COCROM only */}
+      {metricKey === "distribution" && sub === "cocrom" && (
+        <div className="rounded border-l-2 border-sky-400 bg-sky-50 px-2 py-1.5 mt-1">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-[6.5px] font-bold uppercase tracking-wide text-sky-500">Commitment Fulfillment</span>
+            <span className="text-[9px] font-bold text-sky-600 tabular-nums">
+              {committed > 0 ? `${fulfillPct.toFixed(1)}%` : "—"}
+            </span>
+          </div>
+          {committed > 0 ? (
+            <>
+              <div className="h-1.5 rounded-full bg-sky-100 overflow-hidden mb-1">
+                <div className="h-full rounded-full bg-sky-400" style={{ width: `${Math.min(fulfillPct, 100)}%` }} />
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[6px] text-sky-400">{available.toLocaleString()} avail.</span>
+                <span className="text-[6px] text-sky-400">{committed.toLocaleString()} committed</span>
+              </div>
+            </>
+          ) : (
+            <p className="text-[7px] text-sky-400 italic">No target set</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
-      {/* Commitment strip — Distribution only, COCROM tab only */}
-      {metricKey === "distribution" && sub === "cocrom" && (() => {
-        const available  = (entry.distribution.cocrom_total) - (entry.distribution.cocrom_completed);
-        const committed  = entry.committed_cocroms;
-        const fulfillPct = committed > 0 ? (available / committed) * 100 : 0;
-        return (
-          <div className="rounded border-l-2 border-sky-400 bg-sky-50 px-2 py-1.5 mt-1">
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-[6.5px] font-bold uppercase tracking-wide text-sky-500">
-                Commitment Fulfillment
-              </span>
-              <span className="text-[9px] font-bold text-sky-600 tabular-nums">
+/* ── Compact table cell for each province/metric ── */
+function ProvinceMetricCell({
+  entry, metricKey, sub, weeksLeft, showCommitment,
+}: {
+  entry:           BulkEntry;
+  metricKey:       MetricKey;
+  sub:             EncSubfilter;
+  weeksLeft:       number;
+  showCommitment?: boolean;
+}) {
+  const m         = resolveMetric(entry, metricKey, sub);
+  const remaining = m.total - m.completed;
+  const pace      = weeksLeft > 0 && remaining > 0 ? Math.ceil(remaining / weeksLeft) : 0;
+
+  const available  = entry.distribution.cocrom_total - entry.distribution.cocrom_completed;
+  const committed  = entry.committed_cocroms;
+  const fulfillPct = committed > 0 ? (available / committed) * 100 : 0;
+
+  if (m.total === 0) {
+    return (
+      <td className="py-3 px-3 border-l border-gray-100 align-top">
+        <span className="text-[9px] text-gray-300 italic">No data</span>
+      </td>
+    );
+  }
+
+  return (
+    <td className="py-3 px-3 border-l border-gray-100 align-top">
+      <div className="flex flex-col gap-1">
+        {/* Count + pct row */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[12px] font-bold tabular-nums leading-none" style={{ color: m.color }}>
+            {m.fmtVal(m.completed)}
+          </span>
+          <span className="text-[9px] text-gray-400">/ {m.fmtVal(m.total)}</span>
+          <span
+            className="text-[7.5px] font-bold px-1.5 py-0.5 rounded-full ml-auto whitespace-nowrap"
+            style={{ background: `${m.color}22`, color: m.color }}
+          >
+            {m.pct.toFixed(1)}%
+          </span>
+        </div>
+        {/* Progress bar */}
+        <div className="h-1 rounded-full bg-gray-100 overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all"
+            style={{ width: `${Math.min(m.pct, 100)}%`, background: m.color }}
+          />
+        </div>
+        {/* Need/wk */}
+        <p className="text-[8px] text-gray-400">
+          {pace === 0
+            ? <span className="text-emerald-600 font-semibold">✓ Target reached</span>
+            : <>Need <span className="font-medium text-gray-600">{m.fmtVal(pace)}/wk</span></>
+          }
+        </p>
+        {/* Commitment strip */}
+        {showCommitment && (
+          <div className="mt-0.5 rounded border-l-2 border-sky-400 bg-sky-50 px-2 py-1">
+            <div className="flex justify-between items-center mb-0.5">
+              <span className="text-[6.5px] font-bold text-sky-500 uppercase tracking-wide">Commitment</span>
+              <span className="text-[8.5px] font-bold text-sky-600">
                 {committed > 0 ? `${fulfillPct.toFixed(1)}%` : "—"}
               </span>
             </div>
             {committed > 0 ? (
               <>
-                <div className="h-1.5 rounded-full bg-sky-100 overflow-hidden mb-1">
-                  <div
-                    className="h-full rounded-full bg-sky-400"
-                    style={{ width: `${Math.min(fulfillPct, 100).toFixed(1)}%` }}
-                  />
+                <div className="h-1 rounded-full bg-sky-100 overflow-hidden mb-0.5">
+                  <div className="h-full rounded-full bg-sky-400" style={{ width: `${Math.min(fulfillPct, 100)}%` }} />
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[6px] text-sky-400">{available.toLocaleString()} avail.</span>
@@ -192,21 +247,36 @@ function OverviewCell({
               <p className="text-[7px] text-sky-400 italic">No target set</p>
             )}
           </div>
-        );
-      })()}
+        )}
+      </div>
+    </td>
+  );
+}
+
+/* ── Skeletons ── */
+function SkeletonRegionCard() {
+  return (
+    <div className="bg-green-50 border border-green-200 rounded-lg p-2 animate-pulse">
+      <div className="h-3 bg-green-100 rounded w-1/2 mb-2" />
+      <div className="h-5 bg-green-100 rounded w-2/3 mb-1" />
+      <div className="h-20 bg-green-100 rounded-full mx-auto w-full mb-1" style={{ borderRadius: "50% 50% 0 0 / 100% 100% 0 0" }} />
+      <div className="h-2 bg-green-100 rounded w-1/2 mx-auto" />
     </div>
   );
 }
 
-/* ── Skeleton cell ── */
-function SkeletonCell() {
+function SkeletonTableRow() {
   return (
-    <div className="rounded-lg bg-gray-50 border border-gray-100 p-2 animate-pulse">
-      <div className="h-3 bg-gray-200 rounded w-1/2 mb-2" />
-      <div className="h-5 bg-gray-200 rounded w-2/3 mb-1" />
-      <div className="h-12 bg-gray-100 rounded-full mx-auto w-full mb-1" style={{ borderRadius: "50% 50% 0 0 / 100% 100% 0 0" }} />
-      <div className="h-2 bg-gray-200 rounded w-1/2 mx-auto" />
-    </div>
+    <tr className="border-b border-gray-100 animate-pulse">
+      <td className="py-3 px-3"><div className="h-3 bg-gray-200 rounded w-20" /></td>
+      {[0, 1, 2].map((i) => (
+        <td key={i} className="py-3 px-3 border-l border-gray-100">
+          <div className="h-3 bg-gray-200 rounded w-24 mb-1.5" />
+          <div className="h-1 bg-gray-100 rounded w-full mb-1.5" />
+          <div className="h-2 bg-gray-100 rounded w-16" />
+        </td>
+      ))}
+    </tr>
   );
 }
 
@@ -226,7 +296,6 @@ export function ProvinceOverviewModal({
   const captureRef            = useRef<HTMLDivElement>(null);
   const [exportError, setExportError] = useState<string | null>(null);
 
-  // Escape to close
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -234,7 +303,6 @@ export function ProvinceOverviewModal({
     return () => document.removeEventListener("keydown", handler);
   }, [open, onClose]);
 
-  // Fetch on open
   useEffect(() => {
     if (!open) return;
     if (data) return;
@@ -269,16 +337,22 @@ export function ProvinceOverviewModal({
 
   if (!open) return null;
 
-  const rows = METRIC_ROWS[activeTab];
-  const columns = ["REGION V", ...PROVINCES];
+  const deadline  = new Date(`${targetDate}T00:00:00+08:00`);
+  const daysLeft  = Math.max(0, Math.floor((deadline.getTime() - Date.now()) / 86400000));
+  const weeksLeft = Math.ceil(daysLeft / 7);
+
+  const STAGE_KEYS: MetricKey[] = ["validation", "encoding", "distribution"];
+  const STAGE_LABELS: Record<MetricKey, string> = {
+    validation: "Validation", encoding: "Encoding", distribution: "Distribution",
+  };
 
   const modal = (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[98vw] max-h-[96vh] overflow-hidden flex flex-col">
-        {/* Modal header */}
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col">
+        {/* Header */}
         <div className="bg-green-900 px-5 py-3 flex items-center justify-between rounded-t-2xl shrink-0">
           <div>
             <h2 className="text-[11px] font-bold text-green-300 uppercase tracking-[0.12em]">
@@ -296,7 +370,7 @@ export function ProvinceOverviewModal({
           </button>
         </div>
 
-        {/* Body — scrollable */}
+        {/* Body */}
         <div className="overflow-auto flex-1 p-4">
           {error ? (
             <div className="flex flex-col items-center justify-center gap-3 py-12">
@@ -310,75 +384,67 @@ export function ProvinceOverviewModal({
             </div>
           ) : (
             <div ref={captureRef}>
-              {/* Column headers row */}
-              <div
-                className="grid gap-2 mb-2"
-                style={{ gridTemplateColumns: `140px repeat(${columns.length}, minmax(0, 1fr))` }}
-              >
-                <div /> {/* row-label spacer */}
-                {columns.map((col) => (
-                  <div
-                    key={col}
-                    className={`text-center text-[8px] font-bold uppercase tracking-wide py-1.5 px-1 rounded-md ${
-                      col === "REGION V"
-                        ? "bg-green-800 text-green-300"
-                        : "bg-gray-100 text-gray-500"
-                    }`}
-                  >
-                    {col === "REGION V" ? col : PROVINCE_SHORT[col] ?? col}
-                  </div>
-                ))}
-              </div>
-
-              {/* Metric rows */}
-              {rows.map(({ key, label, unit }) => (
-                <div
-                  key={key}
-                  className="grid gap-2 mb-3"
-                  style={{ gridTemplateColumns: `140px repeat(${columns.length}, minmax(0, 1fr))` }}
-                >
-                  {/* Row label */}
-                  <div className="flex flex-col justify-center pr-2">
-                    <span className="text-[9px] font-bold text-gray-600 uppercase tracking-wide">{label}</span>
-                    <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded bg-green-100 text-green-700 uppercase tracking-wide w-fit mt-0.5">
-                      {unit}
-                    </span>
-                  </div>
-
-                  {/* Region V cell */}
-                  {loading || !data ? (
-                    <SkeletonCell />
-                  ) : (
-                    <OverviewCell
-                      entry={data.region}
-                      metricKey={key}
-                      sub={activeTab}
-                      targetDate={targetDate}
-                      isRegion
-                    />
-                  )}
-
-                  {/* Province cells */}
-                  {PROVINCES.map((prov) =>
-                    loading || !data ? (
-                      <SkeletonCell key={prov} />
+              {/* ── Region V gauges ── */}
+              <p className="text-[8px] font-bold text-green-700 uppercase tracking-wider mb-2">Region V Total</p>
+              <div className="grid grid-cols-3 gap-3 mb-5">
+                {STAGE_KEYS.map((key) => (
+                  <div key={key}>
+                    <p className="text-[7px] font-bold text-gray-400 uppercase tracking-wider text-center mb-1">
+                      {STAGE_LABELS[key]}
+                    </p>
+                    {loading || !data ? (
+                      <SkeletonRegionCard />
                     ) : (
-                      <OverviewCell
-                        key={prov}
-                        entry={data.provinces[prov] ?? {
-                          committed_cocroms: 0,
-                          validation: { total: 0, completed: 0, area_total: 0, area_completed: 0, amount_total: 0, amount_completed: 0 },
-                          encoding: { cocrom_total: 0, cocrom_completed: 0, arb_total: 0, arb_completed: 0, area_total: 0, area_completed: 0, amount_total: 0, amount_completed: 0, lh_validated: 0, lh_not_validated: 0 },
-                          distribution: { cocrom_total: 0, cocrom_completed: 0, arb_total: 0, arb_completed: 0, area_total: 0, area_completed: 0, amount_total: 0, amount_completed: 0, lh_validated: 0, lh_not_validated: 0 },
-                        }}
+                      <RegionGaugeCard
+                        entry={data.region}
                         metricKey={key}
                         sub={activeTab}
                         targetDate={targetDate}
                       />
-                    )
-                  )}
-                </div>
-              ))}
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* ── Province table ── */}
+              <p className="text-[8px] font-bold text-gray-500 uppercase tracking-wider mb-2">Provincial Breakdown</p>
+              <div className="rounded-lg border border-gray-200 overflow-hidden">
+                <table className="w-full border-collapse text-left">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="py-2 px-3 text-[8px] font-bold text-gray-500 uppercase tracking-wide whitespace-nowrap">
+                        Province
+                      </th>
+                      {STAGE_KEYS.map((key) => (
+                        <th
+                          key={key}
+                          className="py-2 px-3 text-[8px] font-bold text-gray-500 uppercase tracking-wide border-l border-gray-100"
+                        >
+                          {STAGE_LABELS[key]}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {PROVINCES.map((prov) => {
+                      if (loading || !data) return <SkeletonTableRow key={prov} />;
+                      const entry = data.provinces[prov] ?? EMPTY_ENTRY;
+                      return (
+                        <tr key={prov} className="border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
+                          <td className="py-3 px-3 align-top">
+                            <span className="text-[10px] font-semibold text-gray-700 whitespace-nowrap">
+                              {PROVINCE_SHORT[prov] ?? prov}
+                            </span>
+                          </td>
+                          <ProvinceMetricCell entry={entry} metricKey="validation"   sub={activeTab} weeksLeft={weeksLeft} />
+                          <ProvinceMetricCell entry={entry} metricKey="encoding"     sub={activeTab} weeksLeft={weeksLeft} />
+                          <ProvinceMetricCell entry={entry} metricKey="distribution" sub={activeTab} weeksLeft={weeksLeft} showCommitment={activeTab === "cocrom"} />
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
