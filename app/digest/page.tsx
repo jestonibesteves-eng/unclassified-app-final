@@ -11,7 +11,8 @@ interface Settings {
 interface SendResult {
   sent: number;
   failed: number;
-  recipients: string[];
+  recipients?: string[];
+  error?: string;
 }
 
 const ROLE_DROPDOWN = [
@@ -94,7 +95,9 @@ export default function DigestPage() {
     setSendResult(null);
     try {
       const res  = await fetch("/api/admin/digest/send", { method: "POST" });
-      const data = await res.json();
+      const text = await res.text();
+      let data: SendResult = { sent: 0, failed: 0 };
+      try { data = JSON.parse(text); } catch { data = { sent: 0, failed: 0, error: `Server error (${res.status})` }; }
       setSendResult(data);
       await loadSettings();
     } finally {
@@ -225,14 +228,18 @@ export default function DigestPage() {
 
         {sendResult && (
           <div className={`rounded-lg px-4 py-3 text-sm ${
-            sendResult.failed === 0
-              ? "bg-green-50 text-green-800 border border-green-200"
-              : "bg-amber-50 text-amber-800 border border-amber-200"
+            sendResult.error
+              ? "bg-red-50 text-red-800 border border-red-200"
+              : sendResult.failed === 0
+                ? "bg-green-50 text-green-800 border border-green-200"
+                : "bg-amber-50 text-amber-800 border border-amber-200"
           }`}>
-            {sendResult.sent > 0
-              ? `✓ Sent to ${sendResult.sent} recipient${sendResult.sent !== 1 ? "s" : ""}.`
-              : "No emails sent."}
-            {sendResult.failed > 0 && ` ${sendResult.failed} failed — check server logs.`}
+            {sendResult.error
+              ? `Error: ${sendResult.error}`
+              : sendResult.sent > 0
+                ? `✓ Sent to ${sendResult.sent} recipient${sendResult.sent !== 1 ? "s" : ""}.`
+                : "No emails sent."}
+            {!sendResult.error && sendResult.failed > 0 && ` ${sendResult.failed} failed — check server logs.`}
           </div>
         )}
       </div>
