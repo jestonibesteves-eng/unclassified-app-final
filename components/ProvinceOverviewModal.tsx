@@ -295,6 +295,7 @@ export function ProvinceOverviewModal({
   const [error, setError]     = useState<string | null>(null);
   const captureRef            = useRef<HTMLDivElement>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [exportMode, setExportMode]   = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -324,13 +325,21 @@ export function ProvinceOverviewModal({
     setExportError(null);
     try {
       const { toPng } = await import("html-to-image");
-      const url = await toPng(captureRef.current, { pixelRatio: 2 });
+      // Show export header + solid background, wait for DOM paint
+      setExportMode(true);
+      await new Promise<void>((resolve) => { requestAnimationFrame(() => requestAnimationFrame(() => resolve())); });
+      const url = await toPng(captureRef.current, {
+        pixelRatio: 2,
+        backgroundColor: "#ffffff",
+      });
+      setExportMode(false);
       const a = document.createElement("a");
       a.href = url;
       a.download = `provincial-overview-${new Date().toISOString().slice(0, 10)}.png`;
       a.click();
     } catch (err) {
       console.error("[ProvinceOverviewModal] export", err);
+      setExportMode(false);
       setExportError("Export failed. Please try again.");
     }
   }
@@ -383,7 +392,63 @@ export function ProvinceOverviewModal({
               </button>
             </div>
           ) : (
-            <div ref={captureRef}>
+            <div
+              ref={captureRef}
+              style={{
+                background: "#ffffff",
+                padding: exportMode ? "20px" : undefined,
+                borderRadius: exportMode ? "8px" : undefined,
+              }}
+            >
+              {/* ── Export header — only rendered during image capture ── */}
+              {exportMode && (
+                <div style={{
+                  background: "#14532d",
+                  borderRadius: "10px",
+                  padding: "16px 20px",
+                  marginBottom: "20px",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                }}>
+                  <div>
+                    <p style={{ fontSize: "7px", fontWeight: 700, color: "#4ade80", textTransform: "uppercase", letterSpacing: "0.22em", marginBottom: "6px" }}>
+                      Department of Agrarian Reform · Region V
+                    </p>
+                    <h1 style={{ fontSize: "20px", fontWeight: 800, color: "#ffffff", textTransform: "uppercase", letterSpacing: "0.03em", lineHeight: 1.15, marginBottom: "1px" }}>
+                      Accomplishment Overview
+                    </h1>
+                    <h2 style={{ fontSize: "20px", fontWeight: 800, color: "#86efac", textTransform: "uppercase", letterSpacing: "0.03em", lineHeight: 1.15, marginBottom: "12px" }}>
+                      by Province
+                    </h2>
+                    <span style={{
+                      display: "inline-block",
+                      background: "rgba(74,222,128,0.15)",
+                      border: "1px solid rgba(74,222,128,0.3)",
+                      borderRadius: "4px",
+                      padding: "3px 8px",
+                      fontSize: "8px",
+                      fontWeight: 700,
+                      color: "#86efac",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.15em",
+                    }}>
+                      {activeTab.toUpperCase()} Metrics
+                    </span>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <p style={{ fontSize: "7px", color: "#4ade80", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "2px" }}>As of</p>
+                    <p style={{ fontSize: "11px", fontWeight: 600, color: "#bbf7d0", marginBottom: "12px" }}>
+                      {new Date().toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" })}
+                    </p>
+                    <p style={{ fontSize: "7px", color: "#4ade80", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "2px" }}>Target Deadline</p>
+                    <p style={{ fontSize: "11px", fontWeight: 600, color: "#bbf7d0" }}>
+                      {new Date(`${targetDate}T00:00:00`).toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" })}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* ── Region V gauges ── */}
               <p className="text-[8px] font-bold text-green-700 uppercase tracking-wider mb-2">Region V Total</p>
               <div className="grid grid-cols-3 gap-3 mb-5">
