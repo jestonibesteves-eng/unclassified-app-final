@@ -23,13 +23,13 @@ const ROLE_DROPDOWN = [
 ] as const;
 
 const PROVINCE_OPTIONS = [
-  "Albay",
-  "Camarines Norte",
-  "Camarines Sur I",
-  "Camarines Sur II",
-  "Catanduanes",
-  "Masbate",
-  "Sorsogon",
+  "ALBAY",
+  "CAMARINES NORTE",
+  "CAMARINES SUR - I",
+  "CAMARINES SUR - II",
+  "CATANDUANES",
+  "MASBATE",
+  "SORSOGON",
 ];
 
 function fmtDate(iso: string | null): string {
