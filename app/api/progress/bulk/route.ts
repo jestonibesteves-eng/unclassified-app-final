@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { rawDb } from "@/lib/db";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
 
-const TOKEN_KEY = "public_dashboard_token";
+const TOKEN_KEY   = "public_dashboard_token";
+const CACHE_TTL   = 10_000; // 10 seconds
+
+type CacheEntry = { data: unknown; expiresAt: number };
+const g = globalThis as unknown as { _bulkCache?: Map<string, CacheEntry> };
+if (!g._bulkCache) g._bulkCache = new Map();
+const cache = g._bulkCache;
 
 // ── SQL helpers (same as /api/progress) ────────────────────────────────────
 const AREA_CLEAN   = `TRIM(REPLACE(COALESCE(a.area_allocated,''),',',''))`;
@@ -87,6 +93,13 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: "Regional access required." }, { status: 403 });
       }
       isAuthed = true;
+    }
+
+    // ── Cache check ───────────────────────────────────────────────────────
+    const cacheKey = publicToken ?? "__session__";
+    const cached   = cache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return NextResponse.json(cached.data);
     }
 
     // ── Build result map ──────────────────────────────────────────────────
@@ -335,10 +348,9 @@ export async function GET(req: NextRequest) {
     const provinces: Record<string, BulkEntry> = {};
     for (const p of PROVINCES) provinces[p] = result[p];
 
-    return NextResponse.json({
-      region: result["__REGION__"],
-      provinces,
-    } satisfies BulkProgressResponse);
+    const payload: BulkProgressResponse = { region: result["__REGION__"], provinces };
+    cache.set(cacheKey, { data: payload, expiresAt: Date.now() + CACHE_TTL });
+    return NextResponse.json(payload);
 
   } catch (err) {
     console.error("[/api/progress/bulk]", err);
