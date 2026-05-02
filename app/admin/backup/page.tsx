@@ -130,6 +130,8 @@ export default function BackupPage() {
   const [cancelling, setCancelling] = useState(false);
   const [recomputing, setRecomputing] = useState(false);
   const [recomputeResult, setRecomputeResult] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 15;
 
   const fetchBackups = useCallback(async () => {
     setLoading(true);
@@ -139,6 +141,7 @@ export default function BackupPage() {
       const data = await res.json();
       setBackups(data.backups);
       setPendingRestore(data.pendingRestore ?? null);
+      setPage(1);
     } catch {
       toast("Failed to load backups.", "error");
     } finally {
@@ -257,7 +260,7 @@ export default function BackupPage() {
   if (user && user.role !== "super_admin") return null;
 
   return (
-    <div className="p-4 md:p-6 space-y-5 max-w-4xl mx-auto">
+    <div className="p-4 md:p-6 space-y-5 max-w-6xl mx-auto">
       {/* Pending restore banner */}
       {pendingRestore && (
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3">
@@ -377,7 +380,7 @@ export default function BackupPage() {
                   </td>
                 </tr>
               ) : (
-                backups.map((b, i) => {
+                backups.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((b, i) => {
                   const isPending = pendingRestore?.filename === b.filename;
                   return (
                     <tr
@@ -388,7 +391,7 @@ export default function BackupPage() {
                           : i % 2 === 0 ? "bg-white" : "bg-gray-50/60"
                       }`}
                     >
-                      <td className="px-4 py-2.5 font-mono text-[11px] text-gray-700 truncate max-w-[200px]">
+                      <td className="px-4 py-2.5 font-mono text-[11px] text-gray-700 truncate max-w-[320px]">
                         {b.filename}
                         {isPending && (
                           <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700 uppercase tracking-wide">
@@ -494,8 +497,41 @@ export default function BackupPage() {
           </div>
         </div>
         {!loading && backups.length > 0 && (
-          <div className="px-4 py-2 border-t border-gray-100 text-[11px] text-gray-400">
-            {backups.length} backup{backups.length !== 1 ? "s" : ""} · sorted newest first
+          <div className="px-4 py-2.5 border-t border-gray-100 flex items-center justify-between gap-3">
+            <span className="text-[11px] text-gray-400">
+              {backups.length} backup{backups.length !== 1 ? "s" : ""} · sorted newest first
+            </span>
+            {Math.ceil(backups.length / PAGE_SIZE) > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-2.5 py-1 rounded border border-gray-200 text-[11px] text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  ‹ Prev
+                </button>
+                {Array.from({ length: Math.ceil(backups.length / PAGE_SIZE) }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`px-2.5 py-1 rounded border text-[11px] transition-colors ${
+                      p === page
+                        ? "bg-green-800 border-green-800 text-white font-semibold"
+                        : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setPage((p) => Math.min(Math.ceil(backups.length / PAGE_SIZE), p + 1))}
+                  disabled={page === Math.ceil(backups.length / PAGE_SIZE)}
+                  className="px-2.5 py-1 rounded border border-gray-200 text-[11px] text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next ›
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
