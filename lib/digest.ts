@@ -148,13 +148,15 @@ export async function getDigestData(
   const distRow = provFilter
     ? rawDb.prepare(`SELECT
         COUNT(CASE WHEN a.eligibility = 'Eligible' AND l.status != 'Not Eligible for Encoding'
-                        AND a.date_distributed IS NOT NULL AND a.date_distributed != '' THEN 1 END) as available
+                        AND a.date_encoded IS NOT NULL AND a.date_encoded != ''
+                        AND (a.date_distributed IS NULL OR a.date_distributed = '') THEN 1 END) as available
         FROM "Arb" a
         JOIN "Landholding" l ON a.seqno_darro = l.seqno_darro
         WHERE l.province_edited = ?`).get(provFilter) as { available: number }
     : rawDb.prepare(`SELECT
         COUNT(CASE WHEN a.eligibility = 'Eligible' AND l.status != 'Not Eligible for Encoding'
-                        AND a.date_distributed IS NOT NULL AND a.date_distributed != '' THEN 1 END) as available
+                        AND a.date_encoded IS NOT NULL AND a.date_encoded != ''
+                        AND (a.date_distributed IS NULL OR a.date_distributed = '') THEN 1 END) as available
         FROM "Arb" a
         JOIN "Landholding" l ON a.seqno_darro = l.seqno_darro`).get() as { available: number };
 
@@ -240,7 +242,8 @@ async function getProvinceSummary(
 
   const distRow = rawDb.prepare(`SELECT
       COUNT(CASE WHEN a.eligibility = 'Eligible' AND l.status != 'Not Eligible for Encoding'
-                      AND a.date_distributed IS NOT NULL AND a.date_distributed != '' THEN 1 END) as available
+                      AND a.date_encoded IS NOT NULL AND a.date_encoded != ''
+                      AND (a.date_distributed IS NULL OR a.date_distributed = '') THEN 1 END) as available
       FROM "Arb" a
       JOIN "Landholding" l ON a.seqno_darro = l.seqno_darro
       WHERE l.province_edited = ?`).get(province) as { available: number };

@@ -107,7 +107,7 @@ export function buildEmailHtml(
       <td style="padding:12px 10px;text-align:right;">${progressBar(enc.pct)}</td>
     </tr>
     <tr>
-      <td style="padding:12px 10px;font-size:13px;font-weight:500;color:#1e293b;">COCROMs Distributed</td>
+      <td style="padding:12px 10px;font-size:13px;font-weight:500;color:#1e293b;">COCROMs Available for Distribution</td>
       <td style="padding:12px 10px;font-size:13px;font-weight:700;color:#0f172a;text-align:right;">${dist.completed.toLocaleString()}</td>
       <td style="padding:12px 10px;font-size:12px;color:#64748b;text-align:right;">${dist.target.toLocaleString()} committed</td>
       <td style="padding:12px 10px;text-align:right;">${balanceCell(dist.balance)}</td>

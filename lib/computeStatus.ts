@@ -35,7 +35,9 @@ async function resolveStatus(seqno: string): Promise<string | null> {
     return eitherConfirmed ? "For Further Validation" : "For Initial Validation";
   }
 
-  const totalArea = arbs.reduce((s, a) => s + parseArea(a.area_allocated), 0);
+  const totalArea = arbs
+    .filter((a) => a.carpable === "CARPABLE")
+    .reduce((s, a) => s + parseArea(a.area_allocated), 0);
   const validatedArea = lh.amendarea_validated ?? lh.amendarea;
   const areaMatch =
     validatedArea != null &&
