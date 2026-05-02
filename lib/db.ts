@@ -48,6 +48,23 @@ function runMigrations(db: Database.Database) {
   } catch {
     // Table already exists or DB not ready
   }
+  try {
+    db.prepare(`CREATE TABLE IF NOT EXISTS "DigestRecipient" (
+      "id"         INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "name"       TEXT NOT NULL,
+      "nickname"   TEXT,
+      "email"      TEXT NOT NULL UNIQUE,
+      "role"       TEXT NOT NULL,
+      "level"      TEXT NOT NULL,
+      "province"   TEXT,
+      "active"     INTEGER NOT NULL DEFAULT 1,
+      "created_at" TEXT NOT NULL DEFAULT (datetime('now'))
+    )`).run();
+    db.prepare(`INSERT OR IGNORE INTO "Setting" (key, value) VALUES ('email_digest_enabled', 'false')`).run();
+    db.prepare(`INSERT OR IGNORE INTO "Setting" (key, value) VALUES ('email_digest_last_sent_at', '')`).run();
+  } catch {
+    // Table already exists or DB not ready
+  }
 }
 
 function createRawDb() {
