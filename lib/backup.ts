@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
 import { uploadBackupToB2, type B2UploadResult } from "@/lib/backblaze";
+import { SCHEMA_VERSION } from "@/lib/db";
 
 // Resolved at call-time so env vars set after module load are respected.
 
@@ -34,8 +35,29 @@ export type BackupEntry = {
   sizeBytes: number;
   createdAt: string;
   label: "auto" | "manual" | "unknown";
+  schemaVersion?: number;
   b2Upload?: { b2FileKey: string; uploadedAt: string } | { error: string; failedAt: string };
 };
+
+function writeMetaSidecar(filename: string): void {
+  try {
+    const sidecarPath = path.join(getBackupDir(), `${filename}.meta`);
+    fs.writeFileSync(sidecarPath, JSON.stringify({ schemaVersion: SCHEMA_VERSION }));
+  } catch (err) {
+    console.warn("[backup] Failed to write meta sidecar:", err);
+  }
+}
+
+function readMetaSidecar(filename: string): number | undefined {
+  const sidecarPath = path.join(getBackupDir(), `${filename}.meta`);
+  if (!fs.existsSync(sidecarPath)) return undefined;
+  try {
+    const parsed = JSON.parse(fs.readFileSync(sidecarPath, "utf-8"));
+    return typeof parsed?.schemaVersion === "number" ? parsed.schemaVersion : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 function writeB2Sidecar(
   filename: string,
@@ -84,6 +106,8 @@ export async function createBackup(label: "auto" | "manual" = "manual"): Promise
     db.close();
   }
 
+  writeMetaSidecar(filename);
+
   const b2Upload = await uploadBackupToB2(dest, filename);
   if (b2Upload !== null) {
     writeB2Sidecar(filename, b2Upload);
@@ -107,6 +131,7 @@ export function listBackups(): BackupEntry[] {
         sizeBytes: stat.size,
         createdAt: stat.mtime.toISOString(),
         label,
+        schemaVersion: readMetaSidecar(filename),
       };
       const b2Upload = readB2Sidecar(filename);
       if (b2Upload !== undefined) entry.b2Upload = b2Upload;

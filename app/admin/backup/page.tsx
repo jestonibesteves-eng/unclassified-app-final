@@ -11,8 +11,11 @@ type BackupEntry = {
   sizeBytes: number;
   createdAt: string;
   label: "auto" | "manual" | "unknown";
+  schemaVersion?: number;
   b2Upload?: { b2FileKey: string; uploadedAt: string } | { error: string; failedAt: string };
 };
+
+type SchemaMigration = { version: number; description: string };
 
 type PendingRestore = { filename: string; stagedAt: string } | null;
 
@@ -131,6 +134,8 @@ export default function BackupPage() {
   const [recomputing, setRecomputing] = useState(false);
   const [recomputeResult, setRecomputeResult] = useState<number | null>(null);
   const [lastRecomputeAt, setLastRecomputeAt] = useState<string | null>(null);
+  const [currentSchemaVersion, setCurrentSchemaVersion] = useState<number>(0);
+  const [schemaHistory, setSchemaHistory] = useState<SchemaMigration[]>([]);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 15;
 
@@ -145,6 +150,8 @@ export default function BackupPage() {
       const data = await backupRes.json();
       setBackups(data.backups);
       setPendingRestore(data.pendingRestore ?? null);
+      setCurrentSchemaVersion(data.currentSchemaVersion ?? 0);
+      setSchemaHistory(data.schemaHistory ?? []);
       setPage(1);
       if (settingRes.ok) {
         const s = await settingRes.json();
@@ -264,6 +271,13 @@ export default function BackupPage() {
     } finally {
       setRecomputing(false);
     }
+  }
+
+  function missingMigrations(b: BackupEntry): SchemaMigration[] {
+    if (currentSchemaVersion === 0) return [];
+    const backupVersion = b.schemaVersion ?? 0;
+    if (backupVersion >= currentSchemaVersion) return [];
+    return schemaHistory.filter((m) => m.version > backupVersion);
   }
 
   if (user && user.role !== "super_admin") return null;
@@ -405,13 +419,28 @@ export default function BackupPage() {
                           : i % 2 === 0 ? "bg-white" : "bg-gray-50/60"
                       }`}
                     >
-                      <td className="px-4 py-2.5 font-mono text-[11px] text-gray-700 truncate max-w-[320px]">
-                        {b.filename}
-                        {isPending && (
-                          <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700 uppercase tracking-wide">
-                            staged
-                          </span>
-                        )}
+                      <td className="px-4 py-2.5 max-w-[320px]">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono text-[11px] text-gray-700 truncate">{b.filename}</span>
+                          {isPending && (
+                            <span className="flex-shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700 uppercase tracking-wide">
+                              staged
+                            </span>
+                          )}
+                          {missingMigrations(b).length > 0 && (
+                            <span
+                              className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-orange-100 text-orange-700 uppercase tracking-wide cursor-default"
+                              title={`Missing schema changes:\n${missingMigrations(b).map((m) => `• v${m.version}: ${m.description}`).join("\n")}`}
+                            >
+                              <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M6 1L11 10H1L6 1z"/>
+                                <line x1="6" y1="5" x2="6" y2="7.5"/>
+                                <circle cx="6" cy="9" r="0.5" fill="currentColor"/>
+                              </svg>
+                              schema outdated
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-2.5 text-gray-600 whitespace-nowrap">
                         {formatDateTime(b.createdAt)}

@@ -4,6 +4,18 @@ import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
 
+// ── Schema version registry ───────────────────────────────────────────────────
+// Increment SCHEMA_VERSION and add an entry to SCHEMA_HISTORY each time a
+// structural migration is added to runMigrations().
+export const SCHEMA_VERSION = 5;
+export const SCHEMA_HISTORY: { version: number; description: string }[] = [
+  { version: 1, description: "AuditLog — added source column" },
+  { version: 2, description: "Setting table" },
+  { version: 3, description: "CommitmentTarget table" },
+  { version: 4, description: "DigestRecipient table and email digest settings" },
+  { version: 5, description: "recompute_last_ran_at setting" },
+];
+
 type GlobalDb = { prisma: PrismaClient; rawDb: Database.Database };
 const g = globalThis as unknown as GlobalDb;
 

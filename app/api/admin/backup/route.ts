@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
 import { createBackup, listBackups, getPendingRestore } from "@/lib/backup";
+import { SCHEMA_VERSION, SCHEMA_HISTORY } from "@/lib/db";
 
 async function getAdmin(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
 
   const backups = listBackups();
   const pendingRestore = getPendingRestore();
-  return NextResponse.json({ backups, pendingRestore });
+  return NextResponse.json({ backups, pendingRestore, currentSchemaVersion: SCHEMA_VERSION, schemaHistory: SCHEMA_HISTORY });
 }
 
 /** POST /api/admin/backup — create a manual backup */
