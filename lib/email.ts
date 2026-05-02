@@ -251,7 +251,9 @@ export async function sendEmail(
   try {
     const transport = createTransport();
     const info = await transport.sendMail({
-      from: process.env.SMTP_FROM ?? process.env.SMTP_USER,
+      from: process.env.SMTP_FROM
+        ? `DAR Unclassified ARR Data Management System <${process.env.SMTP_FROM}>`
+        : process.env.SMTP_USER,
       to,
       subject,
       html,
