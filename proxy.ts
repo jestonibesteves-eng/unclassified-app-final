@@ -70,7 +70,7 @@ export async function proxy(req: NextRequest) {
 
   // Allow dashboard API routes with a public token — the route handler validates it
   if (
-    (pathname.startsWith("/api/dashboard/") || pathname === "/api/progress") &&
+    (pathname.startsWith("/api/dashboard/") || pathname.startsWith("/api/progress")) &&
     req.nextUrl.searchParams.has("token")
   ) {
     return noindex(NextResponse.next());
