@@ -7,13 +7,14 @@ import path from "path";
 // ── Schema version registry ───────────────────────────────────────────────────
 // Increment SCHEMA_VERSION and add an entry to SCHEMA_HISTORY each time a
 // structural migration is added to runMigrations().
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 export const SCHEMA_HISTORY: { version: number; description: string }[] = [
   { version: 1, description: "AuditLog — added source column" },
   { version: 2, description: "Setting table" },
   { version: 3, description: "CommitmentTarget table" },
   { version: 4, description: "DigestRecipient table and email digest settings" },
   { version: 5, description: "recompute_last_ran_at setting" },
+  { version: 6, description: "DigestRecipient — unsubscribe_token column" },
 ];
 
 type GlobalDb = { prisma: PrismaClient; rawDb: Database.Database };
@@ -78,6 +79,19 @@ function runMigrations(db: Database.Database) {
     db.prepare(`INSERT OR IGNORE INTO "Setting" (key, value) VALUES ('recompute_last_ran_at', '')`).run();
   } catch {
     // Table already exists or DB not ready
+  }
+  try {
+    const cols = db.prepare(`PRAGMA table_info("DigestRecipient")`).all() as Array<{ name: string }>;
+    if (cols.length > 0 && !cols.find((c) => c.name === "unsubscribe_token")) {
+      db.prepare(`ALTER TABLE "DigestRecipient" ADD COLUMN "unsubscribe_token" TEXT UNIQUE`).run();
+      const rows = db.prepare(`SELECT id FROM "DigestRecipient"`).all() as { id: number }[];
+      const stmt = db.prepare(`UPDATE "DigestRecipient" SET unsubscribe_token = ? WHERE id = ?`);
+      for (const row of rows) {
+        stmt.run(crypto.randomUUID(), row.id);
+      }
+    }
+  } catch {
+    // Migration errors must not crash the server
   }
 }
 

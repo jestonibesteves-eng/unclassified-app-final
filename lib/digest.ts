@@ -12,6 +12,7 @@ export interface DigestRecipient {
   level: "regional" | "provincial";
   province: string | null;
   active: number;
+  unsubscribe_token: string | null;
   created_at: string;
 }
 
