@@ -36,9 +36,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "province is required for provincial recipients." }, { status: 400 });
 
   try {
+    const unsubscribe_token = crypto.randomUUID();
     const result = rawDb
-      .prepare(`INSERT INTO "DigestRecipient" (name, nickname, email, role, level, province) VALUES (?, ?, ?, ?, ?, ?)`)
-      .run(name.trim(), nickname?.trim() || null, email.trim().toLowerCase(), role.trim(), level, province?.trim() ?? null);
+      .prepare(`INSERT INTO "DigestRecipient" (name, nickname, email, role, level, province, unsubscribe_token) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+      .run(name.trim(), nickname?.trim() || null, email.trim().toLowerCase(), role.trim(), level, province?.trim() ?? null, unsubscribe_token);
 
     const row = rawDb
       .prepare(`SELECT * FROM "DigestRecipient" WHERE id = ?`)
