@@ -155,65 +155,90 @@ export function buildEmailHtml(
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Weekly Progress Digest</title>
 </head>
-<body style="margin:0;padding:0;background:#f0f4f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:14px;color:#1e293b;">
+<body style="margin:0;padding:0;background:#eef2f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#1e293b;">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
-  <tr><td align="center" style="padding:32px 16px;">
+  <tr><td align="center" style="padding:36px 16px;">
     <table width="620" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;width:100%;">
 
+      <!-- Top accent bar -->
+      <tr><td style="background:#22c55e;height:4px;border-radius:4px 4px 0 0;padding:0;line-height:0;font-size:0;">&nbsp;</td></tr>
+
       <!-- Header -->
-      <tr><td style="background:#14532d;padding:28px 32px 24px;border-radius:12px 12px 0 0;">
+      <tr><td style="background:#14532d;padding:26px 32px 28px;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
-            <td style="font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.75);">DAR · Region V · Bicol</td>
-            <td align="right" style="font-size:11px;color:rgba(255,255,255,0.85);background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:99px;padding:4px 12px;white-space:nowrap;">Week of ${fmtShort(weekStart)} – ${fmtShort(weekEnd)}</td>
+            <td style="font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.5);">DAR · Region V · Bicol</td>
+            <td align="right">
+              <span style="display:inline-block;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.18);border-radius:99px;padding:5px 14px;font-size:11px;color:rgba(255,255,255,0.85);font-weight:500;white-space:nowrap;">Week of ${fmtShort(weekStart)} – ${fmtShort(weekEnd)}</span>
+            </td>
           </tr>
-          <tr><td colspan="2" style="padding-top:20px;font-size:22px;font-weight:700;color:white;">Weekly Progress Digest</td></tr>
-          <tr><td colspan="2" style="font-size:13px;color:rgba(255,255,255,0.65);">COCROM Validation, Encoding &amp; Distribution Summary</td></tr>
+          <tr><td colspan="2" style="padding-top:18px;">
+            <div style="font-size:26px;font-weight:800;color:#ffffff;letter-spacing:-0.02em;line-height:1.15;">Weekly Progress Digest</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:5px;letter-spacing:0.01em;">COCROM Validation, Encoding &amp; Distribution Summary</div>
+          </td></tr>
           ${provinceChip}
         </table>
       </td></tr>
 
       <!-- Body -->
-      <tr><td style="background:white;padding:28px 32px;">
-        <p style="font-size:14px;color:#374151;margin:0 0 20px;line-height:1.6;">
+      <tr><td style="background:#ffffff;padding:30px 32px 28px;">
+
+        <!-- Greeting -->
+        <p style="font-size:15px;color:#374151;margin:0 0 26px;line-height:1.7;">
           Good day, <strong style="color:#0f172a;">${displayName}</strong>. Here is the progress update${variant === "provincial" && data.scope.province ? ` for <strong style="color:#0f172a;">${data.scope.province}</strong>` : ""} for the week of <strong style="color:#0f172a;">${weekRange}</strong>.
         </p>
 
-        <!-- Section 1 -->
-        <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#94a3b8;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #f1f5f9;">
-          This Week's Activity${variant === "provincial" && data.scope.province ? ` — ${data.scope.province}` : ""}
-        </div>
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;">
+        <!-- Section label: This Week -->
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:14px;">
           <tr>
-            <td width="48%" style="padding-right:8px;">
-              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-left:3px solid #16a34a;border-radius:10px;padding:16px 18px;">
-                <tr><td style="font-size:11px;color:#64748b;padding-bottom:6px;">LHs Validated</td></tr>
-                <tr><td style="font-size:28px;font-weight:700;color:#0f172a;line-height:1;">${data.weeklyLhsValidated.toLocaleString()} <span style="font-size:13px;font-weight:500;color:#64748b;">LHs</span></td></tr>
-                <tr><td style="font-size:11px;color:#94a3b8;padding-top:4px;">Records updated &amp; validated this week</td></tr>
+            <td style="font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#94a3b8;padding-bottom:8px;border-bottom:2px solid #f1f5f9;">
+              This Week's Activity${variant === "provincial" && data.scope.province ? ` — ${data.scope.province}` : ""}
+            </td>
+          </tr>
+        </table>
+
+        <!-- Activity cards -->
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:30px;">
+          <tr>
+            <td width="49%" style="padding-right:8px;vertical-align:top;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #16a34a;border-radius:10px;">
+                <tr><td style="padding:18px 20px;">
+                  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#6b7280;margin-bottom:10px;">LHs Validated</div>
+                  <div style="font-size:34px;font-weight:800;color:#1d4ed8;line-height:1;letter-spacing:-0.02em;">+${data.weeklyLhsValidated.toLocaleString()}&nbsp;<span style="font-size:15px;font-weight:600;color:#3b82f6;letter-spacing:0;">LHs</span></div>
+                  <div style="font-size:11px;color:#9ca3af;margin-top:9px;">Updated &amp; validated this week</div>
+                </td></tr>
               </table>
             </td>
-            <td width="48%" style="padding-left:8px;">
-              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-left:3px solid #2563eb;border-radius:10px;padding:16px 18px;">
-                <tr><td style="font-size:11px;color:#64748b;padding-bottom:6px;">COCROMs Encoded</td></tr>
-                <tr><td style="font-size:28px;font-weight:700;color:#0f172a;line-height:1;">${data.weeklyCocromsEncoded.toLocaleString()} <span style="font-size:13px;font-weight:500;color:#64748b;">COCROMs</span></td></tr>
-                <tr><td style="font-size:11px;color:#94a3b8;padding-top:4px;">Records updated &amp; encoded this week</td></tr>
+            <td width="49%" style="padding-left:8px;vertical-align:top;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eff6ff;border:1px solid #bfdbfe;border-left:4px solid #2563eb;border-radius:10px;">
+                <tr><td style="padding:18px 20px;">
+                  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#6b7280;margin-bottom:10px;">COCROMs Encoded</div>
+                  <div style="font-size:34px;font-weight:800;color:#1d4ed8;line-height:1;letter-spacing:-0.02em;">+${data.weeklyCocromsEncoded.toLocaleString()}&nbsp;<span style="font-size:15px;font-weight:600;color:#3b82f6;letter-spacing:0;">COCROMs</span></div>
+                  <div style="font-size:11px;color:#9ca3af;margin-top:9px;">Updated &amp; encoded this week</div>
+                </td></tr>
               </table>
             </td>
           </tr>
         </table>
 
-        <!-- Section 2 -->
-        <div style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#94a3b8;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #f1f5f9;">
-          Cumulative Progress${variant === "provincial" && data.scope.province ? ` — ${data.scope.province}` : ""}
-        </div>
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px;border-collapse:collapse;">
+        <!-- Section label: Cumulative -->
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:14px;">
+          <tr>
+            <td style="font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#94a3b8;padding-bottom:8px;border-bottom:2px solid #f1f5f9;">
+              Cumulative Progress${variant === "provincial" && data.scope.province ? ` — ${data.scope.province}` : ""}
+            </td>
+          </tr>
+        </table>
+
+        <!-- Cumulative table -->
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
           <thead>
-            <tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0;">
-              <th style="text-align:left;padding:8px 10px;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;">Metric</th>
-              <th style="text-align:right;padding:8px 10px;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;">Completed</th>
-              <th style="text-align:right;padding:8px 10px;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;">Target / Eligible</th>
-              <th style="text-align:right;padding:8px 10px;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;">Balance</th>
-              <th style="text-align:right;padding:8px 10px;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;">Progress</th>
+            <tr style="background:#f8fafc;">
+              <th style="text-align:left;padding:10px 12px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94a3b8;border-bottom:1px solid #e2e8f0;">Metric</th>
+              <th style="text-align:right;padding:10px 12px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94a3b8;border-bottom:1px solid #e2e8f0;">Done</th>
+              <th style="text-align:right;padding:10px 12px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94a3b8;border-bottom:1px solid #e2e8f0;">Target</th>
+              <th style="text-align:right;padding:10px 12px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94a3b8;border-bottom:1px solid #e2e8f0;">Balance</th>
+              <th style="text-align:right;padding:10px 12px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94a3b8;border-bottom:1px solid #e2e8f0;">Progress</th>
             </tr>
           </thead>
           <tbody>
@@ -225,13 +250,14 @@ export function buildEmailHtml(
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
           ${provincialBreakdown}
         </table>
+
       </td></tr>
 
       <!-- Footer -->
-      <tr><td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:18px 32px;text-align:center;">
-        <p style="font-size:11px;color:#64748b;margin:0 0 4px;"><strong>Unclassified ARRs Data Management System</strong></p>
-        <p style="font-size:11px;color:#94a3b8;margin:0 0 4px;">This report was generated automatically. For questions, contact your system administrator.</p>
-        <p style="font-size:11px;color:#94a3b8;margin:0;">© ${fmtYear(weekEnd)} Department of Agrarian Reform · Region V · Bicol</p>
+      <tr><td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 32px;text-align:center;border-radius:0 0 4px 4px;">
+        <p style="font-size:11px;color:#475569;margin:0 0 4px;font-weight:600;letter-spacing:0.01em;">Unclassified ARRs Data Management System</p>
+        <p style="font-size:11px;color:#94a3b8;margin:0 0 3px;">This report was generated automatically. For questions, contact your system administrator.</p>
+        <p style="font-size:11px;color:#cbd5e1;margin:0;">© ${fmtYear(weekEnd)} Department of Agrarian Reform · Region V · Bicol</p>
       </td></tr>
 
     </table>

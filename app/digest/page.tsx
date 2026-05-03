@@ -245,7 +245,7 @@ export default function DigestPage() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-gray-700">Automatic weekly digest</p>
-            <p className="text-xs text-gray-400">Sends every Monday at 8:00 AM Philippine Time</p>
+            <p className="text-xs text-gray-400">Sends every Monday at 7:00 AM Philippine Time</p>
           </div>
           <button
             onClick={handleToggleEnabled}

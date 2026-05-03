@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, useRef } from "react";
+import React, { createContext, useContext, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 
 type ToastType = "success" | "error" | "info" | "warning";
@@ -23,11 +23,18 @@ export function useToast() {
   return ctx.toast;
 }
 
-const ICONS: Record<ToastType, string> = {
+const InfoIcon = () => (
+  <svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5">
+    <circle cx="7" cy="3.5" r="1.1" fill="currentColor" />
+    <rect x="5.9" y="6" width="2.2" height="5" rx="1.1" fill="currentColor" />
+  </svg>
+);
+
+const ICONS: Record<ToastType, React.ReactNode> = {
   success: "✓",
   error: "✕",
   warning: "!",
-  info: "i",
+  info: <InfoIcon />,
 };
 
 const STYLES: Record<ToastType, { bg: string; icon: string; text: string; close: string }> = {

@@ -41,7 +41,7 @@ export function registerNode() {
   // ── 4. Catch up on any missed auto-backup, then schedule daily at 2:00 AM ─
   scheduleDailyBackup(dbPath);
 
-  // ── 5. Schedule weekly email digest (Monday 8:00 AM PHT) ─────────────────
+  // ── 5. Schedule weekly email digest (Monday 7:00 AM PHT) ─────────────────
   scheduleWeeklyDigest(dbPath);
 
   // ── 6. Schedule nightly status recompute at 1:00 AM ──────────────────────
@@ -123,7 +123,7 @@ function scheduleWeeklyDigest(dbPath: string) {
 
     const nextMon = new Date(nowPht);
     nextMon.setUTCDate(nowPht.getUTCDate() + daysToMon);
-    nextMon.setUTCHours(8, 0, 0, 0); // 8:00 AM PHT (as fake-UTC)
+    nextMon.setUTCHours(7, 0, 0, 0); // 7:00 AM PHT (as fake-UTC)
     return nextMon.getTime() - phtOffset - Date.now();
   }
 
@@ -189,7 +189,7 @@ function scheduleWeeklyDigest(dbPath: string) {
     const daysBack  = day === 0 ? 6 : day - 1;
     const thisMon   = new Date(nowPht);
     thisMon.setUTCDate(nowPht.getUTCDate() - daysBack);
-    thisMon.setUTCHours(8, 0, 0, 0);
+    thisMon.setUTCHours(7, 0, 0, 0);
     const lastMon8amUtc = new Date(thisMon.getTime() - phtOffset);
 
     if (Date.now() < lastMon8amUtc.getTime()) return;
@@ -206,7 +206,7 @@ function scheduleWeeklyDigest(dbPath: string) {
   const delay = msUntilNextMondayPht();
   const hh = Math.floor(delay / 3_600_000);
   const mm = Math.floor((delay % 3_600_000) / 60_000);
-  console.log(`[digest] Next weekly digest scheduled in ${hh}h ${mm}m (Monday 8:00 AM PHT)`);
+  console.log(`[digest] Next weekly digest scheduled in ${hh}h ${mm}m (Monday 7:00 AM PHT)`);
 
   setTimeout(() => {
     runDigest();

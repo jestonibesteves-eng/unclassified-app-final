@@ -465,8 +465,10 @@ export function CocromEncodingChart({
 
       {/* Disclaimer note */}
       <p className="flex items-center gap-1.5 text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1 mb-3 leading-snug">
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className="shrink-0">
-          <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 3.25a.875.875 0 1 1 0 1.75.875.875 0 0 1 0-1.75zM6.75 7h1.5v4.5h-1.5V7z"/>
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="shrink-0">
+          <circle cx="8" cy="8" r="6.5"/>
+          <circle cx="8" cy="5.5" r="0.75" fill="currentColor" stroke="none"/>
+          <line x1="8" y1="7.5" x2="8" y2="11.5"/>
         </svg>
         COCROMs already distributed are not counted in this chart.
       </p>
@@ -867,8 +869,10 @@ export function CocromDistributionChart({
             return (
               <div className="mt-3 bg-amber-50 border border-amber-200 rounded p-2.5 text-[10px] leading-relaxed text-amber-700">
                 <p className="flex items-center gap-1.5 font-semibold mb-1 uppercase tracking-wide text-[9px]">
-                  <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" className="shrink-0">
-                    <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 3.25a.875.875 0 1 1 0 1.75.875.875 0 0 1 0-1.75zM6.75 7h1.5v4.5h-1.5V7z"/>
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="shrink-0">
+                    <circle cx="8" cy="8" r="6.5"/>
+                    <circle cx="8" cy="5.5" r="0.75" fill="currentColor" stroke="none"/>
+                    <line x1="8" y1="7.5" x2="8" y2="11.5"/>
                   </svg>
                   Non-Eligible ARBs (not counted in chart)
                 </p>
