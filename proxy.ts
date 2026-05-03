@@ -64,7 +64,12 @@ export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Always allow static assets and public auth routes
-  if (pathname.startsWith("/api/auth") || pathname === "/login" || pathname.startsWith("/view/")) {
+  if (
+    pathname.startsWith("/api/auth") ||
+    pathname === "/login" ||
+    pathname.startsWith("/view/") ||
+    pathname.startsWith("/unsubscribe")
+  ) {
     return noindex(NextResponse.next());
   }
 
