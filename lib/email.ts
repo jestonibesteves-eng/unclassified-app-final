@@ -68,6 +68,22 @@ function balanceCell(balance: number): string {
   return `<span style="color:#ef4444;font-weight:600;font-size:12px;">${balance.toLocaleString()} remaining</span>`;
 }
 
+// ── Deadline Countdown badge (static snapshot at send time, shown in header) ───
+
+function buildCountdownBadge(targetDate: string, now: Date): string {
+  const deadlineMs = new Date(`${targetDate}T00:00:00+08:00`).getTime();
+  const msLeft = Math.max(0, deadlineMs - now.getTime());
+  const days  = Math.floor(msLeft / 86400000);
+  const weeks = Math.ceil(days / 7);
+
+  const [y, m, d] = targetDate.split("-").map(Number);
+  const dateLabel = new Date(y, m - 1, d).toLocaleDateString("en-PH", {
+    year: "numeric", month: "long", day: "numeric",
+  });
+
+  return `<span style="display:inline-block;background:rgba(251,191,36,0.13);border:1px solid rgba(251,191,36,0.32);border-radius:8px;padding:8px 14px;font-size:11px;font-weight:600;color:rgba(251,191,36,0.92);white-space:nowrap;font-family:Arial,Helvetica,sans-serif;text-align:right;line-height:1.5;">${days} days (${weeks} wks) before<br>${dateLabel}</span>`;
+}
+
 // ── Email HTML ────────────────────────────────────────────────────────────────
 
 export function buildEmailHtml(
@@ -75,7 +91,8 @@ export function buildEmailHtml(
   recipient: DigestRecipient,
   data: DigestData,
   weekStart: Date,
-  weekEnd: Date
+  weekEnd: Date,
+  targetDate: string = "2026-06-15"
 ): string {
   const weekRange   = `${fmtShort(weekStart)} – ${fmtShort(weekEnd)}, ${fmtYear(weekEnd)}`;
   const displayName = `${recipient.role} ${recipient.nickname?.trim() || recipient.name}`;
@@ -172,10 +189,15 @@ export function buildEmailHtml(
               <span style="display:inline-block;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.18);border-radius:99px;padding:5px 14px;font-size:11px;color:rgba(255,255,255,0.85);font-weight:500;white-space:nowrap;">Week of ${fmtShort(weekStart)} – ${fmtShort(weekEnd)}</span>
             </td>
           </tr>
-          <tr><td colspan="2" style="padding-top:18px;">
-            <div style="font-size:26px;font-weight:800;color:#ffffff;letter-spacing:-0.02em;line-height:1.15;">Weekly Progress Digest</div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:5px;letter-spacing:0.01em;">COCROM Validation, Encoding &amp; Distribution Summary</div>
-          </td></tr>
+          <tr>
+            <td style="padding-top:18px;" valign="bottom">
+              <div style="font-size:26px;font-weight:800;color:#ffffff;letter-spacing:-0.02em;line-height:1.15;">Weekly Progress Digest</div>
+              <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:5px;letter-spacing:0.01em;">COCROM Validation, Encoding &amp; Distribution Summary</div>
+            </td>
+            <td style="padding-top:18px;padding-left:20px;" valign="bottom" align="right">
+              ${buildCountdownBadge(targetDate, weekEnd)}
+            </td>
+          </tr>
           ${provinceChip}
         </table>
       </td></tr>

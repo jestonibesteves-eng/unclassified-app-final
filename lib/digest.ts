@@ -210,6 +210,19 @@ async function getCommitment(scope: DigestScope): Promise<number> {
   return row?.committed ?? 0;
 }
 
+async function getTargetDate(scope: DigestScope): Promise<string> {
+  if (scope.level === "provincial" && scope.province) {
+    const row = await prisma.commitmentTarget.findFirst({
+      where: { region: "V", province: scope.province },
+    });
+    return row?.target_date ?? "2026-06-15";
+  }
+  const row = await prisma.commitmentTarget.findFirst({
+    where: { region: "V", province: null },
+  });
+  return row?.target_date ?? "2026-06-15";
+}
+
 async function getProvinceSummary(
   ws: string,
   we: string,
@@ -272,6 +285,7 @@ export async function sendWeeklyDigest(
   if (allRecipients.length === 0) return { sent: 0, failed: 0, recipients: [] };
 
   const regionalData = await getDigestData(weekStart, weekEnd, { level: "regional" });
+  const regionalTargetDate = await getTargetDate({ level: "regional" });
 
   const provinces = [
     ...new Set(
@@ -281,10 +295,15 @@ export async function sendWeeklyDigest(
     ),
   ];
   const provincialDataMap = new Map<string, DigestData>();
+  const provincialTargetDateMap = new Map<string, string>();
   for (const province of provinces) {
     provincialDataMap.set(
       province,
       await getDigestData(weekStart, weekEnd, { level: "provincial", province })
+    );
+    provincialTargetDateMap.set(
+      province,
+      await getTargetDate({ level: "provincial", province })
     );
   }
 
@@ -298,13 +317,18 @@ export async function sendWeeklyDigest(
         ? regionalData
         : provincialDataMap.get(recipient.province ?? "") ?? regionalData;
 
+    const targetDate =
+      recipient.level === "regional"
+        ? regionalTargetDate
+        : provincialTargetDateMap.get(recipient.province ?? "") ?? regionalTargetDate;
+
     const subject = buildSubjectLine(
       recipient.level,
       recipient.province ?? undefined,
       weekStart,
       weekEnd
     );
-    const html = buildEmailHtml(recipient.level, recipient, data, weekStart, weekEnd);
+    const html = buildEmailHtml(recipient.level, recipient, data, weekStart, weekEnd, targetDate);
 
     const result = await sendEmail(recipient.email, subject, html);
     if (result.ok) {
