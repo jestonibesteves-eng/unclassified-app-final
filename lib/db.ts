@@ -83,7 +83,7 @@ function runMigrations(db: Database.Database) {
   try {
     const cols = db.prepare(`PRAGMA table_info("DigestRecipient")`).all() as Array<{ name: string }>;
     if (cols.length > 0 && !cols.find((c) => c.name === "unsubscribe_token")) {
-      db.prepare(`ALTER TABLE "DigestRecipient" ADD COLUMN "unsubscribe_token" TEXT UNIQUE`).run();
+      db.prepare(`ALTER TABLE "DigestRecipient" ADD COLUMN "unsubscribe_token" TEXT`).run();
       const rows = db.prepare(`SELECT id FROM "DigestRecipient"`).all() as { id: number }[];
       const stmt = db.prepare(`UPDATE "DigestRecipient" SET unsubscribe_token = ? WHERE id = ?`);
       for (const row of rows) {
