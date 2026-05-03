@@ -257,7 +257,10 @@ export function buildEmailHtml(
       <tr><td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 32px;text-align:center;border-radius:0 0 4px 4px;">
         <p style="font-size:11px;color:#475569;margin:0 0 4px;font-weight:600;letter-spacing:0.01em;">Unclassified ARRs Data Management System</p>
         <p style="font-size:11px;color:#94a3b8;margin:0 0 3px;">This report was generated automatically. For questions, contact your system administrator.</p>
-        <p style="font-size:11px;color:#cbd5e1;margin:0;">© ${fmtYear(weekEnd)} Department of Agrarian Reform · Region V · Bicol</p>
+        <p style="font-size:11px;color:#cbd5e1;margin:0 0 6px;">© ${fmtYear(weekEnd)} Department of Agrarian Reform · Region V · Bicol</p>
+        ${recipient.unsubscribe_token
+          ? `<p style="font-size:10px;color:#cbd5e1;margin:0;">To stop receiving these emails, <a href="${process.env.NEXT_PUBLIC_APP_URL}/unsubscribe?token=${recipient.unsubscribe_token}" style="color:#94a3b8;">unsubscribe here</a>.</p>`
+          : ""}
       </td></tr>
 
     </table>
