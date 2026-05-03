@@ -50,11 +50,12 @@ export function registerNode() {
 
 function scheduleDailyBackup(dbPath: string) {
   function msUntilNextTwoAM(): number {
-    const now  = new Date();
-    const next = new Date(now);
-    next.setHours(2, 0, 0, 0);
-    if (next <= now) next.setDate(next.getDate() + 1);
-    return next.getTime() - now.getTime();
+    const phtOffset = 8 * 3_600_000;
+    const nowPht    = new Date(Date.now() + phtOffset);
+    const next      = new Date(nowPht);
+    next.setUTCHours(2, 0, 0, 0); // 2:00 AM PHT (as fake-UTC)
+    if (next <= nowPht) next.setUTCDate(next.getUTCDate() + 1);
+    return next.getTime() - phtOffset - Date.now();
   }
 
   async function runBackup() {
@@ -78,15 +79,16 @@ function scheduleDailyBackup(dbPath: string) {
   // run one immediately so a restart never silently skips a day's backup.
   async function catchUpIfMissed() {
     try {
-      const now = new Date();
-      // Only catch up if it's already past 2:00 AM today
-      if (now.getHours() < 2) return;
+      const phtOffset = 8 * 3_600_000;
+      const nowPht    = new Date(Date.now() + phtOffset);
+      // Only catch up if it's already past 2:00 AM PHT today
+      if (nowPht.getUTCHours() < 2) return;
 
       const backupDir = process.env.BACKUP_DIR || path.join(path.dirname(dbPath), "backups");
       if (!fs.existsSync(backupDir)) return; // no backup dir yet — nothing to catch up
 
       const pad = (n: number) => String(n).padStart(2, "0");
-      const todayPrefix = `dev_${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_`;
+      const todayPrefix = `dev_${nowPht.getUTCFullYear()}-${pad(nowPht.getUTCMonth() + 1)}-${pad(nowPht.getUTCDate())}_`;
 
       const hasTodayBackup = fs.readdirSync(backupDir).some(
         (f) => f.startsWith(todayPrefix) && f.endsWith("_auto.db")
@@ -106,7 +108,7 @@ function scheduleDailyBackup(dbPath: string) {
   const delay = msUntilNextTwoAM();
   const hh = Math.floor(delay / 3600000);
   const mm = Math.floor((delay % 3600000) / 60000);
-  console.log(`[backup] Next auto-backup scheduled in ${hh}h ${mm}m (at 2:00 AM)`);
+  console.log(`[backup] Next auto-backup scheduled in ${hh}h ${mm}m (at 2:00 AM PHT)`);
 
   setTimeout(() => {
     runBackup();
@@ -225,11 +227,12 @@ function scheduleWeeklyDigest(dbPath: string) {
 
 function scheduleNightlyRecompute() {
   function msUntilNextOneAM(): number {
-    const now  = new Date();
-    const next = new Date(now);
-    next.setHours(1, 0, 0, 0);
-    if (next <= now) next.setDate(next.getDate() + 1);
-    return next.getTime() - now.getTime();
+    const phtOffset = 8 * 3_600_000;
+    const nowPht    = new Date(Date.now() + phtOffset);
+    const next      = new Date(nowPht);
+    next.setUTCHours(1, 0, 0, 0); // 1:00 AM PHT (as fake-UTC)
+    if (next <= nowPht) next.setUTCDate(next.getUTCDate() + 1);
+    return next.getTime() - phtOffset - Date.now();
   }
 
   async function runRecompute() {
@@ -253,7 +256,7 @@ function scheduleNightlyRecompute() {
   const delay = msUntilNextOneAM();
   const hh = Math.floor(delay / 3_600_000);
   const mm = Math.floor((delay % 3_600_000) / 60_000);
-  console.log(`[recompute] Next nightly recompute scheduled in ${hh}h ${mm}m (at 1:00 AM)`);
+  console.log(`[recompute] Next nightly recompute scheduled in ${hh}h ${mm}m (at 1:00 AM PHT)`);
 
   setTimeout(() => {
     runRecompute();
