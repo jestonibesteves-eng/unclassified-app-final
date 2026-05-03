@@ -5,7 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import MobileHeader from "@/components/MobileHeader";
 
 const NO_SHELL_EXACT = ["/login", "/change-password"];
-const NO_SHELL_PREFIX = ["/view/"];
+const NO_SHELL_PREFIX = ["/view/", "/unsubscribe"];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
