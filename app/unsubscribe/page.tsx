@@ -63,6 +63,11 @@ function Result({ invalid }: { invalid: boolean }) {
         <div className="px-8 py-8 text-center">
           {invalid ? (
             <>
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 mx-auto mb-4">
+                <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
               <p className="text-sm font-semibold text-gray-700 mb-1">Link invalid or already used</p>
               <p className="text-xs text-gray-400">
                 This unsubscribe link is not recognized or has already been processed.
@@ -70,6 +75,11 @@ function Result({ invalid }: { invalid: boolean }) {
             </>
           ) : (
             <>
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100 mx-auto mb-4">
+                <svg className="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
               <p className="text-sm font-semibold text-gray-700 mb-1">You&apos;ve been unsubscribed.</p>
               <p className="text-xs text-gray-400">
                 You will no longer receive weekly digest emails. Contact your system administrator to re-subscribe.
