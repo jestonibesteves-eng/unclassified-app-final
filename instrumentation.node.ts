@@ -118,8 +118,17 @@ function scheduleWeeklyDigest(dbPath: string) {
   function msUntilNextMondayPht(): number {
     const phtOffset = 8 * 3_600_000;
     const nowPht    = new Date(Date.now() + phtOffset);
-    const day       = nowPht.getUTCDay(); // 0=Sun
-    const daysToMon = day === 1 ? 7 : (8 - day) % 7 || 7;
+    const day       = nowPht.getUTCDay(); // 0=Sun, 1=Mon
+
+    let daysToMon: number;
+    if (day === 1) {
+      // It's Monday — only skip to next week if 7:00 AM has already passed today
+      const mon7am = new Date(nowPht);
+      mon7am.setUTCHours(7, 0, 0, 0);
+      daysToMon = nowPht.getTime() < mon7am.getTime() ? 0 : 7;
+    } else {
+      daysToMon = (8 - day) % 7 || 7;
+    }
 
     const nextMon = new Date(nowPht);
     nextMon.setUTCDate(nowPht.getUTCDate() + daysToMon);
