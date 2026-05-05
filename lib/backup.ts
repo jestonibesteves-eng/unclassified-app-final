@@ -93,9 +93,10 @@ export async function createBackup(label: "auto" | "manual" = "manual"): Promise
   b2Upload: B2UploadResult;
 }> {
   ensureBackupDir();
-  const now = new Date();
+  const phtOffset = 8 * 3_600_000;
+  const nowPht = new Date(Date.now() + phtOffset);
   const pad = (n: number) => String(n).padStart(2, "0");
-  const ts = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;
+  const ts = `${nowPht.getUTCFullYear()}-${pad(nowPht.getUTCMonth() + 1)}-${pad(nowPht.getUTCDate())}_${pad(nowPht.getUTCHours())}-${pad(nowPht.getUTCMinutes())}`;
   const filename = `dev_${ts}_${label}.db`;
   const dest = path.join(getBackupDir(), filename);
 

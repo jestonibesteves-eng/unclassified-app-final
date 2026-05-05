@@ -356,11 +356,9 @@ export default function BackupPage() {
                 Done — {recomputeResult} landholding{recomputeResult !== 1 ? "s" : ""} recomputed.
               </p>
             )}
-            {lastRecomputeAt && (
-              <p className="text-[11px] text-gray-400 mt-0.5">
-                Last run: {formatDateTime(lastRecomputeAt)}
-              </p>
-            )}
+            <p className="text-[11px] text-gray-400 mt-0.5">
+              Last run: {lastRecomputeAt ? formatDateTime(lastRecomputeAt) : "Never"}
+            </p>
           </div>
           <button
             onClick={handleRecompute}
