@@ -27,7 +27,7 @@ const TYPES: {
     value: "date_distributed",
     label: "Date Distributed",
     icon: "📬",
-    hint: 'Format: SEQNO_DARRO → Tab → ARB_ID → Tab → DATE. Copy three columns from Excel.',
+    hint: 'Format: SEQNO_DARRO → Tab → ARB_ID → Tab → DATE. Copy three columns from Excel. Note: Date Encoded must already be set for each ARB — records without it will be skipped.',
     placeholder: "R5-UC-00001\t123456789\t2024-03-10\nR5-UC-00002\t987654321\t2024-03-11",
     locked: false,
   },

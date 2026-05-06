@@ -168,6 +168,7 @@ export async function PUT(req: NextRequest) {
       ? arb.eligibility === "Not Eligible" ? "ARB is Not Eligible"
         : arb.carpable === "NON-CARPABLE" ? "ARB is NON-CARPABLE"
         : lh.status === "Not Eligible for Encoding" ? `LH status is "${lh.status}"`
+        : (type === "date_distributed" && !arb.date_encoded) ? "Date Encoded must be set before Date Distributed"
         : null
       : null;
     const lockedReason = lockReasonForLockable ?? lockReasonForDate ?? null;
@@ -280,6 +281,10 @@ export async function POST(req: NextRequest) {
         }
         if (DATE_TYPES.includes(type) && lh.status === "Not Eligible for Encoding") {
           skippedRecords.push({ seqno_darro: r.seqno, arb_id: r.arb_id, reason: "Landholding is Not Eligible for Encoding — dates cannot be set" });
+          continue;
+        }
+        if (type === "date_distributed" && !arb.date_encoded) {
+          skippedRecords.push({ seqno_darro: r.seqno, arb_id: r.arb_id, reason: "Date Encoded must be set before Date Distributed can be assigned" });
           continue;
         }
 
