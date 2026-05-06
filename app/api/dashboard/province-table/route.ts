@@ -90,7 +90,7 @@ export async function GET(req: NextRequest) {
     let matchingSeqnos = new Set<string>();
     if (confirmedLHs.length > 0) {
       const arbRows = await prisma.arb.findMany({
-        where: { seqno_darro: { in: confirmedLHs.map((l) => l.seqno_darro) } },
+        where: { seqno_darro: { in: confirmedLHs.map((l) => l.seqno_darro) }, carpable: "CARPABLE" },
         select: { seqno_darro: true, area_allocated: true },
       });
       const arbTotals = new Map<string, number>();
