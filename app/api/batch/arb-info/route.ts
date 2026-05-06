@@ -43,10 +43,10 @@ function isValidDate(val: string): boolean {
 
 /* ── Input parser ── */
 function parseLines(raw: string, type: ArbInfoType): {
-  valid: { seqno: string; arb_id: string; value: string }[];
+  valid: { seqno: string; arb_id: string; value: string; eligibilityReason?: string }[];
   invalid: { line: string; reason: string }[];
 } {
-  const valid: { seqno: string; arb_id: string; value: string }[] = [];
+  const valid: { seqno: string; arb_id: string; value: string; eligibilityReason?: string }[] = [];
   const invalid: { line: string; reason: string }[] = [];
 
   for (const rawLine of raw.split("\n")) {
@@ -99,15 +99,25 @@ function parseLines(raw: string, type: ArbInfoType): {
     }
 
     if (type === "eligibility") {
-      const lower = value.trim().toLowerCase();
+      const eligVal = parts[2]?.trim() ?? "";
+      const lower = eligVal.toLowerCase();
       const normalized = lower === "eligible" ? "Eligible"
         : (lower === "not eligible" || lower === "not-eligible") ? "Not Eligible"
         : null;
       if (!normalized) {
-        invalid.push({ line, reason: `"${value}" is invalid — must be Eligible or Not Eligible` });
+        invalid.push({ line, reason: `"${eligVal}" is invalid — must be Eligible or Not Eligible` });
         continue;
       }
-      valid.push({ seqno, arb_id: arbId, value: normalized });
+      if (normalized === "Not Eligible") {
+        const eligibilityReason = parts.slice(3).join("\t").trim();
+        if (!eligibilityReason) {
+          invalid.push({ line, reason: 'Reason is required when setting "Not Eligible" — add a 4th column with the reason (e.g. "Deceased")' });
+          continue;
+        }
+        valid.push({ seqno, arb_id: arbId, value: normalized, eligibilityReason });
+      } else {
+        valid.push({ seqno, arb_id: arbId, value: normalized });
+      }
       continue;
     }
 
@@ -142,7 +152,7 @@ export async function PUT(req: NextRequest) {
   const arbKeys = valid.map((r) => r.arb_id);
   const existingArbs = await prisma.arb.findMany({
     where: { arb_id: { in: arbKeys } },
-    select: { id: true, seqno_darro: true, arb_id: true, arb_name: true, carpable: true, eligibility: true, area_allocated: true, allocated_condoned_amount: true, date_encoded: true, date_distributed: true, ep_cloa_no: true, remarks: true },
+    select: { id: true, seqno_darro: true, arb_id: true, arb_name: true, carpable: true, eligibility: true, eligibility_reason: true, area_allocated: true, allocated_condoned_amount: true, date_encoded: true, date_distributed: true, ep_cloa_no: true, remarks: true },
   });
   const arbMap = Object.fromEntries(existingArbs.map((a) => [`${a.seqno_darro}|${a.arb_id}`, a]));
 
@@ -199,6 +209,7 @@ export async function PUT(req: NextRequest) {
       new_value: r.value,
       locked,
       lockedReason,
+      eligibilityReason: r.eligibilityReason ?? null,
     });
   }
 
@@ -230,7 +241,7 @@ export async function POST(req: NextRequest) {
   const arbKeys = valid.map((r) => r.arb_id);
   const existingArbs = await prisma.arb.findMany({
     where: { arb_id: { in: arbKeys } },
-    select: { id: true, seqno_darro: true, arb_id: true, arb_name: true, carpable: true, eligibility: true, area_allocated: true, allocated_condoned_amount: true, date_encoded: true, date_distributed: true, ep_cloa_no: true, remarks: true },
+    select: { id: true, seqno_darro: true, arb_id: true, arb_name: true, carpable: true, eligibility: true, eligibility_reason: true, area_allocated: true, allocated_condoned_amount: true, date_encoded: true, date_distributed: true, ep_cloa_no: true, remarks: true },
   });
   const arbMap = Object.fromEntries(existingArbs.map((a) => [`${a.seqno_darro}|${a.arb_id}`, a]));
 
@@ -303,7 +314,12 @@ export async function POST(req: NextRequest) {
           }
         })();
 
-        rawDb.prepare(`UPDATE "Arb" SET "${field}" = ? WHERE id = ?`).run(r.value, arb.id);
+        if (type === "eligibility") {
+          const newReason = r.value === "Not Eligible" ? (r.eligibilityReason ?? null) : null;
+          rawDb.prepare(`UPDATE "Arb" SET "eligibility" = ?, "eligibility_reason" = ? WHERE id = ?`).run(r.value, newReason, arb.id);
+        } else {
+          rawDb.prepare(`UPDATE "Arb" SET "${field}" = ? WHERE id = ?`).run(r.value, arb.id);
+        }
         insertAudit.run(r.seqno, "ARB_UPDATE", field, oldVal, r.value, sessionUser.username, "batch_arb_info");
         updatedRecords.push({ seqno_darro: r.seqno, arb_id: r.arb_id, arb_name: arb.arb_name, landowner: lh.landowner });
         affectedSeqnos.add(r.seqno);

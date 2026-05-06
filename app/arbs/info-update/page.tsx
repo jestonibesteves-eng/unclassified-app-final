@@ -69,8 +69,8 @@ const TYPES: {
     value: "eligibility",
     label: "Eligibility",
     icon: "✅",
-    hint: 'Format: SEQNO_DARRO → Tab → ARB_ID → Tab → Eligible or Not Eligible. Copy three columns from Excel.',
-    placeholder: "R5-UC-00001\t123456789\tEligible\nR5-UC-00002\t987654321\tNot Eligible",
+    hint: 'Format: SEQNO_DARRO → Tab → ARB_ID → Tab → Eligible or Not Eligible → Tab → Reason (required when Not Eligible). Copy four columns from Excel for Not Eligible entries.',
+    placeholder: "R5-UC-00001\t123456789\tEligible\nR5-UC-00002\t987654321\tNot Eligible\tDeceased",
     locked: false,
   },
   {
@@ -109,6 +109,7 @@ type PreviewRow = {
   new_value: string;
   locked: boolean;
   lockedReason: string | null;
+  eligibilityReason: string | null;
 };
 
 type PreviewData = {
@@ -440,7 +441,12 @@ export default function ArbInfoUpdatePage() {
                               {r.locked ? (
                                 <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-700" title={r.lockedReason ?? undefined}>🔒 Locked</span>
                               ) : (
-                                <span className="font-mono text-green-800 font-semibold">{fmtValue(type, r.new_value)}</span>
+                                <div>
+                                  <span className="font-mono text-green-800 font-semibold">{fmtValue(type, r.new_value)}</span>
+                                  {r.eligibilityReason && (
+                                    <div className="text-[11px] text-gray-500 mt-0.5">{r.eligibilityReason}</div>
+                                  )}
+                                </div>
                               )}
                             </td>
                             {DIFF_TYPES.includes(type) && (() => {
