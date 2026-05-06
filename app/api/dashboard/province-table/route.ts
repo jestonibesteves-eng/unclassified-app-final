@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
       for (const lh of confirmedLHs) {
         const arbTotal = arbTotals.get(lh.seqno_darro) ?? 0;
         const validated = Number(lh.amendarea_validated!);
-        if (parseFloat(arbTotal.toFixed(4)) === parseFloat(validated.toFixed(4))) {
+        if (Math.abs(arbTotal - validated) < 0.01) {
           matchingSeqnos.add(lh.seqno_darro);
         }
       }
