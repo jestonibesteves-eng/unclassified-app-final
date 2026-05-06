@@ -768,11 +768,11 @@ function UploadFilePanel({ onSaved }: { onSaved: () => void }) {
                 return (
                   <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-orange-50 border border-orange-200 mb-3">
                     <span className="text-orange-500 text-lg leading-none mt-0.5">⚠</span>
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-semibold text-orange-800 mb-1">
                         {toReplace.length} landholding{toReplace.length !== 1 ? "s" : ""} will have their existing ARBs replaced:
                       </p>
-                      <ul className="space-y-0.5">
+                      <ul className="space-y-0.5 max-h-72 overflow-y-auto pr-1">
                         {toReplace.map(([seqno, info]) => (
                           <li key={seqno} className="text-[12px] text-orange-700">
                             <span className="font-mono font-semibold">{seqno}</span>
@@ -812,7 +812,7 @@ function UploadFilePanel({ onSaved }: { onSaved: () => void }) {
                     <p className="text-[13px] text-gray-700 mb-3">
                       The following landholdings have existing ARBs that will be <span className="font-semibold text-red-600">permanently deleted</span> and replaced with the new entries from your file:
                     </p>
-                    <ul className="bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 space-y-1 mb-5">
+                    <ul className="bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 space-y-1 mb-5 max-h-60 overflow-y-auto">
                       {Object.entries(preview.bySEQNO).filter(([, info]) => info.existingCount > 0).map(([seqno, info]) => (
                         <li key={seqno} className="text-[12px]">
                           <span className="font-mono font-semibold text-orange-800">{seqno}</span>
