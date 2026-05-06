@@ -157,7 +157,7 @@ export function IssueStrip({ data }: { data: StripData }) {
             Data Issue Breakdown
           </span>
           <span className="text-[11px] font-mono text-gray-400">
-            {data.total.toLocaleString()} records
+            {data.total.toLocaleString()} landholdings
           </span>
         </div>
 
