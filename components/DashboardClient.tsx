@@ -260,7 +260,7 @@ export function DashboardStatCards({
         />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            label="Total No. of Landholdings"
+            label="TOTAL LANDHOLDINGS"
             rawValue={total}
             displayValue={total.toLocaleString()}
             sub={<>{validatedCount.toLocaleString()} landholdings validated <span className="text-red-300">({notEligibleForEncodingCount.toLocaleString()} Not Eligible for Encoding)</span></>}
