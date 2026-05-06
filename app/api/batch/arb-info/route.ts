@@ -161,9 +161,17 @@ export async function PUT(req: NextRequest) {
     const arb = arbMap[`${r.seqno}|${r.arb_id}`];
     if (!arb) { notFoundPairs.push(`${r.seqno} / ${r.arb_id}`); continue; }
 
-    const locked =
-      (LOCKABLE.includes(type) && LOCKED_STATUSES.includes(lh.status ?? "")) ||
-      (DATE_TYPES.includes(type) && (arb.eligibility === "Not Eligible" || arb.carpable === "NON-CARPABLE" || lh.status === "Not Eligible for Encoding"));
+    const lockReasonForLockable = LOCKABLE.includes(type) && LOCKED_STATUSES.includes(lh.status ?? "")
+      ? `LH status is "${lh.status}" — field is locked`
+      : null;
+    const lockReasonForDate = DATE_TYPES.includes(type)
+      ? arb.eligibility === "Not Eligible" ? "ARB is Not Eligible"
+        : arb.carpable === "NON-CARPABLE" ? "ARB is NON-CARPABLE"
+        : lh.status === "Not Eligible for Encoding" ? `LH status is "${lh.status}"`
+        : null
+      : null;
+    const lockedReason = lockReasonForLockable ?? lockReasonForDate ?? null;
+    const locked = lockedReason !== null;
 
     const currentValue = (() => {
       switch (type) {
@@ -189,6 +197,7 @@ export async function PUT(req: NextRequest) {
       current_value: currentValue,
       new_value: r.value,
       locked,
+      lockedReason,
     });
   }
 
