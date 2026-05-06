@@ -124,10 +124,10 @@ export async function getStats(provinceFilter: string | string[] | null) {
       orderBy: { _count: { province_edited: "desc" } },
     }),
     prisma.landholding.groupBy({ by: ["status"], where: scope, _count: true }),
-    // Distinct CARPable ARB names
+    // Distinct CARPable ARB names (excluding "Not Eligible for Encoding" LHs)
     prisma.arb.groupBy({
       by: ["arb_name"],
-      where: { ...arbProvinceScope, carpable: "CARPABLE", arb_name: { not: null } },
+      where: { ...arbWhere({ status: { not: "Not Eligible for Encoding" } }), carpable: "CARPABLE", arb_name: { not: null } },
     }),
     // Service count — total CARPable ARBs (excluding "Not Eligible for Encoding" LHs)
     prisma.arb.count({
@@ -267,10 +267,10 @@ export async function getStats(provinceFilter: string | string[] | null) {
         date_distributed: { not: null },
       },
     }),
-    // Distinct eligible CARPable ARB names (for ARBs UPLOADED breakdown)
+    // Distinct eligible CARPable ARB names (for ARBs UPLOADED breakdown; excluding "Not Eligible for Encoding" LHs)
     prisma.arb.groupBy({
       by: ["arb_name"],
-      where: { ...arbProvinceScope, carpable: "CARPABLE", eligibility: "Eligible", arb_name: { not: null } },
+      where: { ...arbWhere({ status: { not: "Not Eligible for Encoding" } }), carpable: "CARPABLE", eligibility: "Eligible", arb_name: { not: null } },
     }),
     // Landholdings that have at least one ARB record uploaded (any status, any eligibility)
     prisma.landholding.count({
