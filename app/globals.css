@@ -2,6 +2,7 @@
 
 @theme {
   --font-ibm: var(--font-ibm);
+  --font-jetbrains: var(--font-jetbrains);
 
   /* Typography scale — used consistently across all modules */
   --text-page-title: 1.375rem;   /* 22px — page headings */
