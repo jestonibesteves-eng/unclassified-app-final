@@ -22,6 +22,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(result);
   } catch (err) {
     console.error("[digest/send] Unexpected error:", err);
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: "Failed to send digest. Check server logs." }, { status: 500 });
   }
 }
