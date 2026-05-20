@@ -47,3 +47,12 @@ yarn-error.log*
 next-env.d.ts
 
 /app/generated/prisma
+
+# Local tooling & session files
+/.superpowers/
+/.claude/
+/backups/
+USER_MANUAL.md
+USER_MANUAL.pdf
+generate_manual_pdf.py
+web-user-manual.skill
