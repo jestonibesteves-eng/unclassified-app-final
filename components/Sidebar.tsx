@@ -340,10 +340,10 @@ export default function Sidebar() {
                   D
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[8px] font-bold text-white/95 leading-tight" style={{ fontFamily: "var(--font-jetbrains)" }}>
+                  <p className="text-[10px] font-bold text-white/95 leading-tight" style={{ fontFamily: "var(--font-jetbrains)" }}>
                     DAR · Bicol Region
                   </p>
-                  <p className="text-[5.5px] text-white/50">ARR System</p>
+                  <p className="text-[8px] text-white/50">ARR System</p>
                 </div>
                 {/* Desktop collapse button */}
                 <button
@@ -366,7 +366,7 @@ export default function Sidebar() {
               </div>
               {/* Online badge */}
               <div
-                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[5.5px] text-white/75"
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[8px] text-white/75"
                 style={{ background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.2)" }}
               >
                 <span className="w-[4px] h-[4px] rounded-full bg-[#4ade80] flex-shrink-0" style={{ boxShadow: "0 0 4px #4ade80" }} />
@@ -382,7 +382,7 @@ export default function Sidebar() {
             <div key={gi}>
               {group.label && !collapsed && (
                 <p
-                  className="text-[5px] font-semibold uppercase tracking-[0.2em] text-slate-400 px-3 pt-5 pb-1"
+                  className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400 px-3 pt-5 pb-1"
                   style={{ fontFamily: "var(--font-jetbrains)" }}
                 >
                   {group.label}
@@ -428,7 +428,7 @@ export default function Sidebar() {
                               : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
                             }
                           `}
-                          style={{ fontFamily: "var(--font-jetbrains)", fontSize: "7.5px" }}
+                          style={{ fontFamily: "var(--font-jetbrains)", fontSize: "11.5px" }}
                         >
                           {parentActive && (
                             <span className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#16a34a] rounded-r-[2px]" />
@@ -456,7 +456,7 @@ export default function Sidebar() {
                                     : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
                                   }
                                 `}
-                                style={{ fontFamily: "var(--font-jetbrains)", fontSize: "7px" }}
+                                style={{ fontFamily: "var(--font-jetbrains)", fontSize: "11px" }}
                               >
                                 <span className={`w-1 h-1 rounded-full flex-shrink-0 ${childActive ? "bg-[#16a34a]" : "bg-slate-300"}`} />
                                 <span className="flex-1 truncate">{child.label}</span>
@@ -500,13 +500,13 @@ export default function Sidebar() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p
-                      className="text-[6.5px] font-semibold text-slate-800 truncate"
+                      className="text-[11px] font-semibold text-slate-800 truncate"
                       style={{ fontFamily: "var(--font-jetbrains)" }}
                     >
                       {user.full_name}
                     </p>
                     <p
-                      className="text-[5.5px] text-slate-400 capitalize"
+                      className="text-[9px] text-slate-400 capitalize"
                       style={{ fontFamily: "var(--font-jetbrains)" }}
                     >
                       {user.role.replace("_", " ")}
@@ -518,7 +518,7 @@ export default function Sidebar() {
                 onClick={handleLogout}
                 disabled={loggingOut}
                 className="w-full flex items-center gap-2 px-2.5 py-2 rounded-[7px] text-red-400/70 hover:text-red-500 hover:bg-red-50 transition-all duration-150 disabled:opacity-50"
-                style={{ fontFamily: "var(--font-jetbrains)", fontSize: "7.5px" }}
+                style={{ fontFamily: "var(--font-jetbrains)", fontSize: "11.5px" }}
               >
                 <IconSignOut />
                 {loggingOut ? "Signing out…" : "Sign Out"}
