@@ -1,0 +1,201 @@
+<h2>How should skeleton loading work?</h2>
+<p class="subtitle">Three approaches — different loading experiences. Pick the one that feels right.</p>
+
+<style>
+.approaches { display: flex; flex-direction: column; gap: 20px; max-width: 860px; margin: 0 auto; }
+.approach {
+  border: 2px solid #e5e7eb; border-radius: 12px; overflow: hidden;
+  cursor: pointer; transition: all 0.15s; background: white;
+}
+.approach:hover { border-color: #6ee7b7; }
+.approach.selected { border-color: #059669; box-shadow: 0 0 0 3px rgba(5,150,105,0.15); }
+.approach-header {
+  padding: 14px 18px; display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+.approach-letter {
+  width: 32px; height: 32px; border-radius: 50%; background: #059669;
+  color: white; font-weight: 700; font-size: 14px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.approach-title { font-weight: 700; font-size: 14px; color: #111; }
+.approach-sub { font-size: 12px; color: #6b7280; margin-top: 2px; }
+.approach-body { padding: 16px 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.mini-dash {
+  background: #f9fafb; border-radius: 8px; padding: 10px;
+  display: flex; flex-direction: column; gap: 6px;
+  font-size: 10px; color: #9ca3af; font-weight: 600; letter-spacing: 0.06em;
+}
+.mini-dash-label { font-size: 9px; text-transform: uppercase; font-weight: 700; color: #6b7280; margin-bottom: 4px; }
+.sk { background: #e5e7eb; border-radius: 4px; height: 10px; }
+.sk.pulse { animation: pulse 1.5s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.sk-card {
+  background: #f3f4f6; border-radius: 6px; padding: 8px;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.sk-h { height: 6px; background: #e5e7eb; border-radius: 3px; }
+.sk-h.tall { height: 28px; }
+.sk-h.pulse { animation: pulse 1.5s ease-in-out infinite; }
+.sk-cards-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; }
+.sk-charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.real { background: #ecfdf5; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; gap: 5px; }
+.real-h { height: 6px; background: #bbf7d0; border-radius: 3px; }
+.real-h.tall { height: 28px; background: #6ee7b7; }
+.real-chip { font-size: 9px; background: #059669; color: white; border-radius: 4px; padding: 2px 6px; font-weight: 700; display: inline-block; }
+.pros-cons { display: flex; flex-direction: column; gap: 6px; font-size: 11px; }
+.pro { color: #065f46; } .con { color: #92400e; }
+.recommended {
+  background: #ecfdf5; border: 1px solid #6ee7b7;
+  font-size: 10px; font-weight: 700; color: #065f46;
+  padding: 3px 10px; border-radius: 99px; display: inline-block; margin-left: 8px;
+}
+</style>
+
+<div class="approaches">
+
+  <!-- Option A -->
+  <div class="approach" onclick="this.classList.toggle('selected')">
+    <div class="approach-header">
+      <div class="approach-letter">A</div>
+      <div>
+        <div class="approach-title">Full-page skeleton <span class="recommended">Recommended</span></div>
+        <div class="approach-sub">app/loading.tsx — entire page replaced by a skeleton while data loads, then swaps in</div>
+      </div>
+    </div>
+    <div class="approach-body">
+      <div class="mini-dash">
+        <div class="mini-dash-label">⏳ While loading…</div>
+        <div class="sk-cards-row">
+          <div class="sk-card"><div class="sk-h pulse"></div><div class="sk-h tall pulse"></div></div>
+          <div class="sk-card"><div class="sk-h pulse"></div><div class="sk-h tall pulse"></div></div>
+          <div class="sk-card"><div class="sk-h pulse"></div><div class="sk-h tall pulse"></div></div>
+        </div>
+        <div class="sk" style="width:60%;height:6px;" class="pulse"></div>
+        <div class="sk-charts-row">
+          <div class="sk-card" style="height:60px"><div class="sk-h pulse" style="height:50px"></div></div>
+          <div class="sk-card" style="height:60px"><div class="sk-h pulse" style="height:50px"></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="mini-dash" style="background:#ecfdf5">
+          <div class="mini-dash-label">✅ After load — full page appears</div>
+          <div class="sk-cards-row">
+            <div class="real"><div class="real-h"></div><div class="real-h tall"></div></div>
+            <div class="real"><div class="real-h"></div><div class="real-h tall"></div></div>
+            <div class="real"><div class="real-h"></div><div class="real-h tall"></div></div>
+          </div>
+          <div class="real-h" style="width:60%"></div>
+          <div class="sk-charts-row">
+            <div class="real" style="height:60px"><div class="real-h" style="height:50px"></div></div>
+            <div class="real" style="height:60px"><div class="real-h" style="height:50px"></div></div>
+          </div>
+        </div>
+        <div class="pros-cons" style="margin-top:10px">
+          <div class="pro">✓ Simplest to build — one file, no refactoring</div>
+          <div class="pro">✓ Perfectly matches actual page layout</div>
+          <div class="con">✗ Whole page is skeleton until everything loads</div>
+          <div class="con">✗ Header/nav also disappears (unless in layout)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="approach" onclick="this.classList.toggle('selected')">
+    <div class="approach-header">
+      <div class="approach-letter">B</div>
+      <div>
+        <div class="approach-title">Section streaming</div>
+        <div class="approach-sub">Suspense boundaries per section — header loads instantly, sections appear one by one</div>
+      </div>
+    </div>
+    <div class="approach-body">
+      <div class="mini-dash">
+        <div class="mini-dash-label">⏳ While loading…</div>
+        <div style="background:#ecfdf5;border-radius:6px;padding:6px;margin-bottom:4px">
+          <div class="real-chip">Header instantly visible</div>
+        </div>
+        <div class="sk-cards-row">
+          <div class="sk-card"><div class="sk-h pulse"></div><div class="sk-h tall pulse"></div></div>
+          <div class="sk-card"><div class="sk-h pulse"></div><div class="sk-h tall pulse"></div></div>
+          <div class="sk-card"><div class="sk-h pulse"></div><div class="sk-h tall pulse"></div></div>
+        </div>
+        <div class="sk-charts-row" style="margin-top:4px">
+          <div class="sk-card" style="height:55px"><div class="sk-h pulse" style="height:45px"></div></div>
+          <div class="sk-card" style="height:55px"><div class="sk-h pulse" style="height:45px"></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="mini-dash" style="background:#ecfdf5">
+          <div class="mini-dash-label">✅ Sections pop in as ready</div>
+          <div style="background:#ecfdf5;border-radius:6px;padding:6px;margin-bottom:4px">
+            <div class="real-chip">Header</div>
+          </div>
+          <div class="sk-cards-row">
+            <div class="real"><div class="real-h"></div><div class="real-h tall"></div></div>
+            <div class="real"><div class="real-h"></div><div class="real-h tall"></div></div>
+            <div class="sk-card"><div class="sk-h pulse"></div><div class="sk-h tall pulse"></div></div>
+          </div>
+          <div class="sk-charts-row" style="margin-top:4px">
+            <div class="real" style="height:55px"><div class="real-h" style="height:45px"></div></div>
+            <div class="sk-card" style="height:55px"><div class="sk-h pulse" style="height:45px"></div></div>
+          </div>
+        </div>
+        <div class="pros-cons" style="margin-top:10px">
+          <div class="pro">✓ Header visible immediately</div>
+          <div class="pro">✓ Sections progressively load</div>
+          <div class="con">✗ Requires refactoring page into async sub-components</div>
+          <div class="con">✗ getStats() called once but needs React.cache() wiring</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="approach" onclick="this.classList.toggle('selected')">
+    <div class="approach-header">
+      <div class="approach-letter">C</div>
+      <div>
+        <div class="approach-title">loading.tsx + section skeletons</div>
+        <div class="approach-sub">Route-level loading.tsx skeleton that mirrors every section precisely</div>
+      </div>
+    </div>
+    <div class="approach-body">
+      <div class="mini-dash">
+        <div class="mini-dash-label">⏳ Precise mirror of real layout</div>
+        <div class="sk-cards-row">
+          <div class="sk-card"><div class="sk-h pulse" style="width:50%"></div><div class="sk-h tall pulse"></div><div class="sk-h pulse" style="width:70%"></div></div>
+          <div class="sk-card"><div class="sk-h pulse" style="width:60%"></div><div class="sk-h tall pulse"></div><div class="sk-h pulse" style="width:80%"></div></div>
+          <div class="sk-card"><div class="sk-h pulse" style="width:40%"></div><div class="sk-h tall pulse"></div><div class="sk-h pulse" style="width:60%"></div></div>
+        </div>
+        <div style="background:#e5e7eb;border-radius:4px;height:8px;margin:4px 0" class="pulse"></div>
+        <div class="sk-charts-row">
+          <div class="sk-card" style="height:70px;display:flex;flex-direction:column;gap:4px">
+            <div class="sk-h pulse" style="width:60%"></div>
+            <div class="sk-h pulse" style="height:50px"></div>
+          </div>
+          <div class="sk-card" style="height:70px;display:flex;flex-direction:column;gap:4px">
+            <div class="sk-h pulse" style="width:60%"></div>
+            <div class="sk-h pulse" style="height:50px"></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="pros-cons" style="margin-top:8px">
+          <div class="pro">✓ Pixel-accurate skeleton of real UI</div>
+          <div class="pro">✓ No refactoring needed</div>
+          <div class="pro">✓ Fast to build — pure HTML/CSS</div>
+          <div class="con">✗ Skeleton and real layout can drift if UI changes</div>
+          <div class="con">✗ Still replaces whole page (same as A but more detailed)</div>
+        </div>
+        <div style="margin-top:12px;padding:10px;background:#fffbeb;border-radius:8px;font-size:11px;color:#78350f">
+          <strong>vs Option A:</strong> Same mechanism (loading.tsx), but Option C builds a more detailed, faithful skeleton that closely mirrors every card, chart, and strip. Option A is a simpler, faster placeholder.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p style="text-align:center;margin-top:20px;font-size:12px;color:#9ca3af">Click to select, then tell me your pick in the terminal.</p>

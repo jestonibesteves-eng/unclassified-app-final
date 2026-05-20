@@ -1,0 +1,174 @@
+<h2>Provincial Gauge Modal — Layout Options</h2>
+<p class="subtitle">Which arrangement works best for showing all 7 provinces + regional at a glance?</p>
+
+<div class="cards">
+
+  <!-- Option A -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a2a1a;padding:16px;border-radius:6px;">
+      <!-- Regional gauge centered, larger -->
+      <div style="text-align:center;margin-bottom:12px;">
+        <div style="font-size:9px;color:#aaa;letter-spacing:1px;margin-bottom:4px;">REGION V</div>
+        <svg width="120" height="66" viewBox="0 0 120 66">
+          <path d="M10,60 A50,50 0 0,1 110,60" fill="none" stroke="#2d4a2d" stroke-width="10"/>
+          <path d="M10,60 A50,50 0 0,1 75,16" fill="none" stroke="#4ade80" stroke-width="10"/>
+          <text x="60" y="58" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">62%</text>
+        </svg>
+        <div style="font-size:8px;color:#aaa;">6,701 / 10,786</div>
+      </div>
+      <!-- Province grid 2-col -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+        <div style="background:#0f1f0f;border-radius:4px;padding:6px;text-align:center;">
+          <div style="font-size:7px;color:#aaa;margin-bottom:2px;">ALBAY</div>
+          <svg width="60" height="34" viewBox="0 0 60 34"><path d="M5,30 A25,25 0 0,1 55,30" fill="none" stroke="#2d4a2d" stroke-width="6"/><path d="M5,30 A25,25 0 0,1 38,9" fill="none" stroke="#4ade80" stroke-width="6"/><text x="30" y="28" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">70%</text></svg>
+        </div>
+        <div style="background:#0f1f0f;border-radius:4px;padding:6px;text-align:center;">
+          <div style="font-size:7px;color:#aaa;margin-bottom:2px;">CAM. NORTE</div>
+          <svg width="60" height="34" viewBox="0 0 60 34"><path d="M5,30 A25,25 0 0,1 55,30" fill="none" stroke="#2d4a2d" stroke-width="6"/><path d="M5,30 A25,25 0 0,1 34,6" fill="none" stroke="#4ade80" stroke-width="6"/><text x="30" y="28" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">55%</text></svg>
+        </div>
+        <div style="background:#0f1f0f;border-radius:4px;padding:6px;text-align:center;">
+          <div style="font-size:7px;color:#aaa;margin-bottom:2px;">CAM. SUR - I</div>
+          <svg width="60" height="34" viewBox="0 0 60 34"><path d="M5,30 A25,25 0 0,1 55,30" fill="none" stroke="#2d4a2d" stroke-width="6"/><path d="M5,30 A25,25 0 0,1 42,11" fill="none" stroke="#f59e0b" stroke-width="6"/><text x="30" y="28" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">80%</text></svg>
+        </div>
+        <div style="background:#0f1f0f;border-radius:4px;padding:6px;text-align:center;">
+          <div style="font-size:7px;color:#aaa;margin-bottom:2px;">CAM. SUR - II</div>
+          <svg width="60" height="34" viewBox="0 0 60 34"><path d="M5,30 A25,25 0 0,1 55,30" fill="none" stroke="#2d4a2d" stroke-width="6"/><path d="M5,30 A25,25 0 0,1 28,8" fill="none" stroke="#4ade80" stroke-width="6"/><text x="30" y="28" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">45%</text></svg>
+        </div>
+        <div style="background:#0f1f0f;border-radius:4px;padding:6px;text-align:center;">
+          <div style="font-size:7px;color:#aaa;margin-bottom:2px;">CATANDUANES</div>
+          <svg width="60" height="34" viewBox="0 0 60 34"><path d="M5,30 A25,25 0 0,1 55,30" fill="none" stroke="#2d4a2d" stroke-width="6"/><path d="M5,30 A25,25 0 0,1 55,30" fill="none" stroke="#4ade80" stroke-width="6"/><text x="30" y="28" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">100%</text></svg>
+        </div>
+        <div style="background:#0f1f0f;border-radius:4px;padding:6px;text-align:center;">
+          <div style="font-size:7px;color:#aaa;margin-bottom:2px;">MASBATE</div>
+          <svg width="60" height="34" viewBox="0 0 60 34"><path d="M5,30 A25,25 0 0,1 55,30" fill="none" stroke="#2d4a2d" stroke-width="6"/><path d="M5,30 A25,25 0 0,1 20,14" fill="none" stroke="#ef4444" stroke-width="6"/><text x="30" y="28" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">30%</text></svg>
+        </div>
+        <div style="background:#0f1f0f;border-radius:4px;padding:6px;text-align:center;grid-column:1/-1;max-width:50%;margin:0 auto;">
+          <div style="font-size:7px;color:#aaa;margin-bottom:2px;">SORSOGON</div>
+          <svg width="60" height="34" viewBox="0 0 60 34"><path d="M5,30 A25,25 0 0,1 55,30" fill="none" stroke="#2d4a2d" stroke-width="6"/><path d="M5,30 A25,25 0 0,1 32,6" fill="none" stroke="#4ade80" stroke-width="6"/><text x="30" y="28" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">50%</text></svg>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Center + 2-Column Grid</h3>
+      <p>Regional gauge centered on top (larger), provinces in a 2-column grid below. Sorsogon centered at the bottom since there are 7 provinces (odd number).</p>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a2a1a;padding:16px;border-radius:6px;">
+      <!-- Regional gauge full-width bar style at top -->
+      <div style="background:#0f1f0f;border-radius:4px;padding:8px;margin-bottom:10px;display:flex;align-items:center;gap:10px;">
+        <svg width="70" height="40" viewBox="0 0 70 40">
+          <path d="M5,35 A30,30 0 0,1 65,35" fill="none" stroke="#2d4a2d" stroke-width="8"/>
+          <path d="M5,35 A30,30 0 0,1 42,9" fill="none" stroke="#4ade80" stroke-width="8"/>
+          <text x="35" y="33" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">62%</text>
+        </svg>
+        <div>
+          <div style="font-size:9px;color:#4ade80;font-weight:bold;">REGION V — OVERALL</div>
+          <div style="font-size:8px;color:#aaa;">6,701 condoned of 10,786 committed</div>
+          <div style="background:#2d4a2d;height:4px;border-radius:2px;margin-top:4px;width:120px;"><div style="background:#4ade80;width:62%;height:100%;border-radius:2px;"></div></div>
+        </div>
+      </div>
+      <!-- Province 3-col grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;">
+        <div style="background:#0f1f0f;border-radius:4px;padding:4px;text-align:center;">
+          <div style="font-size:6px;color:#aaa;margin-bottom:1px;">ALBAY</div>
+          <svg width="50" height="28" viewBox="0 0 50 28"><path d="M4,24 A21,21 0 0,1 46,24" fill="none" stroke="#2d4a2d" stroke-width="5"/><path d="M4,24 A21,21 0 0,1 32,6" fill="none" stroke="#4ade80" stroke-width="5"/><text x="25" y="22" text-anchor="middle" fill="#fff" font-size="7" font-weight="bold">70%</text></svg>
+        </div>
+        <div style="background:#0f1f0f;border-radius:4px;padding:4px;text-align:center;">
+          <div style="font-size:6px;color:#aaa;margin-bottom:1px;">CAM. NORTE</div>
+          <svg width="50" height="28" viewBox="0 0 50 28"><path d="M4,24 A21,21 0 0,1 46,24" fill="none" stroke="#2d4a2d" stroke-width="5"/><path d="M4,24 A21,21 0 0,1 28,5" fill="none" stroke="#4ade80" stroke-width="5"/><text x="25" y="22" text-anchor="middle" fill="#fff" font-size="7" font-weight="bold">55%</text></svg>
+        </div>
+        <div style="background:#0f1f0f;border-radius:4px;padding:4px;text-align:center;">
+          <div style="font-size:6px;color:#aaa;margin-bottom:1px;">CAM. SUR - I</div>
+          <svg width="50" height="28" viewBox="0 0 50 28"><path d="M4,24 A21,21 0 0,1 46,24" fill="none" stroke="#2d4a2d" stroke-width="5"/><path d="M4,24 A21,21 0 0,1 36,8" fill="none" stroke="#f59e0b" stroke-width="5"/><text x="25" y="22" text-anchor="middle" fill="#fff" font-size="7" font-weight="bold">80%</text></svg>
+        </div>
+        <div style="background:#0f1f0f;border-radius:4px;padding:4px;text-align:center;">
+          <div style="font-size:6px;color:#aaa;margin-bottom:1px;">CAM. SUR - II</div>
+          <svg width="50" height="28" viewBox="0 0 50 28"><path d="M4,24 A21,21 0 0,1 46,24" fill="none" stroke="#2d4a2d" stroke-width="5"/><path d="M4,24 A21,21 0 0,1 23,7" fill="none" stroke="#4ade80" stroke-width="5"/><text x="25" y="22" text-anchor="middle" fill="#fff" font-size="7" font-weight="bold">45%</text></svg>
+        </div>
+        <div style="background:#0f1f0f;border-radius:4px;padding:4px;text-align:center;">
+          <div style="font-size:6px;color:#aaa;margin-bottom:1px;">CATANDUANES</div>
+          <svg width="50" height="28" viewBox="0 0 50 28"><path d="M4,24 A21,21 0 0,1 46,24" fill="none" stroke="#4ade80" stroke-width="5"/><text x="25" y="22" text-anchor="middle" fill="#fff" font-size="7" font-weight="bold">100%</text></svg>
+        </div>
+        <div style="background:#0f1f0f;border-radius:4px;padding:4px;text-align:center;">
+          <div style="font-size:6px;color:#aaa;margin-bottom:1px;">MASBATE</div>
+          <svg width="50" height="28" viewBox="0 0 50 28"><path d="M4,24 A21,21 0 0,1 46,24" fill="none" stroke="#2d4a2d" stroke-width="5"/><path d="M4,24 A21,21 0 0,1 16,12" fill="none" stroke="#ef4444" stroke-width="5"/><text x="25" y="22" text-anchor="middle" fill="#fff" font-size="7" font-weight="bold">30%</text></svg>
+        </div>
+        <div style="background:#0f1f0f;border-radius:4px;padding:4px;text-align:center;grid-column:2;">
+          <div style="font-size:6px;color:#aaa;margin-bottom:1px;">SORSOGON</div>
+          <svg width="50" height="28" viewBox="0 0 50 28"><path d="M4,24 A21,21 0 0,1 46,24" fill="none" stroke="#2d4a2d" stroke-width="5"/><path d="M4,24 A21,21 0 0,1 25,5" fill="none" stroke="#4ade80" stroke-width="5"/><text x="25" y="22" text-anchor="middle" fill="#fff" font-size="7" font-weight="bold">50%</text></svg>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Banner + 3-Column Grid</h3>
+      <p>Regional shown as a wider banner strip with gauge + progress bar for context. Provinces in a 3-column grid — more compact, fits more without scrolling.</p>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#1a2a1a;padding:12px;border-radius:6px;">
+      <!-- Vertical list with regional at top, bigger -->
+      <div style="display:flex;gap:8px;align-items:center;background:#1e3a1e;border-radius:4px;padding:8px;margin-bottom:8px;border:1px solid #4ade8044;">
+        <svg width="80" height="45" viewBox="0 0 80 45">
+          <path d="M5,40 A35,35 0 0,1 75,40" fill="none" stroke="#2d4a2d" stroke-width="9"/>
+          <path d="M5,40 A35,35 0 0,1 48,9" fill="none" stroke="#4ade80" stroke-width="9"/>
+          <text x="40" y="38" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold">62%</text>
+        </svg>
+        <div style="flex:1">
+          <div style="font-size:9px;color:#4ade80;font-weight:bold;letter-spacing:1px;">REGION V</div>
+          <div style="font-size:7px;color:#aaa;">6,701 / 10,786 COCROMs</div>
+          <div style="background:#2d4a2d;height:5px;border-radius:3px;margin-top:4px;"><div style="background:#4ade80;width:62%;height:100%;border-radius:3px;"></div></div>
+        </div>
+      </div>
+      <!-- Province rows -->
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div style="display:flex;gap:6px;align-items:center;background:#0f1f0f;border-radius:3px;padding:4px 6px;">
+          <svg width="36" height="20" viewBox="0 0 36 20"><path d="M2,18 A16,16 0 0,1 34,18" fill="none" stroke="#2d4a2d" stroke-width="4"/><path d="M2,18 A16,16 0 0,1 22,4" fill="none" stroke="#4ade80" stroke-width="4"/><text x="18" y="17" text-anchor="middle" fill="#fff" font-size="6" font-weight="bold">70%</text></svg>
+          <span style="font-size:7px;color:#ccc;flex:1;">ALBAY</span>
+          <div style="background:#2d4a2d;height:4px;border-radius:2px;width:60px;"><div style="background:#4ade80;width:70%;height:100%;border-radius:2px;"></div></div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;background:#0f1f0f;border-radius:3px;padding:4px 6px;">
+          <svg width="36" height="20" viewBox="0 0 36 20"><path d="M2,18 A16,16 0 0,1 34,18" fill="none" stroke="#2d4a2d" stroke-width="4"/><path d="M2,18 A16,16 0 0,1 19,3" fill="none" stroke="#4ade80" stroke-width="4"/><text x="18" y="17" text-anchor="middle" fill="#fff" font-size="6" font-weight="bold">55%</text></svg>
+          <span style="font-size:7px;color:#ccc;flex:1;">CAMARINES NORTE</span>
+          <div style="background:#2d4a2d;height:4px;border-radius:2px;width:60px;"><div style="background:#4ade80;width:55%;height:100%;border-radius:2px;"></div></div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;background:#0f1f0f;border-radius:3px;padding:4px 6px;">
+          <svg width="36" height="20" viewBox="0 0 36 20"><path d="M2,18 A16,16 0 0,1 34,18" fill="none" stroke="#2d4a2d" stroke-width="4"/><path d="M2,18 A16,16 0 0,1 26,5" fill="none" stroke="#f59e0b" stroke-width="4"/><text x="18" y="17" text-anchor="middle" fill="#fff" font-size="6" font-weight="bold">80%</text></svg>
+          <span style="font-size:7px;color:#ccc;flex:1;">CAMARINES SUR - I</span>
+          <div style="background:#2d4a2d;height:4px;border-radius:2px;width:60px;"><div style="background:#f59e0b;width:80%;height:100%;border-radius:2px;"></div></div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;background:#0f1f0f;border-radius:3px;padding:4px 6px;">
+          <svg width="36" height="20" viewBox="0 0 36 20"><path d="M2,18 A16,16 0 0,1 34,18" fill="none" stroke="#2d4a2d" stroke-width="4"/><path d="M2,18 A16,16 0 0,1 16,5" fill="none" stroke="#4ade80" stroke-width="4"/><text x="18" y="17" text-anchor="middle" fill="#fff" font-size="6" font-weight="bold">45%</text></svg>
+          <span style="font-size:7px;color:#ccc;flex:1;">CAMARINES SUR - II</span>
+          <div style="background:#2d4a2d;height:4px;border-radius:2px;width:60px;"><div style="background:#4ade80;width:45%;height:100%;border-radius:2px;"></div></div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;background:#0f1f0f;border-radius:3px;padding:4px 6px;">
+          <svg width="36" height="20" viewBox="0 0 36 20"><path d="M2,18 A16,16 0 0,1 34,18" fill="none" stroke="#4ade80" stroke-width="4"/><text x="18" y="17" text-anchor="middle" fill="#fff" font-size="6" font-weight="bold">100%</text></svg>
+          <span style="font-size:7px;color:#ccc;flex:1;">CATANDUANES</span>
+          <div style="background:#2d4a2d;height:4px;border-radius:2px;width:60px;"><div style="background:#4ade80;width:100%;height:100%;border-radius:2px;"></div></div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;background:#0f1f0f;border-radius:3px;padding:4px 6px;">
+          <svg width="36" height="20" viewBox="0 0 36 20"><path d="M2,18 A16,16 0 0,1 34,18" fill="none" stroke="#2d4a2d" stroke-width="4"/><path d="M2,18 A16,16 0 0,1 9,9" fill="none" stroke="#ef4444" stroke-width="4"/><text x="18" y="17" text-anchor="middle" fill="#fff" font-size="6" font-weight="bold">30%</text></svg>
+          <span style="font-size:7px;color:#ccc;flex:1;">MASBATE</span>
+          <div style="background:#2d4a2d;height:4px;border-radius:2px;width:60px;"><div style="background:#ef4444;width:30%;height:100%;border-radius:2px;"></div></div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;background:#0f1f0f;border-radius:3px;padding:4px 6px;">
+          <svg width="36" height="20" viewBox="0 0 36 20"><path d="M2,18 A16,16 0 0,1 34,18" fill="none" stroke="#2d4a2d" stroke-width="4"/><path d="M2,18 A16,16 0 0,1 18,3" fill="none" stroke="#4ade80" stroke-width="4"/><text x="18" y="17" text-anchor="middle" fill="#fff" font-size="6" font-weight="bold">50%</text></svg>
+          <span style="font-size:7px;color:#ccc;flex:1;">SORSOGON</span>
+          <div style="background:#2d4a2d;height:4px;border-radius:2px;width:60px;"><div style="background:#4ade80;width:50%;height:100%;border-radius:2px;"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — List Rows with Mini Gauges</h3>
+      <p>Regional as a prominent banner at top. Each province gets a row: mini semi-gauge + name + progress bar. Compact and scannable — best on mobile too.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:16px;">Click to select your preferred layout, then let me know in the terminal.</p>

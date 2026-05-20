@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skeleton Preview</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f3f4f6; font-family: system-ui, sans-serif; padding: 24px; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
+  .pulse { animation: pulse 1.6s ease-in-out infinite; }
+
+  .sk { background: #e5e7eb; border-radius: 4px; }
+  .sk-lg { background: #d1d5db; border-radius: 6px; }
+
+  /* Layout */
+  .page { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+
+  /* Header */
+  .header { display: flex; justify-content: space-between; align-items: flex-start; }
+  .header-left { display: flex; flex-direction: column; gap: 8px; }
+  .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+
+  /* Stat Cards */
+  .stat-section { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; }
+  .stat-section-label { height: 10px; width: 140px; margin-bottom: 12px; }
+  .stat-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .stat-card {
+    border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden;
+  }
+  .stat-card-header { height: 8px; padding: 8px 12px; background: #f9fafb; }
+  .stat-card-body { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+
+  /* Issue strip */
+  .issue-strip { height: 44px; background: white; border: 1px solid #e5e7eb; border-radius: 10px; display: flex; align-items: center; gap: 12px; padding: 0 16px; }
+
+  /* Chart card */
+  .chart-card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; flex: 1; }
+  .chart-card-header { height: 36px; background: #d1d5db; display: flex; align-items: center; padding: 0 14px; gap: 8px; }
+  .chart-card-body { padding: 16px; }
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* Section label styling */
+  .section-note {
+    position: absolute; top: -22px; left: 0;
+    font-size: 10px; font-weight: 700; color: #9ca3af; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .labeled { position: relative; }
+</style>
+</head>
+<body>
+<p style="text-align:center;font-size:12px;color:#6b7280;margin-bottom:20px;font-weight:600;letter-spacing:0.05em">SKELETON PREVIEW — What users see while the dashboard loads</p>
+
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="sk pulse" style="height:18px;width:60px;border-radius:99px"></div>
+      <div class="sk-lg pulse" style="height:28px;width:220px"></div>
+      <div class="sk pulse" style="height:11px;width:320px"></div>
+    </div>
+    <div class="header-right">
+      <div style="display:flex;gap:8px">
+        <div class="sk pulse" style="height:30px;width:120px;border-radius:8px"></div>
+        <div class="sk pulse" style="height:30px;width:100px;border-radius:8px"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <div class="sk pulse" style="height:28px;width:90px;border-radius:8px"></div>
+        <div class="sk pulse" style="height:28px;width:80px;border-radius:8px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PER LANDHOLDING Stat Cards -->
+  <div class="stat-section">
+    <div class="sk pulse stat-section-label"></div>
+    <div class="stat-cards">
+      <div class="stat-card">
+        <div class="stat-card-body">
+          <div class="sk pulse" style="height:9px;width:70%"></div>
+          <div class="sk-lg pulse" style="height:36px;width:55%"></div>
+          <div class="sk pulse" style="height:8px;width:85%"></div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-body">
+          <div class="sk pulse" style="height:9px;width:60%"></div>
+          <div class="sk-lg pulse" style="height:36px;width:40%"></div>
+          <div class="sk pulse" style="height:8px;width:75%"></div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-body">
+          <div class="sk pulse" style="height:9px;width:65%"></div>
+          <div class="sk-lg pulse" style="height:36px;width:50%"></div>
+          <div class="sk pulse" style="height:8px;width:80%"></div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-body">
+          <div class="sk pulse" style="height:9px;width:70%"></div>
+          <div class="sk-lg pulse" style="height:36px;width:60%"></div>
+          <div class="sk pulse" style="height:8px;width:70%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PER ARB Stat Cards -->
+  <div class="stat-section">
+    <div class="sk pulse stat-section-label"></div>
+    <div class="stat-cards" style="grid-template-columns:repeat(2,1fr)">
+      <div class="stat-card">
+        <div class="stat-card-body">
+          <div class="sk pulse" style="height:9px;width:70%"></div>
+          <div class="sk-lg pulse" style="height:36px;width:40%"></div>
+          <div class="sk pulse" style="height:8px;width:85%"></div>
+          <div class="sk pulse" style="height:8px;width:65%"></div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-body">
+          <div class="sk pulse" style="height:9px;width:65%"></div>
+          <div class="sk-lg pulse" style="height:36px;width:40%"></div>
+          <div class="sk pulse" style="height:8px;width:80%"></div>
+          <div class="sk pulse" style="height:8px;width:60%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Issue Strip -->
+  <div class="issue-strip">
+    <div class="sk pulse" style="height:10px;width:80px;border-radius:99px"></div>
+    <div class="sk pulse" style="height:10px;flex:1;border-radius:99px"></div>
+    <div class="sk pulse" style="height:10px;width:60px;border-radius:99px"></div>
+  </div>
+
+  <!-- Charts Row 1 -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="sk pulse" style="height:9px;width:160px;background:#bbb;border-radius:4px"></div>
+      </div>
+      <div class="chart-card-body">
+        <div style="display:flex;flex-direction:column;gap:9px">
+          <div class="sk pulse" style="height:18px;width:85%"></div>
+          <div class="sk pulse" style="height:18px;width:60%"></div>
+          <div class="sk pulse" style="height:18px;width:75%"></div>
+          <div class="sk pulse" style="height:18px;width:45%"></div>
+          <div class="sk pulse" style="height:18px;width:90%"></div>
+          <div class="sk pulse" style="height:18px;width:55%"></div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <div class="sk pulse" style="height:9px;width:130px;background:#bbb;border-radius:4px"></div>
+      </div>
+      <div class="chart-card-body">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:12px;gap:6px">
+          <div class="sk pulse" style="height:24px;width:80px;border-radius:6px"></div>
+          <div class="sk pulse" style="height:24px;width:24px;border-radius:6px"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:9px">
+          <div class="sk pulse" style="height:18px;width:95%"></div>
+          <div class="sk pulse" style="height:18px;width:30%"></div>
+          <div class="sk pulse" style="height:18px;width:20%"></div>
+          <div class="sk pulse" style="height:18px;width:15%"></div>
+          <div class="sk pulse" style="height:18px;width:12%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COCROM Charts Row -->
+  <div class="chart-card" style="flex:none">
+    <div class="chart-card-header">
+      <div class="sk pulse" style="height:9px;width:200px;background:#bbb;border-radius:4px"></div>
+    </div>
+    <div class="chart-card-body">
+      <div class="charts-row">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="sk pulse" style="height:120px;width:100%;border-radius:8px"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="sk pulse" style="height:120px;width:100%;border-radius:8px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Accomplishment Tracker -->
+  <div class="chart-card" style="flex:none">
+    <div class="chart-card-header" style="justify-content:space-between">
+      <div class="sk pulse" style="height:9px;width:180px;background:#bbb;border-radius:4px"></div>
+      <div style="display:flex;gap:4px">
+        <div class="sk pulse" style="height:22px;width:50px;background:#bbb;border-radius:6px"></div>
+        <div class="sk pulse" style="height:22px;width:60px;background:#bbb;border-radius:6px"></div>
+        <div class="sk pulse" style="height:22px;width:65px;background:#bbb;border-radius:6px"></div>
+      </div>
+    </div>
+    <div class="chart-card-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div class="stat-card"><div class="stat-card-body"><div class="sk pulse" style="height:9px;width:60%"></div><div class="sk-lg pulse" style="height:80px;margin-top:8px"></div></div></div>
+        <div class="stat-card"><div class="stat-card-body"><div class="sk pulse" style="height:9px;width:60%"></div><div class="sk-lg pulse" style="height:80px;margin-top:8px"></div></div></div>
+        <div class="stat-card"><div class="stat-card-body"><div class="sk pulse" style="height:9px;width:60%"></div><div class="sk-lg pulse" style="height:80px;margin-top:8px"></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Not Eligible -->
+  <div class="chart-card" style="flex:none">
+    <div class="chart-card-header">
+      <div class="sk pulse" style="height:9px;width:240px;background:#bbb;border-radius:4px"></div>
+    </div>
+    <div class="chart-card-body">
+      <div class="charts-row">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="sk pulse" style="height:9px;width:80px"></div>
+          <div class="sk pulse" style="height:100px;width:100%;border-radius:8px"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="sk pulse" style="height:9px;width:120px"></div>
+          <div class="sk pulse" style="height:100px;width:100%;border-radius:8px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p style="text-align:center;font-size:11px;color:#9ca3af;margin-top:24px">All gray blocks animate with a breathing pulse. Does this look right? Let me know in the terminal.</p>
+</body>
+</html>

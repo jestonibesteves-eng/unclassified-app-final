@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weekly Digest — Email Template Mockup</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #e8edf2; color: #1e293b; font-size: 14px; padding: 32px 16px; }
+
+  /* Label above email */
+  .preview-label { text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #94a3b8; margin-bottom: 20px; }
+  .preview-tabs { display: flex; justify-content: center; gap: 8px; margin-bottom: 24px; }
+  .tab { padding: 6px 16px; border-radius: 99px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid #d1d5db; background: white; color: #64748b; }
+  .tab.active { background: #14532d; color: white; border-color: #14532d; }
+
+  /* Email wrapper */
+  .email-outer { max-width: 620px; margin: 0 auto; }
+
+  /* Subject line preview */
+  .subject-preview { background: white; border: 1px solid #e2e8f0; border-radius: 10px 10px 0 0; border-bottom: none; padding: 12px 20px; display: flex; gap: 12px; align-items: baseline; }
+  .subject-line { font-size: 13px; font-weight: 600; color: #1e293b; }
+  .subject-date { font-size: 11px; color: #94a3b8; }
+
+  /* Email card */
+  .email { background: white; border: 1px solid #e2e8f0; border-radius: 0 0 12px 12px; overflow: hidden; }
+
+  /* Header */
+  .email-header { background: #14532d; padding: 28px 32px 24px; color: white; }
+  .email-header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .dar-logo { font-size: 11px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.75; }
+  .week-badge { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); border-radius: 99px; padding: 4px 12px; font-size: 11px; color: rgba(255,255,255,0.85); }
+  .email-title { font-size: 22px; font-weight: 700; color: white; margin-bottom: 4px; }
+  .email-sub { font-size: 13px; color: rgba(255,255,255,0.65); }
+
+  /* Greeting */
+  .email-body { padding: 28px 32px; }
+  .greeting { font-size: 14px; color: #374151; margin-bottom: 20px; line-height: 1.6; }
+  .greeting strong { color: #0f172a; }
+
+  /* Section header */
+  .section-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #94a3b8; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #f1f5f9; }
+
+  /* This week stats */
+  .this-week { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 28px; }
+  .stat-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px 18px; }
+  .stat-card-label { font-size: 11px; color: #64748b; margin-bottom: 6px; }
+  .stat-card-value { font-size: 28px; font-weight: 700; color: #0f172a; line-height: 1; font-variant-numeric: tabular-nums; }
+  .stat-card-value span { font-size: 13px; font-weight: 500; color: #64748b; margin-left: 4px; }
+  .stat-card-sub { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+  .stat-card.validated { border-left: 3px solid #16a34a; }
+  .stat-card.encoded { border-left: 3px solid #2563eb; }
+
+  /* Cumulative table */
+  .cum-table { width: 100%; border-collapse: collapse; margin-bottom: 28px; }
+  .cum-table th { text-align: left; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8; padding: 8px 10px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+  .cum-table th:not(:first-child) { text-align: right; }
+  .cum-table td { padding: 12px 10px; border-bottom: 1px solid #f8fafc; font-size: 13px; vertical-align: middle; }
+  .cum-table td:not(:first-child) { text-align: right; }
+  .cum-table tr:last-child td { border-bottom: none; }
+  .cum-metric { font-weight: 500; color: #1e293b; }
+  .cum-value { font-weight: 700; color: #0f172a; font-variant-numeric: tabular-nums; }
+  .cum-target { color: #64748b; font-size: 12px; }
+  .balance-pos { color: #16a34a; font-weight: 600; font-size: 12px; }
+  .balance-neg { color: #ef4444; font-weight: 600; font-size: 12px; }
+  .progress-bar-wrap { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+  .progress-bar { height: 6px; width: 80px; background: #e2e8f0; border-radius: 99px; overflow: hidden; flex-shrink: 0; }
+  .progress-bar-fill { height: 100%; border-radius: 99px; background: #16a34a; }
+  .pct { font-size: 11px; font-weight: 600; color: #374151; min-width: 34px; text-align: right; }
+
+  /* Provincial breakdown */
+  .prov-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 12px; }
+  .prov-table th { text-align: left; font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: #94a3b8; padding: 7px 10px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+  .prov-table th:not(:first-child) { text-align: right; }
+  .prov-table td { padding: 10px 10px; border-bottom: 1px solid #f8fafc; vertical-align: middle; }
+  .prov-table td:not(:first-child) { text-align: right; }
+  .prov-table tr:last-child td { border-bottom: none; }
+  .prov-name { font-weight: 600; color: #1e293b; }
+  .prov-num { font-variant-numeric: tabular-nums; color: #374151; }
+  .prov-pct { font-size: 11px; color: #94a3b8; }
+  .prov-bal-pos { color: #16a34a; font-size: 11px; font-weight: 600; }
+  .prov-bal-neg { color: #ef4444; font-size: 11px; font-weight: 600; }
+
+  /* Footer */
+  .email-footer { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 18px 32px; text-align: center; }
+  .email-footer p { font-size: 11px; color: #94a3b8; line-height: 1.6; }
+  .email-footer strong { color: #64748b; }
+
+  /* Divider */
+  .divider { height: 1px; background: #f1f5f9; margin: 24px 0; }
+</style>
+</head>
+<body>
+
+<div class="preview-label">Email Template Preview</div>
+
+<div class="preview-tabs">
+  <div class="tab active">Regional (CARPO / ARDO)</div>
+  <div class="tab">Provincial (CARPO / PARPO II)</div>
+</div>
+
+<div class="email-outer">
+  <!-- Subject line -->
+  <div class="subject-preview">
+    <span class="subject-line">📊 DAR Region V — Weekly Progress Digest · Apr 28 – May 4, 2026</span>
+    <span class="subject-date">Mon, May 5 · 8:00 AM</span>
+  </div>
+
+  <div class="email">
+    <!-- Header -->
+    <div class="email-header">
+      <div class="email-header-top">
+        <span class="dar-logo">DAR · Region V · Bicol</span>
+        <span class="week-badge">Week of Apr 28 – May 4</span>
+      </div>
+      <div class="email-title">Weekly Progress Digest</div>
+      <div class="email-sub">COCROM Validation, Encoding &amp; Distribution Summary</div>
+    </div>
+
+    <!-- Body -->
+    <div class="email-body">
+      <p class="greeting">Good morning, <strong>Regional CARPO</strong>. Here is the progress update for the week of <strong>April 28 – May 4, 2026</strong>.</p>
+
+      <!-- Section 1: This Week -->
+      <div class="section-label">This Week's Activity</div>
+      <div class="this-week">
+        <div class="stat-card validated">
+          <div class="stat-card-label">LHs Validated</div>
+          <div class="stat-card-value">24 <span>LHs</span></div>
+          <div class="stat-card-sub">Records updated & validated this week</div>
+        </div>
+        <div class="stat-card encoded">
+          <div class="stat-card-label">COCROMs Encoded</div>
+          <div class="stat-card-value">18 <span>COCROMs</span></div>
+          <div class="stat-card-sub">Records updated & encoded this week</div>
+        </div>
+      </div>
+
+      <!-- Section 2: Cumulative -->
+      <div class="section-label">Cumulative Progress</div>
+      <table class="cum-table">
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Completed</th>
+            <th>Target / Eligible</th>
+            <th>Balance</th>
+            <th>Progress</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="cum-metric">LHs Fully Validated</td>
+            <td class="cum-value">312</td>
+            <td class="cum-target">486 total LHs</td>
+            <td class="balance-neg">−174 remaining</td>
+            <td>
+              <div class="progress-bar-wrap">
+                <div class="progress-bar"><div class="progress-bar-fill" style="width:64%"></div></div>
+                <span class="pct">64%</span>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="cum-metric">COCROMs Encoded</td>
+            <td class="cum-value">1,847</td>
+            <td class="cum-target">2,340 eligible</td>
+            <td class="balance-neg">−493 remaining</td>
+            <td>
+              <div class="progress-bar-wrap">
+                <div class="progress-bar"><div class="progress-bar-fill" style="width:79%"></div></div>
+                <span class="pct">79%</span>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="cum-metric">COCROMs for Distribution</td>
+            <td class="cum-value">1,203</td>
+            <td class="cum-target">1,500 committed</td>
+            <td class="balance-neg">−297 to commitment</td>
+            <td>
+              <div class="progress-bar-wrap">
+                <div class="progress-bar"><div class="progress-bar-fill" style="width:80%; background:#f59e0b;"></div></div>
+                <span class="pct">80%</span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="divider"></div>
+
+      <!-- Provincial Breakdown -->
+      <div class="section-label">Provincial Breakdown</div>
+      <table class="prov-table">
+        <thead>
+          <tr>
+            <th>Province</th>
+            <th>Validated (wk)</th>
+            <th>Encoded (wk)</th>
+            <th>LHs Validated</th>
+            <th>COCROMs Encoded</th>
+            <th>vs. Commitment</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="prov-name">Albay</td>
+            <td class="prov-num">6</td>
+            <td class="prov-num">4</td>
+            <td><span class="prov-num">72</span> <span class="prov-pct">/ 110</span></td>
+            <td><span class="prov-num">418</span> <span class="prov-pct">/ 520</span></td>
+            <td><span class="prov-bal-neg">−82</span></td>
+          </tr>
+          <tr>
+            <td class="prov-name">Cam. Norte</td>
+            <td class="prov-num">2</td>
+            <td class="prov-num">3</td>
+            <td><span class="prov-num">38</span> <span class="prov-pct">/ 55</span></td>
+            <td><span class="prov-num">201</span> <span class="prov-pct">/ 240</span></td>
+            <td><span class="prov-bal-neg">−39</span></td>
+          </tr>
+          <tr>
+            <td class="prov-name">Cam. Sur I</td>
+            <td class="prov-num">5</td>
+            <td class="prov-num">4</td>
+            <td><span class="prov-num">61</span> <span class="prov-pct">/ 90</span></td>
+            <td><span class="prov-num">312</span> <span class="prov-pct">/ 380</span></td>
+            <td><span class="prov-bal-pos">+12</span></td>
+          </tr>
+          <tr>
+            <td class="prov-name">Cam. Sur II</td>
+            <td class="prov-num">4</td>
+            <td class="prov-num">3</td>
+            <td><span class="prov-num">58</span> <span class="prov-pct">/ 82</span></td>
+            <td><span class="prov-num">287</span> <span class="prov-pct">/ 350</span></td>
+            <td><span class="prov-bal-neg">−63</span></td>
+          </tr>
+          <tr>
+            <td class="prov-name">Catanduanes</td>
+            <td class="prov-num">3</td>
+            <td class="prov-num">2</td>
+            <td><span class="prov-num">34</span> <span class="prov-pct">/ 48</span></td>
+            <td><span class="prov-num">189</span> <span class="prov-pct">/ 200</span></td>
+            <td><span class="prov-bal-pos">+5</span></td>
+          </tr>
+          <tr>
+            <td class="prov-name">Masbate</td>
+            <td class="prov-num">2</td>
+            <td class="prov-num">1</td>
+            <td><span class="prov-num">29</span> <span class="prov-pct">/ 52</span></td>
+            <td><span class="prov-num">198</span> <span class="prov-pct">/ 260</span></td>
+            <td><span class="prov-bal-neg">−62</span></td>
+          </tr>
+          <tr>
+            <td class="prov-name">Sorsogon</td>
+            <td class="prov-num">2</td>
+            <td class="prov-num">1</td>
+            <td><span class="prov-num">20</span> <span class="prov-pct">/ 49</span></td>
+            <td><span class="prov-num">242</span> <span class="prov-pct">/ 390</span></td>
+            <td><span class="prov-bal-neg">−148</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Footer -->
+    <div class="email-footer">
+      <p><strong>DAR Region V — Unclassified ARRs Data Management System</strong></p>
+      <p>This report was generated automatically. For questions, contact your system administrator.</p>
+      <p style="margin-top:6px;">© 2026 Department of Agrarian Reform · Region V · Bicol</p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

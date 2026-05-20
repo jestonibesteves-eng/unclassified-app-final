@@ -45,7 +45,7 @@ function setSessionCookies(res: NextResponse, token: string): void {
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "strict",
     maxAge: SESSION_DURATION_S,
     path: "/",
   });
@@ -54,7 +54,7 @@ function setSessionCookies(res: NextResponse, token: string): void {
   res.cookies.set(SESSION_EXP_COOKIE, String(expUnix), {
     httpOnly: false,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "strict",
     maxAge: SESSION_DURATION_S,
     path: "/",
   });

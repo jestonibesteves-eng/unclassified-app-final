@@ -1,0 +1,150 @@
+<h2>Province Breakdown Table — 3 Design Approaches</h2>
+<p class="subtitle">The table icon sits in the top-right of the "Per Landholding Data" group. Pick a modal style below.</p>
+
+<div class="section">
+  <p class="label">Button placement preview</p>
+  <div style="background:#d1fae5;border-radius:12px;padding:12px 16px;position:relative;max-width:600px;margin:0 auto 24px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-size:10px;letter-spacing:0.13em;font-weight:700;color:#047857;text-transform:uppercase;">Per Landholding Data</span>
+      <button style="width:28px;height:28px;border-radius:6px;background:#fff;border:1.5px solid #6ee7b7;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.08);" title="View as table">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/>
+        </svg>
+      </button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:8px;">
+      <div style="background:#fff;border-radius:8px;padding:12px;border-top:3px solid #10b981;"><div style="font-size:10px;color:#6b7280;margin-bottom:4px;">TOTAL RECORDS</div><div style="font-size:22px;font-weight:700;color:#047857;">1,234</div></div>
+      <div style="background:#fff;border-radius:8px;padding:12px;border-top:3px solid #a855f7;"><div style="font-size:10px;color:#6b7280;margin-bottom:4px;">TOTAL LOs</div><div style="font-size:22px;font-weight:700;color:#7e22ce;">890</div></div>
+      <div style="background:#fff;border-radius:8px;padding:12px;border-top:3px solid #3b82f6;"><div style="font-size:10px;color:#6b7280;margin-bottom:4px;">TOTAL AREA</div><div style="font-size:22px;font-weight:700;color:#1d4ed8;">4,567.89</div></div>
+      <div style="background:#fff;border-radius:8px;padding:12px;border-top:3px solid #14b8a6;"><div style="font-size:10px;color:#6b7280;margin-bottom:4px;">AMOUNT CONDONED</div><div style="font-size:22px;font-weight:700;color:#0f766e;">₱12.3M</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="cards">
+
+  <!-- Option A -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;overflow:hidden;font-family:monospace;font-size:11px;">
+        <div style="background:#14532d;color:#86efac;padding:8px 12px;font-size:9px;letter-spacing:0.12em;font-weight:700;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;">
+          <span>Province Breakdown — Per Landholding Data</span>
+          <span style="opacity:0.6;">×</span>
+        </div>
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="background:#f0fdf4;">
+              <th rowspan="2" style="padding:5px 8px;text-align:left;font-size:9px;color:#374151;border-bottom:1px solid #d1fae5;border-right:1px solid #e5e7eb;font-weight:600;">Province</th>
+              <th colspan="2" style="padding:4px;text-align:center;font-size:8px;color:#059669;border-bottom:1px solid #d1fae5;border-right:1px solid #e5e7eb;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;">Records</th>
+              <th colspan="2" style="padding:4px;text-align:center;font-size:8px;color:#7e22ce;border-bottom:1px solid #d1fae5;border-right:1px solid #e5e7eb;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;">LOs</th>
+              <th colspan="2" style="padding:4px;text-align:center;font-size:8px;color:#1d4ed8;border-bottom:1px solid #d1fae5;border-right:1px solid #e5e7eb;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;">Area (has.)</th>
+              <th colspan="2" style="padding:4px;text-align:center;font-size:8px;color:#0f766e;border-bottom:1px solid #d1fae5;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;">Amount</th>
+            </tr>
+            <tr style="background:#f0fdf4;">
+              <th style="padding:3px 6px;font-size:8px;color:#6b7280;border-bottom:2px solid #6ee7b7;">Scope</th><th style="padding:3px 6px;font-size:8px;color:#6b7280;border-bottom:2px solid #6ee7b7;border-right:1px solid #e5e7eb;">Valid.</th>
+              <th style="padding:3px 6px;font-size:8px;color:#6b7280;border-bottom:2px solid #c4b5fd;">Scope</th><th style="padding:3px 6px;font-size:8px;color:#6b7280;border-bottom:2px solid #c4b5fd;border-right:1px solid #e5e7eb;">Valid.</th>
+              <th style="padding:3px 6px;font-size:8px;color:#6b7280;border-bottom:2px solid #93c5fd;">Scope</th><th style="padding:3px 6px;font-size:8px;color:#6b7280;border-bottom:2px solid #93c5fd;border-right:1px solid #e5e7eb;">Valid.</th>
+              <th style="padding:3px 6px;font-size:8px;color:#6b7280;border-bottom:2px solid #5eead4;">Scope</th><th style="padding:3px 6px;font-size:8px;color:#6b7280;border-bottom:2px solid #5eead4;">Valid.</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:5px 8px;font-size:10px;font-weight:500;color:#111827;border-right:1px solid #e5e7eb;white-space:nowrap;">Albay</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;">287</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;border-right:1px solid #e5e7eb;">271</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;">215</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;border-right:1px solid #e5e7eb;">208</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;">1,024.5</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;border-right:1px solid #e5e7eb;">1,019.2</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;">₱2.1M</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;">₱2.0M</td></tr>
+            <tr style="background:#f9fafb;border-bottom:1px solid #f3f4f6;"><td style="padding:5px 8px;font-size:10px;font-weight:500;color:#111827;border-right:1px solid #e5e7eb;">Cam. Norte</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;">142</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;border-right:1px solid #e5e7eb;">139</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;">108</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;border-right:1px solid #e5e7eb;">105</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;">512.3</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;border-right:1px solid #e5e7eb;">508.1</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;">₱1.1M</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;">₱1.0M</td></tr>
+            <tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:5px 8px;font-size:10px;font-weight:500;color:#111827;border-right:1px solid #e5e7eb;">…</td><td colspan="8" style="padding:5px;text-align:center;font-size:9px;color:#9ca3af;font-style:italic;">more provinces…</td></tr>
+            <tr style="background:#ecfdf5;font-weight:700;border-top:2px solid #6ee7b7;"><td style="padding:5px 8px;font-size:10px;font-weight:700;color:#065f46;border-right:1px solid #e5e7eb;">R-V TOTAL</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#065f46;">1,234</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#065f46;border-right:1px solid #e5e7eb;">1,180</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#065f46;">890</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#065f46;border-right:1px solid #e5e7eb;">855</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#065f46;">4,567.8</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#065f46;border-right:1px solid #e5e7eb;">4,501.2</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#065f46;">₱12.3M</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#065f46;">₱11.9M</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Grouped-column table</h3>
+      <p>Excel-like layout. 4 metric groups × 2 sub-columns (Scope / Validated). Dark green header bar, color-coded sub-headers, green TOTAL row. Maximally data-dense — everything at a glance.</p>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;overflow:hidden;font-size:11px;">
+        <div style="background:#14532d;color:#86efac;padding:8px 12px;font-size:9px;letter-spacing:0.12em;font-weight:700;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;">
+          <span>Province Breakdown</span>
+          <div style="display:flex;gap:6px;align-items:center;"><span style="background:#166534;padding:2px 8px;border-radius:4px;font-size:8px;cursor:pointer;">Scope</span><span style="background:#22c55e;color:#fff;padding:2px 8px;border-radius:4px;font-size:8px;cursor:pointer;">Validated</span><span style="opacity:0.6;margin-left:4px;">×</span></div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="background:#f8fafc;">
+              <th style="padding:6px 10px;text-align:left;font-size:9px;color:#4b5563;font-weight:600;border-bottom:1px solid #e5e7eb;">Province</th>
+              <th style="padding:6px;text-align:right;font-size:9px;color:#059669;font-weight:600;border-bottom:1px solid #e5e7eb;">Records</th>
+              <th style="padding:6px;text-align:right;font-size:9px;color:#7e22ce;font-weight:600;border-bottom:1px solid #e5e7eb;">LOs</th>
+              <th style="padding:6px;text-align:right;font-size:9px;color:#1d4ed8;font-weight:600;border-bottom:1px solid #e5e7eb;">Area (has.)</th>
+              <th style="padding:6px;text-align:right;font-size:9px;color:#0f766e;font-weight:600;border-bottom:1px solid #e5e7eb;">Amt Condoned</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:5px 10px;font-size:10px;font-weight:500;color:#111827;">Albay</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;">271</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;">208</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;">1,019.2</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;">₱2,015,334</td></tr>
+            <tr style="background:#f9fafb;border-bottom:1px solid #f3f4f6;"><td style="padding:5px 10px;font-size:10px;font-weight:500;color:#111827;">Cam. Norte</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;">139</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;">105</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;">508.1</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#374151;">₱1,004,221</td></tr>
+            <tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:5px 10px;font-size:10px;font-weight:500;color:#111827;">…</td><td colspan="4" style="padding:5px;text-align:center;font-size:9px;color:#9ca3af;font-style:italic;">more provinces…</td></tr>
+            <tr style="background:#ecfdf5;font-weight:700;border-top:2px solid #6ee7b7;"><td style="padding:5px 10px;font-size:10px;font-weight:700;color:#065f46;">R-V TOTAL</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#065f46;">1,180</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#065f46;">855</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#065f46;">4,501.2</td><td style="padding:5px 6px;text-align:right;font-size:10px;color:#065f46;">₱11,931,445</td></tr>
+          </tbody>
+        </table>
+        <div style="padding:6px 10px;background:#f0fdf4;border-top:1px solid #d1fae5;text-align:right;font-size:9px;color:#6b7280;">Toggle shows Scope or Validated values only</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Toggle Scope/Validated</h3>
+      <p>Simpler 5-column table: Province + 4 metrics. A "Scope / Validated" toggle in the header switches which set of values is shown. Less columns, less cognitive load — but requires an extra click to compare.</p>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#fff;border-radius:8px;border:1px solid #e5e7eb;overflow:hidden;font-size:11px;">
+        <div style="background:#14532d;color:#86efac;padding:8px 12px;font-size:9px;letter-spacing:0.12em;font-weight:700;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;">
+          <span>Province Breakdown</span><span style="opacity:0.6;">×</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#e5e7eb;">
+          <!-- Province card row header -->
+          <div style="background:#f0fdf4;padding:6px 10px;font-size:9px;font-weight:700;color:#065f46;text-transform:uppercase;letter-spacing:0.1em;grid-column:1/-1;">Province</div>
+          <!-- Albay card -->
+          <div style="background:#fff;padding:8px 10px;">
+            <div style="font-size:10px;font-weight:600;color:#111827;margin-bottom:5px;">Albay</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;">
+              <div style="background:#f0fdf4;border-radius:4px;padding:4px 6px;"><div style="font-size:8px;color:#6b7280;">Records</div><div style="font-size:11px;font-weight:700;color:#059669;">287</div><div style="font-size:8px;color:#059669;opacity:0.7;">→ 271 val.</div></div>
+              <div style="background:#f5f3ff;border-radius:4px;padding:4px 6px;"><div style="font-size:8px;color:#6b7280;">LOs</div><div style="font-size:11px;font-weight:700;color:#7e22ce;">215</div><div style="font-size:8px;color:#7e22ce;opacity:0.7;">→ 208 val.</div></div>
+              <div style="background:#eff6ff;border-radius:4px;padding:4px 6px;"><div style="font-size:8px;color:#6b7280;">Area (ha)</div><div style="font-size:11px;font-weight:700;color:#1d4ed8;">1,024.5</div><div style="font-size:8px;color:#1d4ed8;opacity:0.7;">→ 1,019.2</div></div>
+              <div style="background:#f0fdfa;border-radius:4px;padding:4px 6px;"><div style="font-size:8px;color:#6b7280;">Amount</div><div style="font-size:11px;font-weight:700;color:#0f766e;">₱2.1M</div><div style="font-size:8px;color:#0f766e;opacity:0.7;">→ ₱2.0M val.</div></div>
+            </div>
+          </div>
+          <!-- Cam Norte card -->
+          <div style="background:#fff;padding:8px 10px;">
+            <div style="font-size:10px;font-weight:600;color:#111827;margin-bottom:5px;">Cam. Norte</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;">
+              <div style="background:#f0fdf4;border-radius:4px;padding:4px 6px;"><div style="font-size:8px;color:#6b7280;">Records</div><div style="font-size:11px;font-weight:700;color:#059669;">142</div><div style="font-size:8px;color:#059669;opacity:0.7;">→ 139 val.</div></div>
+              <div style="background:#f5f3ff;border-radius:4px;padding:4px 6px;"><div style="font-size:8px;color:#6b7280;">LOs</div><div style="font-size:11px;font-weight:700;color:#7e22ce;">108</div><div style="font-size:8px;color:#7e22ce;opacity:0.7;">→ 105 val.</div></div>
+              <div style="background:#eff6ff;border-radius:4px;padding:4px 6px;"><div style="font-size:8px;color:#6b7280;">Area (ha)</div><div style="font-size:11px;font-weight:700;color:#1d4ed8;">512.3</div><div style="font-size:8px;color:#1d4ed8;opacity:0.7;">→ 508.1</div></div>
+              <div style="background:#f0fdfa;border-radius:4px;padding:4px 6px;"><div style="font-size:8px;color:#6b7280;">Amount</div><div style="font-size:11px;font-weight:700;color:#0f766e;">₱1.1M</div><div style="font-size:8px;color:#0f766e;opacity:0.7;">→ ₱1.0M val.</div></div>
+            </div>
+          </div>
+          <!-- Total row -->
+          <div style="background:#ecfdf5;padding:8px 10px;grid-column:1/-1;border-top:2px solid #6ee7b7;">
+            <div style="font-size:9px;font-weight:700;color:#065f46;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">R-V TOTAL</div>
+            <div style="display:flex;gap:16px;">
+              <span style="font-size:10px;color:#059669;"><strong>1,234</strong> rec → <em>1,180</em></span>
+              <span style="font-size:10px;color:#7e22ce;"><strong>890</strong> LOs → <em>855</em></span>
+              <span style="font-size:10px;color:#1d4ed8;"><strong>4,567.8</strong> ha → <em>4,501.2</em></span>
+              <span style="font-size:10px;color:#0f766e;"><strong>₱12.3M</strong> → <em>₱11.9M</em></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Province card grid</h3>
+      <p>Each province gets a mini 2×2 card showing all 4 metrics. Scope is the main number; validated shown below with "→". Visually rich but harder to scan across provinces for comparison.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:16px;">My recommendation: <strong>Option A</strong> — matches the Excel format you showed, all data visible at once, most useful for quick cross-province comparison. Click to select your preference.</p>

@@ -1,0 +1,102 @@
+<h2>Which sections should show skeleton loaders?</h2>
+<p class="subtitle">Select all the dashboard sections you want to animate while data is loading. The Accomplishment Tracker already has skeletons — this adds them to everything else.</p>
+
+<style>
+.dashboard-map {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+.ds-section {
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px 18px;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: white;
+  user-select: none;
+  position: relative;
+}
+.ds-section:hover { border-color: #6ee7b7; background: #f0fdf4; }
+.ds-section.selected { border-color: #059669; background: #ecfdf5; box-shadow: 0 0 0 3px rgba(5,150,105,0.15); }
+.ds-section .tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 99px;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.tag-has { background: #d1fae5; color: #065f46; }
+.tag-heavy { background: #fef3c7; color: #92400e; }
+.ds-section h3 { display: inline; font-size: 14px; font-weight: 600; color: #111; }
+.ds-section p { margin: 6px 0 0; font-size: 12px; color: #6b7280; }
+.ds-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.check {
+  position: absolute; top: 12px; right: 14px;
+  width: 20px; height: 20px;
+  border: 2px solid #d1d5db; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: white; background: white; transition: all 0.15s;
+}
+.ds-section.selected .check { background: #059669; border-color: #059669; }
+.ds-section.selected .check::after { content: "✓"; }
+.ds-row-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: #9ca3af; margin: 4px 0 2px;
+}
+</style>
+
+<div class="dashboard-map">
+  <div class="ds-section" onclick="this.classList.toggle('selected')" id="s1">
+    <div class="check"></div>
+    <span class="tag tag-heavy">Main bottleneck</span>
+    <h3>Stat Cards — Per Landholding &amp; Per ARB Data</h3>
+    <p>The 6 large metric cards at the top: Total Records, Total LOs, Total Area, Amount Condoned, COCROMs, ARBs. These wait for the full database query before showing.</p>
+  </div>
+
+  <div class="ds-section" onclick="this.classList.toggle('selected')" id="s2">
+    <div class="check"></div>
+    <h3>Issue Strip</h3>
+    <p>The horizontal flag breakdown bar (No Issues / Zero AMENDAREA / etc.) below the stat cards.</p>
+  </div>
+
+  <div class="ds-row">
+    <div class="ds-section" onclick="this.classList.toggle('selected')" id="s3">
+      <div class="check"></div>
+      <h3>Records per Province Chart</h3>
+      <p>Horizontal bar chart, left of the status chart.</p>
+    </div>
+    <div class="ds-section" onclick="this.classList.toggle('selected')" id="s4">
+      <div class="check"></div>
+      <h3>Records by Status Chart</h3>
+      <p>Horizontal bar chart with LHs/Area toggle, right side.</p>
+    </div>
+  </div>
+
+  <div class="ds-section" onclick="this.classList.toggle('selected')" id="s5">
+    <div class="check"></div>
+    <h3>COCROM Charts Row</h3>
+    <p>Encoding &amp; Distribution tracker charts below the main chart row.</p>
+  </div>
+
+  <div class="ds-section" onclick="this.classList.toggle('selected')" id="s6">
+    <div class="check"></div>
+    <span class="tag tag-has">Already has skeletons</span>
+    <h3>Accomplishment Tracker</h3>
+    <p>The progress section with Daily/Weekly/Monthly charts — already animates with SkeletonCard while loading.</p>
+  </div>
+
+  <div class="ds-section" onclick="this.classList.toggle('selected')" id="s7">
+    <div class="check"></div>
+    <h3>Not Eligible for Encoding</h3>
+    <p>By Province and By Non-Eligibility Reason charts at the bottom.</p>
+  </div>
+</div>
+
+<p style="text-align:center;margin-top:20px;font-size:12px;color:#9ca3af">Click sections to select them, then let me know your choices in the terminal.</p>

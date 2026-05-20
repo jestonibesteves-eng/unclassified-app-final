@@ -1,0 +1,407 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+
+  .layout { display: flex; flex-direction: column; gap: 24px; }
+
+  .section-title {
+    font-size: 11px; font-weight: 600; color: #64748b;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .row { display: flex; gap: 16px; align-items: flex-start; }
+
+  /* ── shared sidebar base ── */
+  .sb {
+    display: flex; flex-direction: column;
+    font-family: 'JetBrains Mono', monospace;
+    border-right: 1px solid #e2e8f0;
+    background: #ffffff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    flex-shrink: 0;
+    transition: width 0.25s ease;
+  }
+
+  /* ── EXPANDED (256px) ── */
+  .sb-expanded { width: 180px; height: 360px; }
+
+  .sb-header-exp {
+    padding: 14px 12px 12px;
+    background: linear-gradient(135deg, #14532d 0%, #15803d 60%, #16a34a 100%);
+    flex-shrink: 0;
+    position: relative; overflow: hidden;
+  }
+  .sb-header-shine {
+    position: absolute; top: -20px; right: -20px;
+    width: 90px; height: 90px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .sb-logo-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .sb-logo {
+    width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0;
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #fff;
+  }
+  .sb-brand { font-size: 8px; font-weight: 700; color: rgba(255,255,255,0.95); line-height: 1.25; }
+  .sb-sub { font-size: 5.5px; color: rgba(255,255,255,0.5); }
+  .sb-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.2);
+    padding: 2px 7px; border-radius: 20px;
+    font-size: 5.5px; color: rgba(255,255,255,0.75);
+  }
+  .sb-badge-dot { width: 4px; height: 4px; background: #4ade80; border-radius: 50%; box-shadow: 0 0 4px #4ade80; flex-shrink: 0; }
+
+  /* toggle button in header */
+  .sb-toggle {
+    position: absolute; top: 10px; right: 10px;
+    width: 20px; height: 20px; border-radius: 5px;
+    background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; color: rgba(255,255,255,0.7);
+    cursor: pointer;
+  }
+
+  .sb-nav-exp { padding: 8px 0; display: flex; flex-direction: column; flex: 1; }
+  .sb-section {
+    font-size: 5px; font-weight: 600; letter-spacing: 0.2em;
+    text-transform: uppercase; padding: 6px 12px 2px; color: #94a3b8;
+  }
+  .sb-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 12px; font-size: 7.5px; font-weight: 400;
+    color: #64748b; position: relative;
+  }
+  .sb-item.active { color: #14532d; font-weight: 600; background: #f0fdf4; }
+  .sb-item.active::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 2px; background: #16a34a; border-radius: 0 2px 2px 0;
+  }
+  .chip {
+    width: 18px; height: 18px; border-radius: 5px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 8px;
+  }
+  .chip-g { background: #dcfce7; color: #15803d; }
+  .chip-b { background: #dbeafe; color: #1d4ed8; }
+  .chip-a { background: #fef3c7; color: #d97706; }
+  .chip-v { background: #ede9fe; color: #7c3aed; }
+  .chip-r { background: #fce7f3; color: #be185d; }
+  .sb-item:not(.active) .chip { opacity: 0.5; }
+
+  .sb-footer-exp {
+    padding: 9px 12px;
+    border-top: 1px solid #f1f5f9;
+    background: #fafafa;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .sb-avatar {
+    width: 22px; height: 22px; border-radius: 7px; flex-shrink: 0;
+    background: linear-gradient(135deg, #16a34a, #4ade80);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700; color: #fff;
+  }
+  .sb-name { font-size: 6.5px; font-weight: 600; color: #1e293b; }
+  .sb-role { font-size: 5.5px; color: #94a3b8; }
+
+  /* ── COLLAPSED (icon rail, 52px) ── */
+  .sb-collapsed { width: 52px; height: 360px; }
+
+  .sb-header-col {
+    padding: 12px 0 10px;
+    background: linear-gradient(135deg, #14532d 0%, #15803d 100%);
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    flex-shrink: 0; position: relative;
+  }
+  .sb-col-logo {
+    width: 26px; height: 26px; border-radius: 7px;
+    background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #fff;
+  }
+  .sb-col-toggle {
+    width: 20px; height: 20px; border-radius: 5px;
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; color: rgba(255,255,255,0.6);
+  }
+
+  .sb-nav-col { padding: 8px 0; display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; }
+  .sb-col-divider { width: 24px; height: 1px; background: #e2e8f0; margin: 4px 0; }
+  .sb-col-item {
+    width: 34px; height: 34px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; position: relative;
+  }
+  .sb-col-item.active { background: #f0fdf4; }
+  .sb-col-item.active::before {
+    content: ''; position: absolute; left: 0; top: 20%; bottom: 20%;
+    width: 2px; background: #16a34a; border-radius: 0 2px 2px 0;
+  }
+  .sb-col-item:not(.active) { opacity: 0.45; }
+
+  .sb-footer-col {
+    padding: 8px 0;
+    border-top: 1px solid #f1f5f9;
+    background: #fafafa;
+    display: flex; justify-content: center;
+  }
+  .sb-avatar-sm {
+    width: 26px; height: 26px; border-radius: 8px;
+    background: linear-gradient(135deg, #16a34a, #4ade80);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: #fff;
+  }
+
+  /* ── MOBILE ── */
+  .mobile-wrap {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .mobile-header {
+    width: 220px; height: 36px;
+    background: #fff; border: 1px solid #e2e8f0;
+    border-radius: 8px; display: flex; align-items: center;
+    gap: 8px; padding: 0 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .hamburger { display: flex; flex-direction: column; gap: 3px; }
+  .hamburger span { display: block; width: 14px; height: 1.5px; background: #475569; border-radius: 1px; }
+  .mob-logo { width: 18px; height: 18px; border-radius: 5px; background: linear-gradient(135deg, #14532d, #16a34a); display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; color: #fff; }
+  .mob-title { font-size: 8px; font-weight: 600; color: #1e293b; font-family: 'JetBrains Mono', monospace; }
+
+  .mobile-overlay {
+    width: 220px; height: 200px;
+    display: flex; position: relative;
+  }
+  .mob-backdrop {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.35);
+    border-radius: 8px;
+  }
+  .mob-drawer {
+    width: 140px; height: 200px;
+    background: #fff; border-radius: 8px 0 0 8px;
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+  }
+  .mob-header {
+    padding: 10px 10px 9px;
+    background: linear-gradient(135deg, #14532d 0%, #16a34a 100%);
+    display: flex; align-items: center; gap: 6px;
+    flex-shrink: 0;
+  }
+  .mob-logo-lg { width: 22px; height: 22px; border-radius: 6px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .mob-brand { font-size: 7px; font-weight: 700; color: #fff; font-family: 'JetBrains Mono', monospace; }
+  .mob-close {
+    margin-left: auto; width: 18px; height: 18px;
+    background: rgba(255,255,255,0.15); border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; color: rgba(255,255,255,0.7); flex-shrink: 0;
+  }
+  .mob-nav { padding: 6px 0; flex: 1; }
+  .mob-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 10px; font-size: 7px;
+    color: #64748b; font-family: 'JetBrains Mono', monospace;
+  }
+  .mob-item.active { color: #14532d; font-weight: 600; background: #f0fdf4; }
+  .mob-item.active .chip { opacity: 1; }
+  .mob-item .chip { opacity: 0.5; }
+
+  /* labels */
+  .label-pill {
+    display: inline-block;
+    background: #f1f5f9; border: 1px solid #e2e8f0;
+    border-radius: 20px; padding: 3px 10px;
+    font-size: 10px; color: #64748b; margin-bottom: 10px;
+  }
+  .arrow {
+    font-size: 18px; color: #cbd5e1; align-self: center; flex-shrink: 0;
+  }
+  .main-stub {
+    flex: 1; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;
+    padding: 12px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .stub-bar { height: 8px; background: #e2e8f0; border-radius: 3px; }
+</style>
+
+<h2>L3-A — Collapsible + Mobile Responsive</h2>
+<p class="subtitle">How the sidebar behaves across states. Toggle button sits in the header.</p>
+
+<div class="layout">
+
+  <!-- DESKTOP ROW -->
+  <div>
+    <div class="label-pill">🖥 Desktop — Expanded ↔ Collapsed</div>
+    <div class="row">
+
+      <!-- Expanded -->
+      <div>
+        <div class="section-title">Expanded (256px)</div>
+        <div class="row" style="gap:0;align-items:stretch;">
+          <div class="sb sb-expanded">
+            <div class="sb-header-exp">
+              <div class="sb-header-shine"></div>
+              <div class="sb-logo-row">
+                <div class="sb-logo">D</div>
+                <div>
+                  <div class="sb-brand">DAR Bicol</div>
+                  <div class="sb-sub">ARR System</div>
+                </div>
+              </div>
+              <div class="sb-badge">
+                <div class="sb-badge-dot"></div>
+                Online · v2.4
+              </div>
+              <div class="sb-toggle">‹</div>
+            </div>
+            <div class="sb-nav-exp">
+              <div class="sb-item active">
+                <div class="chip chip-g">⊞</div>Dashboard
+              </div>
+              <div class="sb-item">
+                <div class="chip chip-g">≡</div>Records
+              </div>
+              <div class="sb-section">Operations</div>
+              <div class="sb-item">
+                <div class="chip chip-b">⇄</div>Batch LH
+              </div>
+              <div class="sb-item">
+                <div class="chip chip-b">↑</div>ARB Batch
+              </div>
+              <div class="sb-section">Admin</div>
+              <div class="sb-item">
+                <div class="chip chip-a">✦</div>Users
+              </div>
+              <div class="sb-item">
+                <div class="chip chip-r">◷</div>Audit
+              </div>
+              <div class="sb-item">
+                <div class="chip chip-v">◎</div>Targets
+              </div>
+            </div>
+            <div class="sb-footer-exp">
+              <div class="sb-avatar">J</div>
+              <div>
+                <div class="sb-name">Jestoni E.</div>
+                <div class="sb-role">super_admin</div>
+              </div>
+            </div>
+          </div>
+          <div class="main-stub" style="height:360px;border-radius:0 8px 8px 0;">
+            <div class="stub-bar" style="width:55%;"></div>
+            <div class="stub-bar" style="width:35%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow">⟷</div>
+
+      <!-- Collapsed -->
+      <div>
+        <div class="section-title">Collapsed (52px icon rail)</div>
+        <div class="row" style="gap:0;align-items:stretch;">
+          <div class="sb sb-collapsed">
+            <div class="sb-header-col">
+              <div class="sb-col-logo">D</div>
+              <div class="sb-col-toggle">›</div>
+            </div>
+            <div class="sb-nav-col">
+              <div class="sb-col-item active">
+                <div class="chip chip-g">⊞</div>
+              </div>
+              <div class="sb-col-item">
+                <div class="chip chip-g">≡</div>
+              </div>
+              <div class="sb-col-divider"></div>
+              <div class="sb-col-item">
+                <div class="chip chip-b">⇄</div>
+              </div>
+              <div class="sb-col-item">
+                <div class="chip chip-b">↑</div>
+              </div>
+              <div class="sb-col-divider"></div>
+              <div class="sb-col-item">
+                <div class="chip chip-a">✦</div>
+              </div>
+              <div class="sb-col-item">
+                <div class="chip chip-r">◷</div>
+              </div>
+              <div class="sb-col-item">
+                <div class="chip chip-v">◎</div>
+              </div>
+            </div>
+            <div class="sb-footer-col">
+              <div class="sb-avatar-sm">J</div>
+            </div>
+          </div>
+          <div class="main-stub" style="height:360px;border-radius:0 8px 8px 0;">
+            <div class="stub-bar" style="width:65%;"></div>
+            <div class="stub-bar" style="width:40%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOBILE ROW -->
+  <div>
+    <div class="label-pill">📱 Mobile — Header bar + Slide-in drawer</div>
+    <div class="row" style="align-items:flex-start;gap:20px;">
+
+      <!-- Mobile header -->
+      <div>
+        <div class="section-title">Top bar (sticky)</div>
+        <div class="mobile-header">
+          <div class="hamburger">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="mob-logo">D</div>
+          <span class="mob-title">Unclassified ARRs</span>
+        </div>
+      </div>
+
+      <div class="arrow" style="margin-top:28px;">→</div>
+
+      <!-- Mobile drawer open -->
+      <div>
+        <div class="section-title">Drawer open (overlay)</div>
+        <div class="mobile-overlay">
+          <div class="mob-backdrop"></div>
+          <div class="mob-drawer">
+            <div class="mob-header">
+              <div class="mob-logo-lg">D</div>
+              <div class="mob-brand">DAR · Bicol</div>
+              <div class="mob-close">✕</div>
+            </div>
+            <div class="mob-nav">
+              <div class="mob-item active">
+                <div class="chip chip-g" style="width:14px;height:14px;font-size:7px;">⊞</div>Dashboard
+              </div>
+              <div class="mob-item">
+                <div class="chip chip-g" style="width:14px;height:14px;font-size:7px;opacity:.5;">≡</div>Records
+              </div>
+              <div style="font-size:5px;font-weight:600;letter-spacing:.2em;color:#94a3b8;text-transform:uppercase;padding:5px 10px 2px;font-family:'JetBrains Mono',monospace;">Operations</div>
+              <div class="mob-item">
+                <div class="chip chip-b" style="width:14px;height:14px;font-size:7px;opacity:.5;">⇄</div>Batch LH
+              </div>
+              <div class="mob-item">
+                <div class="chip chip-b" style="width:14px;height:14px;font-size:7px;opacity:.5;">↑</div>ARB Batch
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:20px;text-align:center;">Does this layout look right? Confirm and I'll write the spec.</p>

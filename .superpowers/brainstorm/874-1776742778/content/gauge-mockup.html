@@ -1,0 +1,145 @@
+<h2>Milestone Cards with Semi-Circle Gauge Charts</h2>
+<p class="subtitle">Each card replaces the line chart with a gauge showing progress from 0 to 100% of the milestone target. Which version of the <strong>Encoding</strong> card feels right?</p>
+
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:16px;">
+
+  <!-- VALIDATION CARD -->
+  <div style="border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1);background:white;">
+    <div style="background:#166534;padding:10px 16px;">
+      <div style="font-size:10px;font-weight:700;color:#86efac;letter-spacing:.12em;text-transform:uppercase;">Validation</div>
+    </div>
+    <div style="padding:14px 16px 6px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div style="font-size:26px;font-weight:800;color:#ef4444;line-height:1;">22</div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px;">of 10,344</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:16px;font-weight:700;color:#ef4444;">0.2%</div>
+          <div style="font-size:10px;color:#94a3b8;">10,322 left</div>
+        </div>
+      </div>
+      <div style="margin:8px 0;height:4px;border-radius:4px;background:#f1f5f9;overflow:hidden;">
+        <div style="width:0.2%;height:100%;background:#ef4444;border-radius:4px;"></div>
+      </div>
+    </div>
+    <!-- Gauge -->
+    <div style="padding:0 16px 6px;position:relative;">
+      <svg viewBox="0 0 200 110" width="100%">
+        <!-- Track -->
+        <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#f1f5f9" stroke-width="18" stroke-linecap="round"/>
+        <!-- Progress (0.2% of 180deg = 0.36deg — essentially invisible, so show a tiny sliver) -->
+        <path d="M 20 100 A 80 80 0 0 1 21.5 98.6" fill="none" stroke="#ef4444" stroke-width="18" stroke-linecap="round"/>
+        <!-- Labels -->
+        <text x="14" y="114" font-size="9" fill="#94a3b8" text-anchor="middle">0</text>
+        <text x="186" y="114" font-size="9" fill="#94a3b8" text-anchor="middle">10,344</text>
+        <!-- Center -->
+        <text x="100" y="90" font-size="13" font-weight="800" fill="#ef4444" text-anchor="middle">22</text>
+        <text x="100" y="103" font-size="8" fill="#94a3b8" text-anchor="middle">landholdings • 0.2%</text>
+      </svg>
+    </div>
+    <div style="padding:0 16px 12px;display:flex;flex-wrap:wrap;gap:10px;">
+      <div style="display:flex;align-items:center;gap:5px;">
+        <span style="display:inline-block;width:16px;height:2px;background:#ef4444;border-radius:2px;"></span>
+        <span style="font-size:9px;color:#6b7280;">Validation</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:5px;">
+        <span style="display:inline-block;width:12px;border-top:2px dashed #ef4444;"></span>
+        <span style="font-size:9px;color:#6b7280;">Req. pace (1,291/wk)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ENCODING CARD — Option A: Single metric (COCROMs only) -->
+  <div style="border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1);background:white;border:2px solid #f59e0b;">
+    <div style="background:#166534;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-size:10px;font-weight:700;color:#86efac;letter-spacing:.12em;text-transform:uppercase;">Encoding</div>
+      <div style="background:#f59e0b22;color:#f59e0b;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;">Option A — COCROMs only</div>
+    </div>
+    <div style="padding:14px 16px 6px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div style="font-size:26px;font-weight:800;color:#10b981;line-height:1;">42</div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px;">of 42</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:16px;font-weight:700;color:#10b981;">100%</div>
+          <div style="font-size:10px;color:#94a3b8;">0 left</div>
+        </div>
+      </div>
+      <div style="margin:8px 0;height:4px;border-radius:4px;background:#f1f5f9;overflow:hidden;">
+        <div style="width:100%;height:100%;background:#f59e0b;border-radius:4px;"></div>
+      </div>
+    </div>
+    <div style="padding:0 16px 6px;position:relative;">
+      <svg viewBox="0 0 200 110" width="100%">
+        <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#f1f5f9" stroke-width="18" stroke-linecap="round"/>
+        <!-- 100% = full arc -->
+        <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#f59e0b" stroke-width="18" stroke-linecap="round"/>
+        <text x="14" y="114" font-size="9" fill="#94a3b8" text-anchor="middle">0</text>
+        <text x="186" y="114" font-size="9" fill="#94a3b8" text-anchor="middle">42</text>
+        <text x="100" y="90" font-size="13" font-weight="800" fill="#10b981" text-anchor="middle">42</text>
+        <text x="100" y="103" font-size="8" fill="#94a3b8" text-anchor="middle">COCROMs • 100%</text>
+      </svg>
+    </div>
+    <div style="padding:0 16px 10px;display:flex;flex-wrap:wrap;gap:10px;">
+      <div style="display:flex;align-items:center;gap:5px;">
+        <span style="display:inline-block;width:16px;height:2px;background:#f59e0b;border-radius:2px;"></span>
+        <span style="font-size:9px;color:#6b7280;">Encoding</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ENCODING CARD — Option B: Still has COCROM/ARB/Area/Amount subfilter tabs -->
+  <div style="border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1);background:white;border:2px dashed #8b5cf6;">
+    <div style="background:#166534;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-size:10px;font-weight:700;color:#86efac;letter-spacing:.12em;text-transform:uppercase;">Encoding</div>
+      <div style="background:#8b5cf622;color:#8b5cf6;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;">Option B — subfilter tabs kept</div>
+    </div>
+    <!-- Subfilter tabs -->
+    <div style="padding:8px 16px 0;display:flex;gap:4px;">
+      <span style="padding:3px 8px;border-radius:6px;font-size:9px;font-weight:700;background:white;border:1px solid #f59e0b;color:#f59e0b;">COCROM</span>
+      <span style="padding:3px 8px;border-radius:6px;font-size:9px;font-weight:700;background:#f8fafc;color:#94a3b8;">ARB</span>
+      <span style="padding:3px 8px;border-radius:6px;font-size:9px;font-weight:700;background:#f8fafc;color:#94a3b8;">Area</span>
+      <span style="padding:3px 8px;border-radius:6px;font-size:9px;font-weight:700;background:#f8fafc;color:#94a3b8;">Amount</span>
+    </div>
+    <div style="padding:8px 16px 6px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div style="font-size:26px;font-weight:800;color:#10b981;line-height:1;">42</div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px;">of 42</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:16px;font-weight:700;color:#10b981;">100%</div>
+          <div style="font-size:10px;color:#94a3b8;">0 left</div>
+        </div>
+      </div>
+      <div style="margin:8px 0;height:4px;border-radius:4px;background:#f1f5f9;overflow:hidden;">
+        <div style="width:100%;height:100%;background:#f59e0b;border-radius:4px;"></div>
+      </div>
+    </div>
+    <div style="padding:0 16px 6px;">
+      <svg viewBox="0 0 200 110" width="100%">
+        <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#f1f5f9" stroke-width="18" stroke-linecap="round"/>
+        <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#f59e0b" stroke-width="18" stroke-linecap="round"/>
+        <text x="14" y="114" font-size="9" fill="#94a3b8" text-anchor="middle">0</text>
+        <text x="186" y="114" font-size="9" fill="#94a3b8" text-anchor="middle">42</text>
+        <text x="100" y="90" font-size="13" font-weight="800" fill="#10b981" text-anchor="middle">42</text>
+        <text x="100" y="103" font-size="8" fill="#94a3b8" text-anchor="middle">COCROMs • 100%</text>
+      </svg>
+    </div>
+    <div style="padding:0 16px 10px;display:flex;flex-wrap:wrap;gap:10px;">
+      <div style="display:flex;align-items:center;gap:5px;">
+        <span style="display:inline-block;width:16px;height:2px;background:#f59e0b;border-radius:2px;"></span>
+        <span style="font-size:9px;color:#6b7280;">Encoding</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:20px;padding:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;color:#475569;">
+  <strong>Question:</strong> The Encoding card currently has 4 subfilter tabs (COCROM count, ARB count, Area, Amount) — each showing the gauge for that metric.<br><br>
+  <strong>Option A</strong> (solid border above): Keep it simple — just show COCROMs as the primary metric.<br>
+  <strong>Option B</strong> (dashed border above): Keep the 4 tabs so managers can still switch the gauge between COCROMs / ARBs / Area / Amount.
+</div>
