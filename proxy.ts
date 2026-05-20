@@ -10,22 +10,17 @@ const SESSION_DURATION_S = 60 * 60; // 1 hour in seconds
 const ADMIN_PAGES   = ["/flags", "/audit", "/users", "/digest"];
 const EDITOR_PAGES  = ["/batch"];
 
-type SessionUser = {
-  role: string;
-  must_change_password: boolean;
-};
-
 function getSecret(): Uint8Array {
   return new TextEncoder().encode(process.env.AUTH_SECRET ?? "");
 }
 
-async function getSessionUser(token: string): Promise<{ user: SessionUser; payload: Record<string, unknown> } | null> {
+async function getSessionUser(token: string): Promise<{ user: { username: string }; payload: Record<string, unknown> } | null> {
   try {
     const secret = process.env.AUTH_SECRET;
     if (!secret) return null;
     const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
-    const user = (payload as { user: SessionUser }).user ?? null;
-    if (!user) return null;
+    const user = (payload as { user: { username: string } }).user ?? null;
+    if (!user?.username) return null;
     return { user, payload: payload as Record<string, unknown> };
   } catch {
     return null;
@@ -92,11 +87,19 @@ export async function proxy(req: NextRequest) {
 
   const { user } = session;
 
-  // Verify the account is still active — catches deactivations without waiting for token expiry.
-  // rawDb is synchronous so this adds no async overhead.
+  // Re-read mutable user fields from DB on every request so that deactivations
+  // and role/permission changes take effect immediately without waiting for token expiry.
   const dbUser = rawDb
-    .prepare(`SELECT is_active FROM "User" WHERE username = ?`)
-    .get(user.username) as { is_active: number | boolean } | undefined;
+    .prepare(`SELECT is_active, role, must_change_password, office_level, province, municipality FROM "User" WHERE username = ?`)
+    .get(user.username) as {
+      is_active: number | boolean;
+      role: string;
+      must_change_password: number | boolean;
+      office_level: string;
+      province: string | null;
+      municipality: string | null;
+    } | undefined;
+
   if (!dbUser || !dbUser.is_active) {
     const res = noindex(NextResponse.redirect(new URL("/login", req.url)));
     res.cookies.delete("dar_session");
@@ -104,28 +107,38 @@ export async function proxy(req: NextRequest) {
     return res;
   }
 
+  // Use fresh DB values for all permission checks and token reissue.
+  const liveUser = {
+    ...(session.payload.user as Record<string, unknown>),
+    role:                 dbUser.role,
+    must_change_password: Boolean(dbUser.must_change_password),
+    office_level:         dbUser.office_level,
+    province:             dbUser.province,
+    municipality:         dbUser.municipality,
+  };
+
   // Must change password → redirect
-  if (user.must_change_password && pathname !== "/change-password") {
+  if (liveUser.must_change_password && pathname !== "/change-password") {
     return noindex(NextResponse.redirect(new URL("/change-password", req.url)));
   }
 
   // Admin-only pages
-  if (ADMIN_PAGES.some((p) => pathname.startsWith(p)) && !isAdminRole(user.role)) {
+  if (ADMIN_PAGES.some((p) => pathname.startsWith(p)) && !isAdminRole(liveUser.role)) {
     return noindex(NextResponse.redirect(new URL("/", req.url)));
   }
 
   // Editor+ pages
-  if (EDITOR_PAGES.some((p) => pathname.startsWith(p)) && !isEditorRole(user.role)) {
+  if (EDITOR_PAGES.some((p) => pathname.startsWith(p)) && !isEditorRole(liveUser.role)) {
     return noindex(NextResponse.redirect(new URL("/", req.url)));
   }
 
   // Admin-only API routes
-  if ((pathname.startsWith("/api/flags") || pathname.startsWith("/api/audit")) && !isAdminRole(user.role)) {
+  if ((pathname.startsWith("/api/flags") || pathname.startsWith("/api/audit")) && !isAdminRole(liveUser.role)) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
-  // ── Sliding session: reissue a fresh token on every authenticated request ──
-  const newToken = await new SignJWT({ user: session.payload.user })
+  // ── Sliding session: reissue token with fresh DB values ──
+  const newToken = await new SignJWT({ user: liveUser })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${SESSION_DURATION_S}s`)
