@@ -267,7 +267,7 @@ export default function LoginPage() {
                   Department of Agrarian Reform
                 </p>
                 <p className="lp-mono" style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", lineHeight: 1, marginTop: 5 }}>
-                  Bicol Region · Regional Office No. V
+                  Bicol Region · Regional Office V
                 </p>
               </div>
             </div>
