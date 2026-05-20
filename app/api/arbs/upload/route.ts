@@ -183,6 +183,8 @@ export async function PUT(req: NextRequest) {
   const mode = formData.get("mode") as string | null; // "append" | "replace"
 
   if (!file) return NextResponse.json({ error: "No file uploaded." }, { status: 400 });
+  if (file.size > 15 * 1024 * 1024)
+    return NextResponse.json({ error: "File too large. Maximum allowed size is 15 MB." }, { status: 413 });
 
   const buffer = Buffer.from(await file.arrayBuffer());
   let rawRows: RawRow[];
@@ -410,6 +412,8 @@ export async function POST(req: NextRequest) {
   const mode = (formData.get("mode") as string) ?? "append";
 
   if (!file) return NextResponse.json({ error: "No file uploaded." }, { status: 400 });
+  if (file.size > 15 * 1024 * 1024)
+    return NextResponse.json({ error: "File too large. Maximum allowed size is 15 MB." }, { status: 413 });
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const isXlsx = !file.name.toLowerCase().endsWith(".csv");
