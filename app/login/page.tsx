@@ -255,7 +255,7 @@ export default function LoginPage() {
 
             {/* Institution row */}
             <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20, position: "relative" }}>
-              <div style={{ width: 54, height: 54, borderRadius: "50%", flexShrink: 0, background: "rgba(255,255,255,0.95)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 2px rgba(255,255,255,0.4), 0 4px 14px rgba(0,0,0,0.2)" }}>
+              <div style={{ width: 54, height: 54, borderRadius: 14, flexShrink: 0, background: "rgba(255,255,255,0.95)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 2px rgba(255,255,255,0.4), 0 4px 14px rgba(0,0,0,0.2)" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/dar-logo-square.svg" alt="DAR Bicol Region" width={40} height={40} style={{ width: 40, height: 40, objectFit: "contain" }} />
               </div>
