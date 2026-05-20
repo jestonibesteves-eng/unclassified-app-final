@@ -24,16 +24,18 @@ export default function MobileHeader() {
         <HamburgerIcon />
       </button>
       {/* Logo chip */}
-      <div className="w-6 h-6 rounded-md bg-white/15 flex items-center justify-center flex-shrink-0">
+      <div className="w-7 h-7 rounded-[7px] bg-white/95 flex items-center justify-center flex-shrink-0 overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/dar-logo.svg" alt="" className="w-4 h-4" />
+        <img src="/dar-logo-square.svg" alt="DAR Logo" className="w-5 h-5 object-contain" />
       </div>
-      <span
-        className="text-[12px] font-semibold text-green-100 tracking-tight truncate"
-        style={{ fontFamily: "var(--font-jetbrains), monospace" }}
-      >
-        Unclassified ARRs
-      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-bold text-white leading-tight truncate" style={{ fontFamily: "var(--font-jetbrains), monospace" }}>
+          DAR Bicol Region
+        </p>
+        <p className="text-[8px] text-green-200/80 leading-tight truncate">
+          Unclassified ARRs Data Management System
+        </p>
+      </div>
     </div>
   );
 }

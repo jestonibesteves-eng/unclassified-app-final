@@ -315,11 +315,13 @@ export default function Sidebar() {
 
           {collapsed ? (
             <div className="flex flex-col items-center gap-2 relative z-10">
+              {/* Logo chip */}
               <div
-                className="w-[26px] h-[26px] rounded-[7px] flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0"
-                style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.25)" }}
+                className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center overflow-hidden flex-shrink-0"
+                style={{ background: "rgba(255,255,255,0.95)", border: "1px solid rgba(255,255,255,0.4)" }}
               >
-                D
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/dar-logo-square.svg" alt="DAR Logo" className="w-[22px] h-[22px] object-contain" />
               </div>
               <button
                 onClick={toggleCollapsed}
@@ -332,23 +334,27 @@ export default function Sidebar() {
             </div>
           ) : (
             <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-start gap-2.5 mb-2">
+                {/* Logo chip */}
                 <div
-                  className="w-[26px] h-[26px] rounded-[7px] flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0"
-                  style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.25)" }}
+                  className="w-[34px] h-[34px] rounded-[9px] flex items-center justify-center overflow-hidden flex-shrink-0 mt-0.5"
+                  style={{ background: "rgba(255,255,255,0.95)", border: "1px solid rgba(255,255,255,0.4)" }}
                 >
-                  D
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/dar-logo-square.svg" alt="DAR Logo" className="w-[26px] h-[26px] object-contain" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-bold text-white/95 leading-tight" style={{ fontFamily: "var(--font-jetbrains)" }}>
-                    DAR · Bicol Region
+                  <p className="text-[10px] font-bold text-white leading-tight" style={{ fontFamily: "var(--font-jetbrains)" }}>
+                    DAR Bicol Region
                   </p>
-                  <p className="text-[8px] text-white/50">ARR System</p>
+                  <p className="text-[8px] text-white/70 leading-snug mt-0.5">
+                    Unclassified ARRs<br />Data Management System
+                  </p>
                 </div>
                 {/* Desktop collapse button */}
                 <button
                   onClick={toggleCollapsed}
-                  className="hidden md:flex w-[20px] h-[20px] rounded-[5px] items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-all duration-150 flex-shrink-0"
+                  className="hidden md:flex w-[20px] h-[20px] rounded-[5px] items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-all duration-150 flex-shrink-0 mt-0.5"
                   style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}
                   aria-label="Collapse sidebar"
                 >
@@ -357,7 +363,7 @@ export default function Sidebar() {
                 {/* Mobile close button */}
                 <button
                   onClick={close}
-                  className="md:hidden flex w-[20px] h-[20px] rounded-[5px] items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-all duration-150 flex-shrink-0"
+                  className="md:hidden flex w-[20px] h-[20px] rounded-[5px] items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-all duration-150 flex-shrink-0 mt-0.5"
                   style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}
                   aria-label="Close navigation"
                 >
