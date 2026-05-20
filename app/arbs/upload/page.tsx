@@ -928,7 +928,7 @@ function ManualEntryPanel({ onSaved }: { onSaved: () => void }) {
   function updateRow(i: number, field: keyof ArbRow, value: string) {
     let normalised = value;
     if (field === "carpable") normalised = value.toUpperCase().replace(/\s+/g, "");
-    else if (field !== "area_allocated" && field !== "remarks") normalised = value.toUpperCase();
+    else if (field !== "area_allocated" && field !== "remarks" && field !== "eligibility" && field !== "eligibility_reason") normalised = value.toUpperCase();
     setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, [field]: normalised } : r));
   }
 
