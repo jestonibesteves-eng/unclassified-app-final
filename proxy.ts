@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify, SignJWT } from "jose";
+import { rawDb } from "@/lib/db";
 
 const SESSION_COOKIE = "dar_session";
 const SESSION_EXP_COOKIE = "dar_session_exp"; // non-httpOnly, readable by JS
@@ -90,6 +91,18 @@ export async function proxy(req: NextRequest) {
   }
 
   const { user } = session;
+
+  // Verify the account is still active — catches deactivations without waiting for token expiry.
+  // rawDb is synchronous so this adds no async overhead.
+  const dbUser = rawDb
+    .prepare(`SELECT is_active FROM "User" WHERE username = ?`)
+    .get(user.username) as { is_active: number | boolean } | undefined;
+  if (!dbUser || !dbUser.is_active) {
+    const res = noindex(NextResponse.redirect(new URL("/login", req.url)));
+    res.cookies.delete("dar_session");
+    res.cookies.delete("dar_session_exp");
+    return res;
+  }
 
   // Must change password → redirect
   if (user.must_change_password && pathname !== "/change-password") {
