@@ -27,6 +27,11 @@ async function getSessionUser(token: string): Promise<{ user: { username: string
   }
 }
 
+// Prepared once at startup — reused on every authenticated request.
+const getUserStmt = rawDb.prepare(
+  `SELECT is_active, role, must_change_password, office_level, province, municipality FROM "User" WHERE username = ?`
+);
+
 function isAdminRole(role: string)  { return ["super_admin", "admin"].includes(role); }
 function isEditorRole(role: string) { return ["super_admin", "admin", "editor"].includes(role); }
 
@@ -89,9 +94,7 @@ export async function proxy(req: NextRequest) {
 
   // Re-read mutable user fields from DB on every request so that deactivations
   // and role/permission changes take effect immediately without waiting for token expiry.
-  const dbUser = rawDb
-    .prepare(`SELECT is_active, role, must_change_password, office_level, province, municipality FROM "User" WHERE username = ?`)
-    .get(user.username) as {
+  const dbUser = getUserStmt.get(user.username) as {
       is_active: number | boolean;
       role: string;
       must_change_password: number | boolean;
