@@ -60,13 +60,13 @@ export async function POST(req: NextRequest) {
   }
 
   const user = await prisma.user.findUnique({ where: { username } });
-  if (!user || !user.is_active) {
-    recordFailure(ip);
-    return NextResponse.json({ error: "Invalid username or password." }, { status: 401 });
-  }
 
-  const valid = await bcrypt.compare(password, user.password_hash);
-  if (!valid) {
+  // Always run bcrypt to prevent timing-based username enumeration.
+  // The dummy hash is a pre-computed bcrypt hash of an empty string.
+  const DUMMY_HASH = "$2b$12$e9qe7sFKuqIbqBCYxjQ3RuoiB7X6bd1WsDDtgXRGRVneHExNp4jR2";
+  const valid = await bcrypt.compare(password, user?.password_hash ?? DUMMY_HASH);
+
+  if (!user || !user.is_active || !valid) {
     recordFailure(ip);
     return NextResponse.json({ error: "Invalid username or password." }, { status: 401 });
   }
