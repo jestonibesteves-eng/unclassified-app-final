@@ -175,8 +175,11 @@ function RegionGaugeCard({
               <div className="h-2 rounded-full bg-sky-100 overflow-hidden mb-1.5">
                 <div className="h-full rounded-full bg-sky-400" style={{ width: `${Math.min(fulfillPct, 100)}%` }} />
               </div>
-              <div className="flex justify-between">
-                <span className="text-[10px] text-sky-500">{available.toLocaleString()} avail.</span>
+              <div className="flex justify-between items-center mt-0.5">
+                <span className="inline-flex items-center gap-1 bg-sky-100 border border-sky-300 rounded px-1.5 py-0.5">
+                  <span className="text-[14px] font-extrabold text-sky-600 tabular-nums leading-none">{available.toLocaleString()}</span>
+                  <span className="text-[9px] font-semibold text-sky-400 uppercase tracking-wide leading-none">avail.</span>
+                </span>
                 <span className="text-[10px] text-sky-500">{committed.toLocaleString()} committed</span>
               </div>
             </>
@@ -262,8 +265,11 @@ function ProvinceMetricCell({
                 <div className="h-2 rounded-full bg-sky-100 overflow-hidden mb-1.5">
                   <div className="h-full rounded-full bg-sky-400" style={{ width: `${Math.min(fulfillPct, 100)}%` }} />
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-[10px] text-sky-500">{available.toLocaleString()} avail.</span>
+                <div className="flex justify-between items-center mt-0.5">
+                  <span className="inline-flex items-center gap-1 bg-sky-100 border border-sky-300 rounded px-1.5 py-0.5">
+                    <span className="text-[13px] font-extrabold text-sky-600 tabular-nums leading-none">{available.toLocaleString()}</span>
+                    <span className="text-[8px] font-semibold text-sky-400 uppercase tracking-wide leading-none">avail.</span>
+                  </span>
                   <span className="text-[10px] text-sky-500">{committed.toLocaleString()} committed</span>
                 </div>
               </>

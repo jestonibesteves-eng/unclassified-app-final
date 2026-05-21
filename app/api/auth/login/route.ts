@@ -59,7 +59,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing credentials." }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({ where: { username } });
+  let user: Awaited<ReturnType<typeof prisma.user.findUnique>>;
+  try {
+    user = await prisma.user.findUnique({ where: { username } });
+  } catch (err) {
+    console.error("[login] Database error:", err);
+    return NextResponse.json({ error: "Service temporarily unavailable." }, { status: 503 });
+  }
 
   // Always run bcrypt to prevent timing-based username enumeration.
   // DUMMY_HASH is a real bcrypt hash (cost 12) so the full computation runs even

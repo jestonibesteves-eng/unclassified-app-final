@@ -223,9 +223,9 @@ function SimpleCard({
                   Available vs. Committed
                 </p>
                 <div className="flex flex-col gap-1.5 mb-2">
-                  <div className="rounded-md bg-white border border-sky-100 px-2 py-1.5">
-                    <p className="text-[13px] font-bold text-sky-700 leading-none tabular-nums">{available.toLocaleString()}</p>
-                    <p className="text-[8px] text-sky-500 mt-0.5">available (not yet distributed)</p>
+                  <div className="rounded-md bg-sky-50 border-2 border-sky-400 px-2 py-2">
+                    <p className="text-[22px] font-extrabold text-sky-600 leading-none tabular-nums">{available.toLocaleString()}</p>
+                    <p className="text-[8px] font-semibold text-sky-500 mt-1 uppercase tracking-wide">available (not yet distributed)</p>
                   </div>
                   <div className="rounded-md bg-white border border-indigo-100 px-2 py-1.5">
                     <p className="text-[13px] font-bold text-indigo-700 leading-none tabular-nums">{committedCocroms.toLocaleString()}</p>

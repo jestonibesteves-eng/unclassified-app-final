@@ -33,14 +33,34 @@ export default function LoginPage() {
       // land before compilation finishes and get a 404. Retry once to let the
       // compiler catch up. Skip in production where routes are pre-compiled.
       if (res.status === 404 && process.env.NODE_ENV !== "production") {
-        await new Promise((r) => setTimeout(r, 800));
+        await new Promise((r) => setTimeout(r, 1200));
         res = await doLogin();
       }
 
-      const data = await res.json();
+      // If still 404 after retry, surface a helpful message.
+      // In dev this usually means a stale Turbopack cache; in production it
+      // would indicate a routing/deployment problem.
+      if (res.status === 404) {
+        setError(
+          process.env.NODE_ENV !== "production"
+            ? "Server not ready — try restarting the dev server."
+            : "Login service unavailable. Please try again later."
+        );
+        setLoading(false);
+        return;
+      }
+
+      let data: Record<string, unknown> = {};
+      try {
+        data = await res.json();
+      } catch {
+        setError("Unexpected server response. Please try again.");
+        setLoading(false);
+        return;
+      }
 
       if (!res.ok) {
-        setError(data.error ?? "Login failed.");
+        setError((data.error as string) ?? "Login failed.");
         setLoading(false);
       } else {
         window.location.replace(data.must_change_password ? "/change-password" : "/");
