@@ -87,6 +87,7 @@ model Arb {
 
   uploaded_by    String?
   created_at     DateTime    @default(now())
+  updated_at     DateTime?
 }
 
 model User {

@@ -89,7 +89,7 @@ export async function PATCH(
   rawDb.prepare(
     `UPDATE "Arb" SET arb_name = ?, arb_id = ?, ep_cloa_no = ?, carpable = ?, area_allocated = ?,
      allocated_condoned_amount = ?, eligibility = ?, eligibility_reason = ?,
-     date_encoded = ?, date_distributed = ?, remarks = ? WHERE id = ?`
+     date_encoded = ?, date_distributed = ?, remarks = ?, updated_at = datetime('now') WHERE id = ?`
   ).run(
     newArbName, newArbId, newEpCloaNo, normalizedCarpable, newAreaAllocated,
     allocated_condoned_amount.trim(), finalEligibility, finalEligibilityReason,

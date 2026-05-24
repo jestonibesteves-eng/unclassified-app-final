@@ -108,13 +108,19 @@ export async function getDigestData(
         AND status IN (${VALIDATED_STATUSES})`).get(ws, we) as { c: number }).c;
 
   const weeklyCocromsEncoded = provFilter
-    ? (rawDb.prepare(`SELECT COUNT(*) as c FROM "Landholding"
-        WHERE updated_at >= ? AND updated_at <= ?
-        AND status IN (${ENCODED_STATUSES})
-        AND province_edited = ?`).get(ws, we, provFilter) as { c: number }).c
-    : (rawDb.prepare(`SELECT COUNT(*) as c FROM "Landholding"
-        WHERE updated_at >= ? AND updated_at <= ?
-        AND status IN (${ENCODED_STATUSES})`).get(ws, we) as { c: number }).c;
+    ? (rawDb.prepare(`SELECT COUNT(*) as c FROM "Arb" a
+        JOIN "Landholding" l ON a.seqno_darro = l.seqno_darro
+        WHERE a.updated_at >= ? AND a.updated_at <= ?
+        AND a.eligibility = 'Eligible'
+        AND a.date_encoded IS NOT NULL AND a.date_encoded != ''
+        AND l.status != 'Not Eligible for Encoding'
+        AND l.province_edited = ?`).get(ws, we, provFilter) as { c: number }).c
+    : (rawDb.prepare(`SELECT COUNT(*) as c FROM "Arb" a
+        JOIN "Landholding" l ON a.seqno_darro = l.seqno_darro
+        WHERE a.updated_at >= ? AND a.updated_at <= ?
+        AND a.eligibility = 'Eligible'
+        AND a.date_encoded IS NOT NULL AND a.date_encoded != ''
+        AND l.status != 'Not Eligible for Encoding'`).get(ws, we) as { c: number }).c;
 
   // Section 2 — cumulative LHs validated --------------------------------------
   const lhRows = provFilter
@@ -236,10 +242,13 @@ async function getProvinceSummary(
   ).c;
 
   const wEnc = (
-    rawDb.prepare(`SELECT COUNT(*) as c FROM "Landholding"
-        WHERE updated_at >= ? AND updated_at <= ?
-        AND status IN (${ENCODED_STATUSES})
-        AND province_edited = ?`).get(ws, we, province) as { c: number }
+    rawDb.prepare(`SELECT COUNT(*) as c FROM "Arb" a
+        JOIN "Landholding" l ON a.seqno_darro = l.seqno_darro
+        WHERE a.updated_at >= ? AND a.updated_at <= ?
+        AND a.eligibility = 'Eligible'
+        AND a.date_encoded IS NOT NULL AND a.date_encoded != ''
+        AND l.status != 'Not Eligible for Encoding'
+        AND l.province_edited = ?`).get(ws, we, province) as { c: number }
   ).c;
 
   const lhRow = rawDb.prepare(`SELECT COUNT(*) as total,

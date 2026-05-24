@@ -7,7 +7,7 @@ import path from "path";
 // ── Schema version registry ───────────────────────────────────────────────────
 // Increment SCHEMA_VERSION and add an entry to SCHEMA_HISTORY each time a
 // structural migration is added to runMigrations().
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 export const SCHEMA_HISTORY: { version: number; description: string }[] = [
   { version: 1, description: "AuditLog — added source column" },
   { version: 2, description: "Setting table" },
@@ -15,6 +15,7 @@ export const SCHEMA_HISTORY: { version: number; description: string }[] = [
   { version: 4, description: "DigestRecipient table and email digest settings" },
   { version: 5, description: "recompute_last_ran_at setting" },
   { version: 6, description: "DigestRecipient — unsubscribe_token column" },
+  { version: 7, description: "Arb — updated_at column for weekly digest tracking" },
 ];
 
 type GlobalDb = { prisma: PrismaClient; rawDb: Database.Database };
@@ -89,6 +90,15 @@ function runMigrations(db: Database.Database) {
       for (const row of rows) {
         stmt.run(crypto.randomUUID(), row.id);
       }
+    }
+  } catch {
+    // Migration errors must not crash the server
+  }
+  try {
+    const arbCols = db.prepare(`PRAGMA table_info("Arb")`).all() as Array<{ name: string }>;
+    if (arbCols.length > 0 && !arbCols.find((c) => c.name === "updated_at")) {
+      db.prepare(`ALTER TABLE "Arb" ADD COLUMN "updated_at" TEXT`).run();
+      db.prepare(`UPDATE "Arb" SET updated_at = created_at WHERE updated_at IS NULL`).run();
     }
   } catch {
     // Migration errors must not crash the server

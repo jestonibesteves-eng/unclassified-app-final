@@ -455,7 +455,7 @@ export async function POST(req: NextRequest) {
   try {
     const deleteStmt = rawDb.prepare(`DELETE FROM "Arb" WHERE seqno_darro = ?`);
     const insertStmt = rawDb.prepare(
-      `INSERT INTO "Arb" (seqno_darro, arb_name, arb_id, ep_cloa_no, carpable, area_allocated, allocated_condoned_amount, eligibility, eligibility_reason, date_encoded, date_distributed, remarks, uploaded_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO "Arb" (seqno_darro, arb_name, arb_id, ep_cloa_no, carpable, area_allocated, allocated_condoned_amount, eligibility, eligibility_reason, date_encoded, date_distributed, remarks, uploaded_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     );
 
     // Replace mode: delete all affected seqnos upfront in one transaction before streaming inserts

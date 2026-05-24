@@ -435,6 +435,7 @@ export async function POST(req: NextRequest) {
 
         if (setClauses.length === 0) continue;
 
+        setClauses.push(`"updated_at" = datetime('now')`);
         rawDb
           .prepare(`UPDATE "Arb" SET ${setClauses.join(", ")} WHERE id = ?`)
           .run(...values, arb.id);

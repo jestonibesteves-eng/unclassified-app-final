@@ -316,9 +316,9 @@ export async function POST(req: NextRequest) {
 
         if (type === "eligibility") {
           const newReason = r.value === "Not Eligible" ? (r.eligibilityReason ?? null) : null;
-          rawDb.prepare(`UPDATE "Arb" SET "eligibility" = ?, "eligibility_reason" = ? WHERE id = ?`).run(r.value, newReason, arb.id);
+          rawDb.prepare(`UPDATE "Arb" SET "eligibility" = ?, "eligibility_reason" = ?, "updated_at" = datetime('now') WHERE id = ?`).run(r.value, newReason, arb.id);
         } else {
-          rawDb.prepare(`UPDATE "Arb" SET "${field}" = ? WHERE id = ?`).run(r.value, arb.id);
+          rawDb.prepare(`UPDATE "Arb" SET "${field}" = ?, "updated_at" = datetime('now') WHERE id = ?`).run(r.value, arb.id);
         }
         insertAudit.run(r.seqno, "ARB_UPDATE", field, oldVal, r.value, sessionUser.username, "batch_arb_info");
         updatedRecords.push({ seqno_darro: r.seqno, arb_id: r.arb_id, arb_name: arb.arb_name, landowner: lh.landowner });
