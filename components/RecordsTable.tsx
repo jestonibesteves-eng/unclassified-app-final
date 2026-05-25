@@ -1744,10 +1744,11 @@ export default function RecordsTable() {
         a.href = url; a.download = filename; a.click();
         URL.revokeObjectURL(url);
       } else {
-        toast("Export failed. Please try again.", "error");
+        const body = await res.json().catch(() => ({}));
+        toast(`Export failed: ${(body as { error?: string }).error ?? res.statusText}`, "error");
       }
-    } catch {
-      toast("Export failed — server did not respond.", "error");
+    } catch (err) {
+      toast(`Export failed — ${err instanceof Error ? err.message : "server did not respond"}`, "error");
     } finally {
       setExporting(false);
     }

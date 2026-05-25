@@ -5,6 +5,7 @@ import { verifySessionToken, SESSION_COOKIE } from "@/lib/session";
 import * as XLSX from "xlsx";
 
 export async function GET(req: NextRequest) {
+  try {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const sessionUser = token ? await verifySessionToken(token) : null;
   if (!sessionUser) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
@@ -235,4 +236,11 @@ export async function GET(req: NextRequest) {
       "Content-Disposition": `attachment; filename="${filename}"`,
     },
   });
+  } catch (err) {
+    console.error("[records/export] error:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Export failed" },
+      { status: 500 }
+    );
+  }
 }
