@@ -124,6 +124,16 @@ function IconDigest() {
     </svg>
   );
 }
+function IconUnconfirm() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7.5a4 4 0 1 0 .8-2.4" />
+      <polyline points="1 5 3 7.5 5.5 5" />
+      <line x1="6" y1="7" x2="10" y2="7" />
+      <line x1="6" y1="9.5" x2="9" y2="9.5" />
+    </svg>
+  );
+}
 function IconSignOut() {
   return (
     <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round">
@@ -219,8 +229,9 @@ const ALL_NAV_GROUPS: NavGroup[] = [
       { href: "/users",                    label: "User Management",    Icon: IconUsers,    chip: "amber"                   },
       { href: "/admin/commitment-targets", label: "Commitment Targets", Icon: IconTarget,   chip: "violet", superAdminOnly: true },
       { href: "/admin/activity",           label: "DARPO Activity",     Icon: IconActivity, chip: "violet", superAdminOnly: true },
-      { href: "/digest",                   label: "Weekly Digest",      Icon: IconDigest,   chip: "violet", superAdminOnly: true },
-      { href: "/admin/backup",             label: "Backup",             Icon: IconBackup,   chip: "violet", superAdminOnly: true },
+      { href: "/digest",                   label: "Weekly Digest",      Icon: IconDigest,    chip: "violet", superAdminOnly: true },
+      { href: "/admin/unconfirm",          label: "Batch Unconfirm",    Icon: IconUnconfirm, chip: "violet", superAdminOnly: true },
+      { href: "/admin/backup",             label: "Backup",             Icon: IconBackup,    chip: "violet", superAdminOnly: true },
     ],
   },
 ];
