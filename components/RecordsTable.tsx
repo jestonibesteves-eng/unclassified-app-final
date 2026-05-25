@@ -1723,26 +1723,29 @@ export default function RecordsTable() {
   async function handleExport(type: "simplified" | "full") {
     setExportMenuOpen(false);
     setExporting(true);
-    const params = new URLSearchParams();
-    if (search) params.set("search", search);
-    if (province) params.set("province", province);
-    if (municipality) params.set("municipality", municipality);
-    if (source) params.set("source", source);
-    if (flag) params.set("flag", flag);
-    if (status) params.set("status", status);
-    params.set("type", type);
-    const res = await fetch(`/api/records/export?${params}`);
-    if (res.ok) {
-      const blob = await res.blob();
-      const disposition = res.headers.get("Content-Disposition") ?? "";
-      const match = disposition.match(/filename="(.+?)"/);
-      const filename = match ? match[1] : "Records.xlsx";
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = filename; a.click();
-      URL.revokeObjectURL(url);
+    try {
+      const params = new URLSearchParams();
+      if (search) params.set("search", search);
+      if (province) params.set("province", province);
+      if (municipality) params.set("municipality", municipality);
+      if (source) params.set("source", source);
+      if (flag) params.set("flag", flag);
+      if (status) params.set("status", status);
+      params.set("type", type);
+      const res = await fetch(`/api/records/export?${params}`);
+      if (res.ok) {
+        const blob = await res.blob();
+        const disposition = res.headers.get("Content-Disposition") ?? "";
+        const match = disposition.match(/filename="(.+?)"/);
+        const filename = match ? match[1] : "Records.xlsx";
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = filename; a.click();
+        URL.revokeObjectURL(url);
+      }
+    } finally {
+      setExporting(false);
     }
-    setExporting(false);
   }
 
   const totalPages = Math.ceil(total / limit);

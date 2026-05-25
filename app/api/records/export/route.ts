@@ -202,10 +202,10 @@ export async function GET(req: NextRequest) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Records");
 
-  // Auto-width columns
+  // Auto-width columns — use reduce instead of spread to avoid RangeError on large datasets
   if (rows.length > 0) {
     const colWidths = Object.keys(rows[0]).map((key) => ({
-      wch: Math.max(key.length, ...rows.map((r) => String(r[key] ?? "").length)),
+      wch: rows.reduce((max, r) => Math.max(max, String(r[key] ?? "").length), key.length),
     }));
     ws["!cols"] = colWidths;
   }
