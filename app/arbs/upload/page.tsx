@@ -1286,23 +1286,30 @@ function ARBViewer({ refreshKey, isEditor }: { refreshKey: number; isEditor: boo
 
   async function handleExport() {
     setExporting(true);
-    const params = new URLSearchParams();
-    if (search) params.set("search", search);
-    if (matchFilter) params.set("match", matchFilter);
-    if (amountFilter) params.set("amountMatch", amountFilter);
-    if (provinceFilter) params.set("province", provinceFilter);
-    const res = await fetch(`/api/arbs/export?${params}`);
-    if (res.ok) {
-      const blob = await res.blob();
-      const disposition = res.headers.get("Content-Disposition") ?? "";
-      const match2 = disposition.match(/filename="(.+?)"/);
-      const filename = match2 ? match2[1] : "ARBs.xlsx";
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = filename; a.click();
-      URL.revokeObjectURL(url);
+    try {
+      const params = new URLSearchParams();
+      if (search) params.set("search", search);
+      if (matchFilter) params.set("match", matchFilter);
+      if (amountFilter) params.set("amountMatch", amountFilter);
+      if (provinceFilter) params.set("province", provinceFilter);
+      const res = await fetch(`/api/arbs/export?${params}`);
+      if (res.ok) {
+        const blob = await res.blob();
+        const disposition = res.headers.get("Content-Disposition") ?? "";
+        const match2 = disposition.match(/filename="(.+?)"/);
+        const filename = match2 ? match2[1] : "ARBs.xlsx";
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = filename; a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        toast("Export failed. Please try again.", "error");
+      }
+    } catch {
+      toast("Export failed — server did not respond.", "error");
+    } finally {
+      setExporting(false);
     }
-    setExporting(false);
   }
 
   const fetchList = useCallback(async () => {

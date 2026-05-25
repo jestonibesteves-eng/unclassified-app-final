@@ -1629,6 +1629,7 @@ function StatusBadge({ status, arbAreaMismatch, arbTotalArea, validatedArea }: {
 
 export default function RecordsTable() {
   const { isEditor, user } = useUser();
+  const toast = useToast();
   const provinceScope =
     user && user.office_level !== "regional" ? user.province ?? null : null;
   const municipalityScope =
@@ -1742,7 +1743,11 @@ export default function RecordsTable() {
         const a = document.createElement("a");
         a.href = url; a.download = filename; a.click();
         URL.revokeObjectURL(url);
+      } else {
+        toast("Export failed. Please try again.", "error");
       }
+    } catch {
+      toast("Export failed — server did not respond.", "error");
     } finally {
       setExporting(false);
     }
