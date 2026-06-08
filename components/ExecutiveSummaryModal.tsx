@@ -287,10 +287,13 @@ export function ExecutiveSummaryModal({
     try {
       const { toPng } = await import("html-to-image");
       const el  = captureRef.current;
+      // scrollWidth includes left padding but drops right padding when content
+      // overflows, so read the computed value and add it back explicitly.
+      const rightPad = parseFloat(window.getComputedStyle(el).paddingRight) || 0;
       const url = await toPng(el, {
         pixelRatio: 3,
         backgroundColor: "#ffffff",
-        width:  el.scrollWidth,
+        width:  el.scrollWidth + rightPad,
         height: el.scrollHeight,
       });
       const a = document.createElement("a");
