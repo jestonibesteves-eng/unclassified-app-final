@@ -8,6 +8,7 @@ import {
   fmtArea, fmtAmount, fmtCount, fmtAreaShort, fmtAmountShort,
 } from "@/lib/gauge-utils";
 import { ProvinceOverviewModal } from "./ProvinceOverviewModal";
+import { ExecutiveSummaryModal } from "./ExecutiveSummaryModal";
 
 /* ─── Types ─── */
 
@@ -427,7 +428,8 @@ export default function DashboardProgress({
   const [response, setResponse]     = useState<ProgressResponse | null>(null);
   const [loading, setLoading]       = useState(true);
   const [sub, setSub]               = useState<EncSubfilter>("cocrom");
-  const [showOverview, setShowOverview] = useState(false);
+  const [showOverview, setShowOverview]       = useState(false);
+  const [showExecSummary, setShowExecSummary] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -521,6 +523,20 @@ export default function DashboardProgress({
             );
           })}
           <button
+            onClick={() => setShowExecSummary(true)}
+            title="Executive Summary"
+            className="ml-1 flex items-center gap-1 px-2 py-1 rounded-md border border-gray-200 text-[10px] font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all"
+          >
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+              <rect x="2" y="1" width="12" height="2" rx="1"/>
+              <rect x="2" y="4.5" width="8" height="1.5" rx="0.75"/>
+              <rect x="2" y="7" width="10" height="1.5" rx="0.75"/>
+              <rect x="2" y="9.5" width="7" height="1.5" rx="0.75"/>
+              <rect x="2" y="12" width="9" height="1.5" rx="0.75"/>
+            </svg>
+            Exec. Summary
+          </button>
+          <button
             onClick={() => setShowOverview(true)}
             title="View all provinces"
             className="ml-1 p-1.5 rounded-md border border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all"
@@ -564,6 +580,13 @@ export default function DashboardProgress({
         open={showOverview}
         onClose={() => setShowOverview(false)}
         activeTab={sub}
+        targetDate={targetDate}
+        publicToken={publicToken}
+      />
+
+      <ExecutiveSummaryModal
+        open={showExecSummary}
+        onClose={() => setShowExecSummary(false)}
         targetDate={targetDate}
         publicToken={publicToken}
       />
