@@ -137,11 +137,14 @@ function DataRow({ label, entry, isTotalRow = false }: {
     fontWeight: isTotalRow ? 800 : 600,
     color: isTotalRow ? "#14532d" : "#1f2937",
     whiteSpace: "nowrap",
-    background: rowBg,
+    background: rowBg ?? "#fff",
     border: CELL_BORDER,
     borderTop: isTotalRow ? "2px solid #16a34a" : CELL_BORDER,
     borderRight: SEC_BORDER_L,
     verticalAlign: "middle",
+    position: "sticky",
+    left: 0,
+    zIndex: 1,
   };
   return (
     <tr style={{ background: rowBg }}>
@@ -172,8 +175,8 @@ function OtherRow({ label, valT, valC, encT, encC, distT, distC, area, amount }:
 }) {
   const labelStyle: React.CSSProperties = {
     padding: "4px 8px", fontSize: "10px", fontWeight: 600, color: "#1f2937",
-    whiteSpace: "nowrap", border: CELL_BORDER, borderRight: SEC_BORDER_L,
-    verticalAlign: "middle",
+    whiteSpace: "nowrap", background: "#fff", border: CELL_BORDER, borderRight: SEC_BORDER_L,
+    verticalAlign: "middle", position: "sticky", left: 0, zIndex: 1,
   };
   return (
     <tr>
@@ -344,6 +347,9 @@ export function ExecutiveSummaryModal({
     verticalAlign: "middle",
     textAlign: "center",
     minWidth: "110px",
+    position: "sticky",
+    left: 0,
+    zIndex: 3,
   };
   const thSectionBase = (color: string): React.CSSProperties => ({
     padding: "6px 4px",
@@ -549,7 +555,7 @@ export function ExecutiveSummaryModal({
 
                     {/* ── Notes row ── */}
                     <tr style={{ background: "#f9fafb" }}>
-                      <td style={{ ...noteCell(), borderRight: SEC_BORDER_L }} />
+                      <td style={{ ...noteCell(), borderRight: SEC_BORDER_L, background: "#f9fafb", position: "sticky", left: 0, zIndex: 1 }} />
                       <td colSpan={3} style={noteCell(true)}>
                         {valDaily > 0 ? (
                           <>Needs <strong style={{ color: "#111827", fontStyle: "normal" }}>{valDaily.toLocaleString()}</strong> LHs{" "}
