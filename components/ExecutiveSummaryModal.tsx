@@ -482,7 +482,7 @@ export function ExecutiveSummaryModal({
                       No. of Days Remaining until {deadlineStr}:
                     </p>
                     <p style={{ fontSize: "22px", fontWeight: 800, color: "#7c3aed", lineHeight: 1.1, textAlign: "right" }}>
-                      {daysLeft}
+                      {daysLeft} <span style={{ fontSize: "14px", fontWeight: 600 }}>days</span>
                     </p>
                   </div>
                 </div>
