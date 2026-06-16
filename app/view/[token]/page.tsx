@@ -100,6 +100,11 @@ export default async function PublicDashboardPage({
     area: p._sum.amendarea ?? 0,
   }));
 
+  const provinceTotalLandholdings: Record<string, number> = {};
+  for (const p of byProvince) {
+    provinceTotalLandholdings[p.province_edited ?? "Unknown"] = p._count;
+  }
+
   const statusData =
     byStatus.length > 0
       ? byStatus.map((s) => ({
@@ -267,7 +272,13 @@ export default async function PublicDashboardPage({
               <p className="text-[9px] uppercase tracking-[0.13em] font-semibold text-gray-400 mb-3">
                 By Non-Eligibility Reason
               </p>
-              <NotEligibleReasonsChart data={notEligibleByReason} />
+              <NotEligibleReasonsChart
+                data={notEligibleByReason}
+                notEligibleForEncodingCount={notEligibleForEncodingCount}
+                totalLandholdings={total}
+                allProvinces={allProvinces}
+                provinceTotalLandholdings={provinceTotalLandholdings}
+              />
             </div>
           </div>
         </ChartCard>

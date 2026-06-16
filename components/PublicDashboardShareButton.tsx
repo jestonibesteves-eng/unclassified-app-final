@@ -40,9 +40,28 @@ export default function PublicDashboardShareButton() {
 
   async function handleCopy() {
     if (!publicUrl) return;
-    await navigator.clipboard.writeText(publicUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(publicUrl);
+      } else {
+        // Clipboard API requires a secure context (HTTPS or localhost) and
+        // is unavailable when the admin accesses the dashboard over plain
+        // HTTP via a LAN IP — fall back to the legacy selection-based copy.
+        const textarea = document.createElement("textarea");
+        textarea.value = publicUrl;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Couldn't copy automatically — select the link text manually.");
+    }
   }
 
   async function handleRegenerate() {

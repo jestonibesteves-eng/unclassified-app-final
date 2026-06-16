@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useLayoutEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie, Legend, LabelList,
 } from "recharts";
+import { NotEligibleReasonTableModal } from "@/components/NotEligibleReasonTableModal";
 
 /* ─── Color palettes ─── */
 const PROVINCE_COLORS = [
@@ -124,12 +126,12 @@ export function ProvinceBarChart({ data }: { data: ProvinceKV[] }) {
           )}
           wrapperStyle={{ paddingBottom: 8 }}
         />
-        <Bar yAxisId="records" dataKey="value" name="Records" radius={[3, 3, 0, 0]} maxBarSize={20} fill="#15803d" />
+        <Bar yAxisId="records" dataKey="value" name="LHs" radius={[3, 3, 0, 0]} maxBarSize={20} fill="#15803d" />
         <Bar yAxisId="area" dataKey="area" name="Area (ha.)" radius={[3, 3, 0, 0]} maxBarSize={20} fill="#2563eb" />
       </BarChart>
     </ResponsiveContainer>
     <p className="text-[10px] text-gray-300 text-right mt-1 pr-1">
-      Sorted by record count, highest to lowest
+      Sorted by LH count, highest to lowest
     </p>
     </div>
   );
@@ -915,40 +917,172 @@ export function CocromDistributionChart({
 
 /* ─── Not Eligible for Encoding — reasons horizontal bar chart ─── */
 
-export type NotEligibleReasonRow = { name: string; count: number; area: number };
+export type NotEligibleReasonRow = {
+  name: string;
+  count: number;
+  area: number;
+  byProvince: { province: string; count: number; area: number }[];
+};
 
-export function NotEligibleReasonsChart({ data }: { data: NotEligibleReasonRow[] }) {
-  const [mode, setMode] = useState<"count" | "area">("count");
+const REASON_TICK_MAX_CHARS = 30;
+const REASON_AXIS_WIDTH = 190;
+const REASON_ROW_HEIGHT = 28;
 
-  const sorted = [...data].sort((a, b) =>
-    mode === "count" ? b.count - a.count : b.area - a.area,
+type ReasonHover = { row: NotEligibleReasonRow; clientX: number; clientY: number };
+
+// Recharts wraps long category labels onto multiple lines but only reserves
+// single-row height per category, so wrapped text spills into neighboring
+// rows. Render a single truncated line instead — hovering reveals the full
+// name plus a per-province breakdown via the floating tooltip in the parent.
+function ReasonTick({
+  x, y, payload, rowsByName, onHover,
+}: {
+  x?: number;
+  y?: number;
+  payload?: { value: string };
+  rowsByName?: Map<string, NotEligibleReasonRow>;
+  onHover?: (h: ReasonHover | null) => void;
+}) {
+  const text = payload?.value ?? "";
+  const truncated = text.length > REASON_TICK_MAX_CHARS
+    ? text.slice(0, REASON_TICK_MAX_CHARS - 1).trimEnd() + "…"
+    : text;
+  return (
+    <g
+      onMouseEnter={(e) => {
+        const row = rowsByName?.get(text);
+        if (!row) return;
+        // Use the hit area's actual screen position (not the SVG-internal y)
+        // so the tooltip can be fixed-positioned and clamped to the viewport
+        // — an absolutely-positioned tooltip inside the scrollable chart gets
+        // clipped near the top/bottom edges otherwise.
+        const rect = e.currentTarget.getBoundingClientRect();
+        onHover?.({ row, clientX: rect.right, clientY: rect.top + rect.height / 2 });
+      }}
+      onMouseLeave={() => onHover?.(null)}
+    >
+      {/* Transparent hit area spanning the whole label column — the visible
+          text glyphs alone are too small a target to hover reliably. */}
+      <rect
+        x={0}
+        y={(y ?? 0) - REASON_ROW_HEIGHT / 2}
+        width={REASON_AXIS_WIDTH - 4}
+        height={REASON_ROW_HEIGHT}
+        fill="transparent"
+        pointerEvents="all"
+      />
+      <text x={x} y={y} dy={3} textAnchor="end" fontSize={10} fill="#6b7280">
+        {truncated}
+      </text>
+    </g>
   );
-  const total = sorted.reduce((s, d) => s + (mode === "count" ? d.count : d.area), 0);
+}
 
-  const chartHeight = Math.min(Math.max(160, sorted.length * 36 + 24), 420);
+export function NotEligibleReasonsChart({
+  data,
+  notEligibleForEncodingCount,
+  totalLandholdings,
+  allProvinces,
+  provinceTotalLandholdings,
+}: {
+  data: NotEligibleReasonRow[];
+  notEligibleForEncodingCount?: number;
+  totalLandholdings?: number;
+  allProvinces?: string[];
+  provinceTotalLandholdings?: Record<string, number>;
+}) {
+  const [mode, setMode] = useState<"count" | "area">("count");
+  const [tableOpen, setTableOpen] = useState(false);
+  const [hover, setHover] = useState<ReasonHover | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number } | null>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!hover) {
+      setTooltipPos(null);
+      return;
+    }
+    const el = tooltipRef.current;
+    const margin = 8;
+    const height = el?.offsetHeight ?? 0;
+    const width = el?.offsetWidth ?? 0;
+    const top = Math.min(
+      Math.max(hover.clientY - height / 2, margin),
+      window.innerHeight - height - margin,
+    );
+    const left = Math.min(hover.clientX + 12, window.innerWidth - width - margin);
+    setTooltipPos({ left, top });
+  }, [hover]);
+
+  // Memoized so hover-state updates (which fire on every mouse move) don't
+  // produce a new array/Map reference each render — Recharts treats a new
+  // `data` reference as a dataset change and replays its entrance animation,
+  // which both flickers the bars/labels and remounts nodes mid-hover,
+  // killing the tooltip before it can show.
+  const sorted = useMemo(
+    () => [...data].sort((a, b) => (mode === "count" ? b.count - a.count : b.area - a.area)),
+    [data, mode],
+  );
+  const total = useMemo(
+    () => sorted.reduce((s, d) => s + (mode === "count" ? d.count : d.area), 0),
+    [sorted, mode],
+  );
+  const rowsByName = useMemo(() => new Map(sorted.map((r) => [r.name, r])), [sorted]);
+
+  const chartHeight = Math.max(160, sorted.length * REASON_ROW_HEIGHT + 24);
+
+  const notEligiblePct =
+    notEligibleForEncodingCount != null && totalLandholdings
+      ? ((notEligibleForEncodingCount / totalLandholdings) * 100).toFixed(1)
+      : null;
 
   return (
     <div>
-      {/* Toggle */}
-      <div className="flex justify-end mb-3">
-        <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden text-[11px] font-semibold">
-          {([
-            { k: "count" as const, l: "Landholdings" },
-            { k: "area"  as const, l: "Validated Area" },
-          ]).map(({ k, l }, i) => (
-            <button
-              key={k}
-              onClick={() => setMode(k)}
-              className={`px-3 py-1 transition-colors ${i > 0 ? "border-l border-gray-200" : ""} ${
-                mode === k
-                  ? "bg-red-700 text-white"
-                  : "bg-white text-gray-500 hover:bg-gray-50"
-              }`}
-            >
-              {l}
-            </button>
-          ))}
+      {/* Header: view toggles (left) + not-eligible percentage (right) */}
+      <div className="flex items-start justify-between mb-3 flex-wrap gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setTableOpen(true)}
+            title="View as table"
+            className="p-1.5 rounded-md border border-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3">
+              <rect x="1" y="1" width="14" height="14" rx="1.5" />
+              <line x1="1" y1="6" x2="15" y2="6" />
+              <line x1="1" y1="11" x2="15" y2="11" />
+              <line x1="6" y1="1" x2="6" y2="15" />
+              <line x1="11" y1="1" x2="11" y2="15" />
+            </svg>
+          </button>
+
+          <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden text-[11px] font-semibold">
+            {([
+              { k: "count" as const, l: "Landholdings" },
+              { k: "area"  as const, l: "Validated Area" },
+            ]).map(({ k, l }, i) => (
+              <button
+                key={k}
+                onClick={() => setMode(k)}
+                className={`px-3 py-1 transition-colors ${i > 0 ? "border-l border-gray-200" : ""} ${
+                  mode === k
+                    ? "bg-red-700 text-white"
+                    : "bg-white text-gray-500 hover:bg-gray-50"
+                }`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {notEligiblePct != null && (
+          <div className="text-right flex-shrink-0">
+            <p className="text-[18px] font-bold text-red-600 leading-none tabular-nums">{notEligiblePct}%</p>
+            <p className="text-[9px] text-gray-400 uppercase tracking-wide mt-0.5 tabular-nums whitespace-nowrap">
+              {notEligibleForEncodingCount!.toLocaleString()} / {totalLandholdings!.toLocaleString()} LHs not eligible
+            </p>
+          </div>
+        )}
       </div>
 
       {sorted.length === 0 ? (
@@ -956,6 +1090,7 @@ export function NotEligibleReasonsChart({ data }: { data: NotEligibleReasonRow[]
           No records found.
         </div>
       ) : (
+        <div className="overflow-y-auto pr-1" style={{ maxHeight: 480 }}>
         <ResponsiveContainer width="100%" height={chartHeight}>
           <BarChart
             data={sorted}
@@ -976,10 +1111,11 @@ export function NotEligibleReasonsChart({ data }: { data: NotEligibleReasonRow[]
             <YAxis
               type="category"
               dataKey="name"
-              tick={{ fontSize: 10, fill: "#6b7280" }}
-              width={160}
+              tick={<ReasonTick rowsByName={rowsByName} onHover={setHover} />}
+              width={REASON_AXIS_WIDTH}
               axisLine={false}
               tickLine={false}
+              interval={0}
             />
             <Tooltip
               content={({ active, payload, label }) => {
@@ -1010,6 +1146,7 @@ export function NotEligibleReasonsChart({ data }: { data: NotEligibleReasonRow[]
               fill="#ef4444"
               radius={[0, 3, 3, 0]}
               maxBarSize={22}
+              isAnimationActive={false}
             >
               <LabelList
                 dataKey={mode === "count" ? "count" : "area"}
@@ -1027,6 +1164,40 @@ export function NotEligibleReasonsChart({ data }: { data: NotEligibleReasonRow[]
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+
+        {hover && typeof document !== "undefined" && createPortal(
+          <div
+            ref={tooltipRef}
+            className="fixed z-50 pointer-events-none max-w-[260px] bg-gray-900 text-white text-[11px] px-3 py-2 rounded-lg shadow-xl border border-gray-700"
+            style={{
+              left: tooltipPos?.left ?? hover.clientX,
+              top: tooltipPos?.top ?? hover.clientY,
+              visibility: tooltipPos ? "visible" : "hidden",
+            }}
+          >
+            <p className="font-semibold text-gray-200 mb-1.5 leading-snug">{hover.row.name}</p>
+            <div className="space-y-0.5">
+              {hover.row.byProvince.map((p) => {
+                const val = mode === "count" ? p.count : p.area;
+                const reasonTotal = mode === "count" ? hover.row.count : hover.row.area;
+                const pct = reasonTotal > 0 ? ((val / reasonTotal) * 100).toFixed(1) : "0.0";
+                return (
+                  <p key={p.province} className="flex justify-between gap-3">
+                    <span className="text-gray-400">{p.province}</span>
+                    <span className="font-bold tabular-nums whitespace-nowrap">
+                      {mode === "area"
+                        ? val.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                        : val.toLocaleString()}
+                      <span className="text-gray-400 font-normal"> ({pct}%)</span>
+                    </span>
+                  </p>
+                );
+              })}
+            </div>
+          </div>,
+          document.body,
+        )}
+        </div>
       )}
 
       {sorted.length > 0 && (
@@ -1034,6 +1205,16 @@ export function NotEligibleReasonsChart({ data }: { data: NotEligibleReasonRow[]
           Sorted by {mode === "count" ? "no. of landholdings" : "validated area"}, highest to lowest
         </p>
       )}
+
+      <NotEligibleReasonTableModal
+        open={tableOpen}
+        onClose={() => setTableOpen(false)}
+        data={data}
+        notEligibleForEncodingCount={notEligibleForEncodingCount}
+        totalLandholdings={totalLandholdings}
+        allProvinces={allProvinces}
+        provinceTotalLandholdings={provinceTotalLandholdings}
+      />
     </div>
   );
 }

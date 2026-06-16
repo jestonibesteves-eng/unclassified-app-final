@@ -478,8 +478,8 @@ export async function getStats(provinceFilter: string | string[] | null) {
   };
 
   // ── Not Eligible for Encoding aggregation ────────────────────────────────
-  const neProvMap    = new Map<string, { count: number; area: number }>();
-  const neReasonMap  = new Map<string, { count: number; area: number }>();
+  const neProvMap   = new Map<string, { count: number; area: number }>();
+  const neReasonMap = new Map<string, { count: number; area: number; byProvince: Map<string, { count: number; area: number }> }>();
 
   for (const lh of notEligibleRaw) {
     const area   = lh.amendarea_validated ?? lh.amendarea ?? 0;
@@ -490,8 +490,11 @@ export async function getStats(provinceFilter: string | string[] | null) {
     p.count++; p.area += area;
     neProvMap.set(prov, p);
 
-    const r = neReasonMap.get(reason) ?? { count: 0, area: 0 };
+    const r = neReasonMap.get(reason) ?? { count: 0, area: 0, byProvince: new Map<string, { count: number; area: number }>() };
     r.count++; r.area += area;
+    const rp = r.byProvince.get(prov) ?? { count: 0, area: 0 };
+    rp.count++; rp.area += area;
+    r.byProvince.set(prov, rp);
     neReasonMap.set(reason, r);
   }
 
@@ -500,7 +503,14 @@ export async function getStats(provinceFilter: string | string[] | null) {
     .sort((a, b) => b.value - a.value);
 
   const notEligibleByReason: NotEligibleReasonRow[] = Array.from(neReasonMap.entries())
-    .map(([name, v]) => ({ name, count: v.count, area: v.area }))
+    .map(([name, v]) => ({
+      name,
+      count: v.count,
+      area: v.area,
+      byProvince: Array.from(v.byProvince.entries())
+        .map(([province, pv]) => ({ province, count: pv.count, area: pv.area }))
+        .sort((a, b) => b.count - a.count),
+    }))
     .sort((a, b) => b.count - a.count);
 
   return {

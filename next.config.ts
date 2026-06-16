@@ -46,7 +46,7 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_GIT_VERSION: getGitVersion(),
   },
-  allowedDevOrigins: ["192.168.1.101"],
+  allowedDevOrigins: ["192.168.1.101", "192.168.0.143"],
   async headers() {
     return [
       {

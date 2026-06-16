@@ -34,6 +34,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     fetch("/api/me")
       .then((r) => r.ok ? r.json() : null)
       .then((d) => { if (d?.user) setUser(d.user); })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 

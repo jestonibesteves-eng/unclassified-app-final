@@ -85,8 +85,13 @@ export async function proxy(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const session = token ? await getSessionUser(token) : null;
 
-  // Not authenticated → redirect to login
+  // Not authenticated → JSON 401 for API routes (so client-side fetches don't
+  // follow a redirect to the login page's HTML and choke parsing it as JSON),
+  // redirect to login for page navigations.
   if (!session) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
     return noindex(NextResponse.redirect(new URL("/login", req.url)));
   }
 
@@ -104,7 +109,9 @@ export async function proxy(req: NextRequest) {
     } | undefined;
 
   if (!dbUser || !dbUser.is_active) {
-    const res = noindex(NextResponse.redirect(new URL("/login", req.url)));
+    const res = pathname.startsWith("/api/")
+      ? NextResponse.json({ error: "Unauthorized." }, { status: 401 })
+      : noindex(NextResponse.redirect(new URL("/login", req.url)));
     res.cookies.delete("dar_session");
     res.cookies.delete("dar_session_exp");
     return res;
