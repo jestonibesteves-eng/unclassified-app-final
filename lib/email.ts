@@ -132,7 +132,7 @@ export function buildEmailHtml(
   });
 
   const accentBar = isFinal
-    ? `<tr><td style="background:#f59e0b;padding:9px 28px;text-align:center;border-radius:4px 4px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+    ? `<tr><td class="fe-bar" style="background:#f59e0b;padding:9px 28px;text-align:center;border-radius:4px 4px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
         <span style="font-size:10px;font-weight:700;letter-spacing:0.26em;text-transform:uppercase;color:#0c3318;">FINAL EDITION</span>
         &nbsp;&nbsp;&bull;&nbsp;&nbsp;
         <span style="font-size:10px;font-weight:700;letter-spacing:0.26em;text-transform:uppercase;color:#0c3318;">${eventDateFmt}</span>
@@ -269,7 +269,10 @@ export function buildEmailHtml(
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Weekly Progress Digest</title>
-</head>
+${isFinal ? `<style>
+@keyframes fe-shimmer{0%{background-position:-600px 0}100%{background-position:600px 0}}
+.fe-bar{background-image:linear-gradient(90deg,#f59e0b 0%,#fcd34d 30%,#f59e0b 55%,#fcd34d 80%,#f59e0b 100%)!important;background-size:600px 100%!important;animation:fe-shimmer 3s linear infinite}
+</style>` : ""}
 <body style="margin:0;padding:0;background:#eef2f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#1e293b;">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
   <tr><td align="center" style="padding:36px 16px;">
