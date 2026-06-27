@@ -1,5 +1,5 @@
 import { rawDb, prisma } from "@/lib/db";
-import { buildEmailHtml, buildSubjectLine, sendEmail } from "@/lib/email";
+import { buildEmailHtml, buildSubjectLine, sendEmail, isFinalEdition } from "@/lib/email";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -296,6 +296,14 @@ export async function sendWeeklyDigest(
   const regionalData = await getDigestData(weekStart, weekEnd, { level: "regional" });
   const regionalTargetDate = await getTargetDate({ level: "regional" });
 
+  const overrideSetting = (
+    rawDb
+      .prepare(`SELECT value FROM "Setting" WHERE key = ?`)
+      .get("email_digest_final_edition_override") as { value: string } | undefined
+  )?.value;
+  const finalOverride = overrideSetting === "true";
+  const isFinal = isFinalEdition(weekEnd, regionalTargetDate, finalOverride);
+
   const provinces = [
     ...new Set(
       allRecipients
@@ -335,9 +343,10 @@ export async function sendWeeklyDigest(
       recipient.level,
       recipient.province ?? undefined,
       weekStart,
-      weekEnd
+      weekEnd,
+      isFinal
     );
-    const html = buildEmailHtml(recipient.level, recipient, data, weekStart, weekEnd, targetDate);
+    const html = buildEmailHtml(recipient.level, recipient, data, weekStart, weekEnd, targetDate, isFinal);
 
     const result = await sendEmail(recipient.email, subject, html);
     if (result.ok) {
@@ -347,6 +356,12 @@ export async function sendWeeklyDigest(
       failed++;
       console.error(`[digest] Failed to send to ${recipient.email}: ${result.error}`);
     }
+  }
+
+  if (finalOverride && sent > 0) {
+    rawDb
+      .prepare(`INSERT OR REPLACE INTO "Setting" (key, value) VALUES (?, ?)`)
+      .run("email_digest_final_edition_override", "false");
   }
 
   return { sent, failed, recipients: sentRecipients };

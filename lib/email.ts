@@ -38,9 +38,16 @@ export function buildSubjectLine(
   variant: "regional" | "provincial",
   province: string | undefined,
   weekStart: Date,
-  weekEnd: Date
+  weekEnd: Date,
+  isFinal = false
 ): string {
   const range = `${fmtShort(weekStart)} – ${fmtShort(weekEnd)}, ${fmtYear(weekEnd)}`;
+  if (isFinal) {
+    if (variant === "provincial" && province) {
+      return `🎉 DAR Region V — Final Progress Digest · Eve of Distribution · ${province} · ${range}`;
+    }
+    return `🎉 DAR Region V — Final Progress Digest · Eve of Distribution · ${range}`;
+  }
   if (variant === "provincial" && province) {
     return `📊 DAR Region V — Weekly Progress Digest · ${province} · ${range}`;
   }
@@ -84,6 +91,15 @@ function buildCountdownBadge(targetDate: string, now: Date): string {
   return `<span style="display:inline-block;background:rgba(251,191,36,0.13);border:1px solid rgba(251,191,36,0.32);border-radius:8px;padding:8px 14px;font-size:11px;font-weight:600;color:rgba(251,191,36,0.92);white-space:nowrap;font-family:Arial,Helvetica,sans-serif;text-align:right;line-height:1.5;">${days} days (${weeks} wks) before<br>${dateLabel}</span>`;
 }
 
+// ── Final Edition detection ───────────────────────────────────────────────────
+
+export function isFinalEdition(weekEnd: Date, targetDate: string, override = false): boolean {
+  if (override) return true;
+  const deadlineMs = new Date(`${targetDate}T00:00:00+08:00`).getTime();
+  const daysDiff   = (deadlineMs - weekEnd.getTime()) / 86_400_000;
+  return daysDiff >= 0 && daysDiff <= 2;
+}
+
 // ── Email HTML ────────────────────────────────────────────────────────────────
 
 export function buildEmailHtml(
@@ -92,7 +108,8 @@ export function buildEmailHtml(
   data: DigestData,
   weekStart: Date,
   weekEnd: Date,
-  targetDate: string = "2026-06-15"
+  targetDate: string = "2026-06-15",
+  isFinal = false
 ): string {
   const weekRange   = `${fmtShort(weekStart)} – ${fmtShort(weekEnd)}, ${fmtYear(weekEnd)}`;
   const displayName = `${recipient.role} ${recipient.nickname?.trim() || recipient.name}`;
@@ -107,6 +124,87 @@ export function buildEmailHtml(
       : "";
 
   const { cumLhsValidated: lhv, cumCocromsEncoded: enc, cumCocromsForDistribution: dist } = data;
+
+  const [feY, feM, feD] = targetDate.split("-").map(Number);
+  const eventDateFmt  = `${["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"][feM - 1]} ${feD}, ${feY}`;
+  const eventDateLong = new Date(feY, feM - 1, feD).toLocaleDateString("en-PH", {
+    year: "numeric", month: "long", day: "numeric",
+  });
+
+  const accentBar = isFinal
+    ? `<tr><td style="background:#f59e0b;padding:9px 28px;text-align:center;border-radius:4px 4px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+        <span style="font-size:10px;font-weight:700;letter-spacing:0.26em;text-transform:uppercase;color:#0c3318;">FINAL EDITION</span>
+        &nbsp;&nbsp;&bull;&nbsp;&nbsp;
+        <span style="font-size:10px;font-weight:700;letter-spacing:0.26em;text-transform:uppercase;color:#0c3318;">${eventDateFmt}</span>
+        &nbsp;&nbsp;&bull;&nbsp;&nbsp;
+        <span style="font-size:10px;font-weight:700;letter-spacing:0.26em;text-transform:uppercase;color:#0c3318;">DISTRIBUTION DAY</span>
+      </td></tr>`
+    : `<tr><td style="background:#22c55e;height:4px;border-radius:4px 4px 0 0;padding:0;line-height:0;font-size:0;">&nbsp;</td></tr>`;
+
+  const provinceChipFinal =
+    variant === "provincial" && data.scope.province
+      ? `<div style="margin-top:14px;"><span style="display:inline-block;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);border-radius:6px;padding:6px 13px;font-size:12px;font-weight:600;color:rgba(255,255,255,0.82);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">&#128205; Province of ${data.scope.province}</span></div>`
+      : "";
+
+  const headerHtml = isFinal
+    ? `<tr><td style="background:#0f3d20;padding:0;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="width:58%;padding:24px 26px 24px 32px;vertical-align:middle;">
+              <div style="font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.36);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;margin-bottom:8px;">DAR &middot; Region V &middot; Bicol</div>
+              <span style="display:inline-block;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:99px;padding:3px 11px;font-size:10px;color:rgba(255,255,255,0.62);font-weight:500;margin-bottom:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">${weekRange}</span>
+              <div style="font-size:28px;font-weight:800;color:#ffffff;letter-spacing:-0.01em;line-height:1.08;margin:0 0 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Weekly Progress<br>Digest</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.38);letter-spacing:0.02em;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Final Report &mdash; Regional Title &amp; COCROM Distribution</div>
+              ${provinceChipFinal}
+            </td>
+            <td style="width:1px;padding:20px 0;background:#d97706;">&nbsp;</td>
+            <td style="background:#0a2d18;padding:22px 20px;vertical-align:middle;text-align:center;">
+              <div style="font-size:22px;font-weight:800;color:#fbbf24;letter-spacing:-0.01em;display:block;margin-bottom:4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Tomorrow&#8217;s</div>
+              <div style="font-size:15px;font-weight:700;color:#fbbf24;line-height:1.65;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">the big day!<br>Let&#8217;s do our best.<br>Good luck!</div>
+            </td>
+          </tr>
+        </table>
+      </td></tr>`
+    : `<tr><td style="background:#14532d;padding:26px 32px 28px;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.5);">DAR · Region V · Bicol</td>
+            <td align="right">
+              <span style="display:inline-block;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.18);border-radius:99px;padding:5px 14px;font-size:11px;color:rgba(255,255,255,0.85);font-weight:500;white-space:nowrap;">Week of ${fmtShort(weekStart)} – ${fmtShort(weekEnd)}</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding-top:18px;" valign="bottom">
+              <div style="font-size:26px;font-weight:800;color:#ffffff;letter-spacing:-0.02em;line-height:1.15;">Weekly Progress Digest</div>
+              <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:5px;letter-spacing:0.01em;">COCROM Validation, Encoding &amp; Distribution Summary</div>
+            </td>
+            <td style="padding-top:18px;padding-left:20px;" valign="bottom" align="right">
+              ${buildCountdownBadge(targetDate, weekEnd)}
+            </td>
+          </tr>
+          ${provinceChip}
+        </table>
+      </td></tr>`;
+
+  const distBanner = isFinal
+    ? `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;">
+        <tr><td style="background:#0f3d20;border-radius:10px;padding:20px 24px;">
+          <p style="font-size:13px;color:#ffffff;margin:0;line-height:1.75;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+            Today is the last day before the Regional Title and COCROM Distribution. Below are the final numbers as we head into tomorrow&#8217;s big event. Thank you for your commitment and hard work throughout this effort &#8212; the data reflects it.
+          </p>
+        </td></tr>
+      </table>`
+    : "";
+
+  const closingNote = isFinal
+    ? `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:28px;">
+        <tr><td style="border-top:2px solid #fde68a;padding-top:20px;">
+          <p style="font-size:13px;color:#374151;margin:0;line-height:1.85;font-style:italic;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+            Tomorrow, <strong style="color:#0f172a;font-style:normal;">${eventDateLong}</strong>, marks the culmination of this campaign as DAR Region V distributes COCROMs across Bicol. The numbers in this final digest are a testament to the dedication of every team involved. Well done!
+          </p>
+        </td></tr>
+      </table>`
+    : "";
 
   const cumulativeRows = `
     <tr style="border-bottom:1px solid #f8fafc;">
@@ -177,30 +275,8 @@ export function buildEmailHtml(
   <tr><td align="center" style="padding:36px 16px;">
     <table width="620" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;width:100%;">
 
-      <!-- Top accent bar -->
-      <tr><td style="background:#22c55e;height:4px;border-radius:4px 4px 0 0;padding:0;line-height:0;font-size:0;">&nbsp;</td></tr>
-
-      <!-- Header -->
-      <tr><td style="background:#14532d;padding:26px 32px 28px;">
-        <table width="100%" cellpadding="0" cellspacing="0" border="0">
-          <tr>
-            <td style="font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.5);">DAR · Region V · Bicol</td>
-            <td align="right">
-              <span style="display:inline-block;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.18);border-radius:99px;padding:5px 14px;font-size:11px;color:rgba(255,255,255,0.85);font-weight:500;white-space:nowrap;">Week of ${fmtShort(weekStart)} – ${fmtShort(weekEnd)}</span>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding-top:18px;" valign="bottom">
-              <div style="font-size:26px;font-weight:800;color:#ffffff;letter-spacing:-0.02em;line-height:1.15;">Weekly Progress Digest</div>
-              <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:5px;letter-spacing:0.01em;">COCROM Validation, Encoding &amp; Distribution Summary</div>
-            </td>
-            <td style="padding-top:18px;padding-left:20px;" valign="bottom" align="right">
-              ${buildCountdownBadge(targetDate, weekEnd)}
-            </td>
-          </tr>
-          ${provinceChip}
-        </table>
-      </td></tr>
+      ${accentBar}
+      ${headerHtml}
 
       <!-- Body -->
       <tr><td style="background:#ffffff;padding:30px 32px 28px;">
@@ -209,6 +285,8 @@ export function buildEmailHtml(
         <p style="font-size:15px;color:#374151;margin:0 0 26px;line-height:1.7;">
           Good day, <strong style="color:#0f172a;">${displayName}</strong>. Here is the progress update${variant === "provincial" && data.scope.province ? ` for <strong style="color:#0f172a;">${data.scope.province}</strong>` : ""} for the week of <strong style="color:#0f172a;">${weekRange}</strong>.
         </p>
+
+        ${distBanner}
 
         <!-- Section label: This Week -->
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:14px;">
@@ -272,6 +350,8 @@ export function buildEmailHtml(
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
           ${provincialBreakdown}
         </table>
+
+        ${closingNote}
 
       </td></tr>
 

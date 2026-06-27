@@ -7,6 +7,7 @@ interface Settings {
   enabled: boolean;
   lastSentAt: string | null;
   sendUntil: string | null;
+  finalEditionOverride: boolean;
 }
 
 interface SendResult {
@@ -48,7 +49,7 @@ function fmtDate(iso: string | null): string {
 }
 
 export default function DigestPage() {
-  const [settings, setSettings]     = useState<Settings>({ enabled: false, lastSentAt: null, sendUntil: null });
+  const [settings, setSettings]     = useState<Settings>({ enabled: false, lastSentAt: null, sendUntil: null, finalEditionOverride: false });
   const [recipients, setRecipients] = useState<DigestRecipient[]>([]);
   const [sending, setSending]       = useState(false);
   const [sendResult, setSendResult] = useState<SendResult | null>(null);
@@ -106,6 +107,16 @@ export default function DigestPage() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sendUntil: date || null }),
+    });
+  }
+
+  async function handleToggleFinalEdition() {
+    const next = !settings.finalEditionOverride;
+    setSettings((s) => ({ ...s, finalEditionOverride: next }));
+    await fetch("/api/admin/digest/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ finalEditionOverride: next }),
     });
   }
 
@@ -291,6 +302,31 @@ export default function DigestPage() {
               </button>
             )}
           </div>
+        )}
+
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-700">Send as Final Edition</p>
+            <p className="text-xs text-gray-400">Override: send the next digest with the special Final Edition treatment</p>
+          </div>
+          <button
+            onClick={handleToggleFinalEdition}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              settings.finalEditionOverride ? "bg-amber-500" : "bg-gray-300"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                settings.finalEditionOverride ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
+
+        {settings.finalEditionOverride && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            The next digest will be sent as the Final Edition. This override resets automatically after sending.
+          </p>
         )}
 
         <div className="text-sm text-gray-500">

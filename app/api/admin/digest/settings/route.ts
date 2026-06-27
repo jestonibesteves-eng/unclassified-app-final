@@ -21,11 +21,12 @@ export async function GET(req: NextRequest) {
   if (!user || user.role !== "super_admin")
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
-  const enabled    = getSetting("email_digest_enabled") === "true";
-  const lastSentAt = getSetting("email_digest_last_sent_at") || null;
-  const sendUntil  = getSetting("email_digest_send_until") || null;
+  const enabled              = getSetting("email_digest_enabled") === "true";
+  const lastSentAt           = getSetting("email_digest_last_sent_at") || null;
+  const sendUntil            = getSetting("email_digest_send_until") || null;
+  const finalEditionOverride = getSetting("email_digest_final_edition_override") === "true";
 
-  return NextResponse.json({ enabled, lastSentAt, sendUntil });
+  return NextResponse.json({ enabled, lastSentAt, sendUntil, finalEditionOverride });
 }
 
 export async function PUT(req: NextRequest) {
@@ -34,7 +35,7 @@ export async function PUT(req: NextRequest) {
   if (!user || user.role !== "super_admin")
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
-  const body = await req.json() as { enabled?: boolean; sendUntil?: string | null };
+  const body = await req.json() as { enabled?: boolean; sendUntil?: string | null; finalEditionOverride?: boolean };
 
   if (body.enabled !== undefined) {
     if (typeof body.enabled !== "boolean")
@@ -46,7 +47,14 @@ export async function PUT(req: NextRequest) {
     setSetting("email_digest_send_until", body.sendUntil ?? "");
   }
 
-  const enabled   = getSetting("email_digest_enabled") === "true";
-  const sendUntil = getSetting("email_digest_send_until") || null;
-  return NextResponse.json({ enabled, sendUntil });
+  if (body.finalEditionOverride !== undefined) {
+    if (typeof body.finalEditionOverride !== "boolean")
+      return NextResponse.json({ error: "finalEditionOverride must be a boolean." }, { status: 400 });
+    setSetting("email_digest_final_edition_override", body.finalEditionOverride ? "true" : "false");
+  }
+
+  const enabled              = getSetting("email_digest_enabled") === "true";
+  const sendUntil            = getSetting("email_digest_send_until") || null;
+  const finalEditionOverride = getSetting("email_digest_final_edition_override") === "true";
+  return NextResponse.json({ enabled, sendUntil, finalEditionOverride });
 }
