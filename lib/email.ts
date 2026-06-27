@@ -157,7 +157,7 @@ export function buildEmailHtml(
               <div style="font-size:11px;color:rgba(255,255,255,0.38);letter-spacing:0.02em;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Final Report &mdash; Regional Title &amp; COCROM Distribution</div>
               ${provinceChipFinal}
             </td>
-            <td class="fe-div" style="width:2px;padding:0;background:#d97706;">&nbsp;</td>
+            <td class="fe-div" style="width:1px;padding:0;background:#d97706;">&nbsp;</td>
             <td style="background:#0a2d18;padding:22px 20px;vertical-align:middle;text-align:center;">
               <div style="font-size:22px;font-weight:800;color:#fbbf24;letter-spacing:-0.01em;display:block;margin-bottom:4px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Tomorrow&#8217;s</div>
               <div style="font-size:15px;font-weight:700;color:#fbbf24;line-height:1.65;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">the big day!<br>Let&#8217;s do our best.<br>Good luck!</div>
@@ -272,7 +272,7 @@ export function buildEmailHtml(
 ${isFinal ? `<style>
 @keyframes fe-shimmer{0%{background-position:-600px 0}100%{background-position:600px 0}}
 .fe-bar{background-image:linear-gradient(90deg,#f59e0b 0%,#fcd34d 30%,#f59e0b 55%,#fcd34d 80%,#f59e0b 100%)!important;background-size:600px 100%!important;animation:fe-shimmer 3s linear infinite}
-.fe-div{background:linear-gradient(to bottom,transparent 0%,rgba(217,119,6,0.35) 15%,#d97706 35%,#fbbf24 50%,#d97706 65%,rgba(217,119,6,0.35) 85%,transparent 100%)!important;box-shadow:0 0 18px 5px rgba(251,191,36,0.22),0 0 7px 2px rgba(251,191,36,0.42)!important}
+.fe-div{background:linear-gradient(to bottom,transparent 0%,#d97706 25%,#d97706 75%,transparent 100%)!important}
 </style>` : ""}
 <body style="margin:0;padding:0;background:#eef2f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:#1e293b;">
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
