@@ -44,9 +44,9 @@ export function buildSubjectLine(
   const range = `${fmtShort(weekStart)} – ${fmtShort(weekEnd)}, ${fmtYear(weekEnd)}`;
   if (isFinal) {
     if (variant === "provincial" && province) {
-      return `🎉 DAR Region V — Final Progress Digest · Eve of Distribution · ${province} · ${range}`;
+      return `🎉 DAR5 — Distribution Day Tomorrow · Final Progress Digest: ${province} · ${range}`;
     }
-    return `🎉 DAR Region V — Final Progress Digest · Eve of Distribution · ${range}`;
+    return `🎉 DAR5 — Distribution Day Tomorrow · Final Progress Digest: ${range}`;
   }
   if (variant === "provincial" && province) {
     return `📊 DAR Region V — Weekly Progress Digest · ${province} · ${range}`;
