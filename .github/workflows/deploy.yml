@@ -11,7 +11,31 @@ jobs:
     environment: Hostinger
 
     steps:
-      - name: Deploy via SSH
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Copy build to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT }}
+          source: ".next"
+          target: ${{ secrets.APP_DIR }}
+
+      - name: Update source and restart
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -23,6 +47,5 @@ jobs:
             export PATH=/opt/alt/alt-nodejs22/root/usr/bin:$PATH
             cd ${{ secrets.APP_DIR }}
             git pull origin main
-            npm ci
-            npm run build
+            npm ci --omit=dev
             ${{ secrets.RESTART_CMD }}
