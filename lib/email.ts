@@ -160,8 +160,7 @@ export function buildEmailHtml(
             <td class="fe-div" style="width:1px;padding:0;background:#d97706;">&nbsp;</td>
             <td style="background:#0a2d18;padding:22px 18px;vertical-align:middle;text-align:center;">
               <div style="font-size:36px;font-weight:800;color:#fbbf24;letter-spacing:-0.03em;line-height:1;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Tomorrow&#8217;s</div>
-              <div style="width:28px;height:1px;background:rgba(251,191,36,0.45);margin:11px auto 11px;"></div>
-              <div style="font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:rgba(251,191,36,0.7);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">the big day!</div>
+              <div style="font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:none;color:rgba(251,191,36,0.7);margin-top:10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">the big day!</div>
             </td>
           </tr>
         </table>
