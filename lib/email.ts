@@ -132,7 +132,7 @@ export function buildEmailHtml(
   });
 
   const accentBar = isFinal
-    ? `<tr><td class="fe-bar" style="background:#f59e0b;padding:9px 28px;text-align:center;border-radius:4px 4px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+    ? `<tr><td class="fe-bar" style="background:linear-gradient(90deg,#f59e0b 0%,#fcd34d 30%,#f59e0b 55%,#fcd34d 80%,#f59e0b 100%);padding:9px 28px;text-align:center;border-radius:4px 4px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
         <span style="font-size:10px;font-weight:700;letter-spacing:0.26em;text-transform:uppercase;color:#0c3318;">FINAL EDITION</span>
         &nbsp;&nbsp;&bull;&nbsp;&nbsp;
         <span style="font-size:10px;font-weight:700;letter-spacing:0.26em;text-transform:uppercase;color:#0c3318;">${eventDateFmt}</span>
@@ -157,7 +157,7 @@ export function buildEmailHtml(
               <div style="font-size:11px;color:rgba(255,255,255,0.38);letter-spacing:0.02em;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Final Report &mdash; Regional Title &amp; COCROM Distribution</div>
               ${provinceChipFinal}
             </td>
-            <td class="fe-div" style="width:1px;padding:0;background:#d97706;">&nbsp;</td>
+            <td class="fe-div" style="width:1px;padding:0;background:linear-gradient(to bottom,transparent,#d97706 30%,#d97706 70%,transparent);">&nbsp;</td>
             <td style="background:#0a2d18;padding:22px 18px;vertical-align:middle;text-align:center;">
               <div style="font-size:36px;font-weight:800;color:#fbbf24;letter-spacing:-0.03em;line-height:1;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Tomorrow&#8217;s</div>
               <div style="font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:rgba(251,191,36,0.7);margin-top:10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">the big day!</div>
