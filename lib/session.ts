@@ -1,8 +1,10 @@
 import { SignJWT, jwtVerify } from "jose";
 
-const authSecret = process.env.AUTH_SECRET;
-if (!authSecret) throw new Error("AUTH_SECRET environment variable is required but not set.");
-const SECRET = new TextEncoder().encode(authSecret);
+function getSecret(): Uint8Array {
+  const authSecret = process.env.AUTH_SECRET;
+  if (!authSecret) throw new Error("AUTH_SECRET environment variable is required but not set.");
+  return new TextEncoder().encode(authSecret);
+}
 
 export type SessionUser = {
   id: string;
@@ -22,12 +24,12 @@ export async function createSessionToken(user: SessionUser): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("1h")
-    .sign(SECRET);
+    .sign(getSecret());
 }
 
 export async function verifySessionToken(token: string): Promise<SessionUser | null> {
   try {
-    const { payload } = await jwtVerify(token, SECRET);
+    const { payload } = await jwtVerify(token, getSecret());
     return (payload as { user: SessionUser }).user;
   } catch {
     return null;
