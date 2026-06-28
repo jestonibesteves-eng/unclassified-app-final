@@ -335,7 +335,7 @@ export async function sendWeeklyDigest(
         : provincialDataMap.get(recipient.province ?? "") ?? regionalData;
 
     const targetDate =
-      recipient.level === "regional"
+      isFinal || recipient.level === "regional"
         ? regionalTargetDate
         : provincialTargetDateMap.get(recipient.province ?? "") ?? regionalTargetDate;
 
