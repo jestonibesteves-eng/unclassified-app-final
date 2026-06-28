@@ -132,7 +132,7 @@ export function buildEmailHtml(
   });
 
   const accentBar = isFinal
-    ? `<tr><td class="fe-bar" style="background:linear-gradient(90deg,#f59e0b 0%,#fcd34d 30%,#f59e0b 55%,#fcd34d 80%,#f59e0b 100%);padding:9px 28px;text-align:center;border-radius:4px 4px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+    ? `<tr><td class="fe-bar" style="background:#f59e0b;padding:9px 28px;text-align:center;border-radius:4px 4px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
         <span style="font-size:10px;font-weight:700;letter-spacing:0.26em;text-transform:uppercase;color:#0c3318;">FINAL EDITION</span>
         &nbsp;&nbsp;&bull;&nbsp;&nbsp;
         <span style="font-size:10px;font-weight:700;letter-spacing:0.26em;text-transform:uppercase;color:#0c3318;">${eventDateFmt}</span>
@@ -150,15 +150,15 @@ export function buildEmailHtml(
     ? `<tr><td style="background:#0f3d20;padding:0;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
-            <td style="width:58%;padding:24px 26px 24px 32px;vertical-align:middle;">
+            <td style="width:62%;padding:24px 26px 24px 32px;vertical-align:middle;">
               <div style="font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.36);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;margin-bottom:8px;">DAR &middot; Region V &middot; Bicol</div>
               <span style="display:inline-block;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:99px;padding:3px 11px;font-size:10px;color:rgba(255,255,255,0.62);font-weight:500;margin-bottom:12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">${weekRange}</span>
               <div style="font-size:28px;font-weight:800;color:#ffffff;letter-spacing:-0.01em;line-height:1.08;margin:0 0 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Weekly Progress<br>Digest</div>
               <div style="font-size:11px;color:rgba(255,255,255,0.38);letter-spacing:0.02em;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Final Report &mdash; Regional Title &amp; COCROM Distribution</div>
               ${provinceChipFinal}
             </td>
-            <td class="fe-div" style="width:1px;padding:0;background:linear-gradient(to bottom,transparent,#d97706 30%,#d97706 70%,transparent);">&nbsp;</td>
-            <td style="background:#0a2d18;padding:22px 18px;vertical-align:middle;text-align:center;">
+            <td class="fe-div" style="width:1px;padding:0;background:#d97706;">&nbsp;</td>
+            <td style="width:38%;background:#0a2d18;padding:22px 18px;vertical-align:middle;text-align:center;">
               <div style="font-size:36px;font-weight:800;color:#fbbf24;letter-spacing:-0.03em;line-height:1;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">Tomorrow&#8217;s</div>
               <div style="font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:rgba(251,191,36,0.7);margin-top:10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">the big day!</div>
             </td>
