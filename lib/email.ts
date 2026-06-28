@@ -200,7 +200,7 @@ export function buildEmailHtml(
     ? `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:28px;">
         <tr><td style="border-top:2px solid #fde68a;padding-top:20px;">
           <p style="font-size:13px;color:#374151;margin:0;line-height:1.85;font-style:italic;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
-            Tomorrow, <strong style="color:#0f172a;font-style:normal;">${eventDateLong}</strong>, marks the culmination of this campaign as DAR Region V distributes COCROMs across Bicol. The numbers in this final digest are a testament to the dedication of every team involved. Well done!
+            Tomorrow, <strong style="color:#0f172a;font-style:normal;">${eventDateLong}</strong>, marks the culmination of this campaign as DAR Region V distributes COCROMs across Bicol. The numbers in this final digest are a testament to the dedication of every team involved. Best of luck!
           </p>
         </td></tr>
       </table>`
